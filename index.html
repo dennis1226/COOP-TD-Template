@@ -234,6 +234,11 @@
         }
         button.danger:hover { background-color: var(--button-danger-hover); }
 
+        button.success {
+            background-color: var(--button-success);
+        }
+        button.success:hover { background-color: var(--button-success-hover); }
+
         button.active {
             outline: 2px solid var(--accent);
             outline-offset: 2px;
@@ -387,6 +392,10 @@
                     <button id="deleteModeBtn" class="secondary">刪除模式</button>
                     <button id="clearBtn" class="danger">清空棋盤</button>
                 </div>
+                <div class="button-group" style="margin-top:8px;">
+                    <button id="copyTemplateBtn" class="success">複製模板</button>
+                </div>
+                <div class="hint">按下後會截取棋盤圖片到剪貼簿，可用 Ctrl+V 貼上</div>
             </div>
         </div>
     </div>
@@ -418,6 +427,7 @@
         const gridSizeSelect = document.getElementById('gridSizeSelect');
         const deleteModeBtn = document.getElementById('deleteModeBtn');
         const clearBtn = document.getElementById('clearBtn');
+        const copyTemplateBtn = document.getElementById('copyTemplateBtn');
         const themeToggle = document.getElementById('themeToggle');
         const toastEl = document.getElementById('toast');
 
@@ -663,6 +673,98 @@
             document.body.classList.toggle('light-mode');
             const isLight = document.body.classList.contains('light-mode');
             themeToggle.textContent = isLight ? '深色模式' : '淺色模式';
+        });
+
+
+        // ==================== Copy Template ====================
+        async function copyBoardTemplate() {
+            if (!state.bgImage) {
+                showToast('背景圖尚未載入完成，請稍候再試');
+                return;
+            }
+
+            const cw = state.nativeCellW || state.cellW;
+            const ch = state.nativeCellH || state.cellH;
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(state.cols * cw);
+            canvas.height = Math.round(state.rows * ch);
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+
+            ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
+
+            // 非均等格子座標
+            const colW = [];
+            const rowH = [];
+            if (state.colFracs && state.colFracs.length === state.cols) {
+                for (let i = 0; i < state.cols; i++) colW.push(state.colFracs[i] * canvas.width);
+            } else {
+                for (let i = 0; i < state.cols; i++) colW.push(canvas.width / state.cols);
+            }
+            if (state.rowFracs && state.rowFracs.length === state.rows) {
+                for (let i = 0; i < state.rows; i++) rowH.push(state.rowFracs[i] * canvas.height);
+            } else {
+                for (let i = 0; i < state.rows; i++) rowH.push(canvas.height / state.rows);
+            }
+            const colX = [0];
+            for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
+            const rowY = [0];
+            for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
+
+            const drawPromises = [];
+            for (const [key, unit] of Object.entries(state.units)) {
+                const [x, y] = key.split('-').map(Number);
+                drawPromises.push(new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const cellW = colW[x];
+                        const cellH = rowH[y];
+                        const padX = cellW * 0.08;
+                        const padY = cellH * 0.08;
+                        ctx.drawImage(img, colX[x] + padX, rowY[y] + padY, cellW - padX * 2, cellH - padY * 2);
+                        resolve();
+                    };
+                    img.onerror = resolve;
+                    img.src = unit.src;
+                }));
+            }
+            await Promise.all(drawPromises);
+
+            // 複製到剪貼簿
+            try {
+                const blob = await new Promise((resolve, reject) => {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
+                });
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                showToast('已複製模板到剪貼簿！可用 Ctrl+V 貼上');
+                return;
+            } catch (err) {
+                console.warn('Clipboard failed:', err);
+            }
+
+            // 後備：下載
+            try {
+                const dataUrl = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = 'board-template.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast('無法寫入剪貼簿，已改為下載 board-template.png');
+            } catch (err2) {
+                console.warn('Download failed:', err2);
+                showToast('複製失敗，請確認瀏覽器權限或改用本機伺服器開啟');
+            }
+        }
+
+        copyTemplateBtn.addEventListener('click', () => {
+            copyTemplateBtn.disabled = true;
+            copyBoardTemplate().finally(() => {
+                copyTemplateBtn.disabled = false;
+            });
         });
 
         // ==================== Init ====================
