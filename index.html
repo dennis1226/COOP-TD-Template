@@ -148,6 +148,15 @@
             background: rgba(255, 255, 255, 0.2) !important;
         }
 
+        /* 禁放區域樣式 */
+        .cell.disabled {
+            cursor: not-allowed !important;
+            background: rgba(231, 76, 60, 0.15);
+        }
+        .cell.disabled:hover {
+            background: rgba(231, 76, 60, 0.3) !important;
+        }
+
         .unit-img {
             position: absolute;
             inset: 4px;
@@ -418,7 +427,16 @@
             deleteMode: false,
             units: {},
             loadedIcons: [],
-            bgImage: null
+            bgImage: null,
+
+            // 🚫 精確禁放區域座標清單 (X-Y, 0 為起始索引)
+            blockedCells: new Set([
+                '0-0', '6-0',                // Row 0: 最左上角沙地、最右上角樹叢/牆壁 (5-0 為草地，可放置)
+                '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', // Row 1: 橫向沙地通道與牆邊 (僅 3-1 中央 T 字草地可放置)
+                '2-2', '4-2',                // Row 2: 左右兩條直向黃色通道
+                '2-3', '4-3',                // Row 3: 左右兩條直向黃色通道
+                '2-4', '3-4', '4-4'          // Row 4: 底部橫向黃色通道與中央木牆底座
+            ])
         };
 
         // ==================== DOM ====================
@@ -502,6 +520,13 @@
                     cell.dataset.y = y;
 
                     const key = getCellKey(x, y);
+                    const isBlocked = state.blockedCells && state.blockedCells.has(key);
+
+                    // 如果是禁放區域，加上 disabled class
+                    if (isBlocked) {
+                        cell.classList.add('disabled');
+                    }
+
                     if (state.units[key]) {
                         cell.classList.add('has-unit');
                         renderUnitInCell(cell, state.units[key]);
@@ -511,6 +536,10 @@
 
                     cell.addEventListener('dragover', (e) => {
                         e.preventDefault();
+                        if (isBlocked) {
+                            e.dataTransfer.dropEffect = 'none'; // 滑鼠顯示禁止放置圖示
+                            return;
+                        }
                         e.dataTransfer.dropEffect = 'copy';
                         boardEl.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
                         cell.classList.add('drag-over');
@@ -523,6 +552,12 @@
                     cell.addEventListener('drop', (e) => {
                         e.preventDefault();
                         boardEl.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+                        
+                        if (isBlocked) {
+                            showToast('非草地區域（通道/牆壁）不允許放置魔物！');
+                            return;
+                        }
+                        
                         if (state.deleteMode) return;
                         const unitId = e.dataTransfer.getData('text/plain');
                         const icon = state.loadedIcons.find(i => i.id === unitId);
@@ -560,6 +595,12 @@
                     createBoard();
                     showToast('已刪除');
                 }
+                return;
+            }
+
+            // 檢查是否點擊到禁放區域
+            if (state.blockedCells && state.blockedCells.has(key)) {
+                showToast('非草地區域（通道/牆壁）不允許放置魔物！');
                 return;
             }
 
