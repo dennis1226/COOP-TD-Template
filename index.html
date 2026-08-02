@@ -448,6 +448,7 @@
             boardBgEl.style.backgroundImage = `url('${url}')`;
 
             const img = new Image();
+            img.crossOrigin = 'anonymous';
             img.onload = () => {
                 state.bgImage = img;
                 state.cols = 7;
@@ -677,21 +678,39 @@
 
 
         // ==================== Copy Template ====================
+        function canvasToBlob(canvas) {
+            return new Promise((resolve, reject) => {
+                try {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob empty')), 'image/png');
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
         async function copyBoardTemplate() {
             if (!state.bgImage) {
                 showToast('背景圖尚未載入完成，請稍候再試');
                 return;
             }
 
+            showToast('正在產生圖片…');
+
             const cw = state.nativeCellW || state.cellW;
             const ch = state.nativeCellH || state.cellH;
             const canvas = document.createElement('canvas');
-            canvas.width = Math.round(state.cols * cw);
-            canvas.height = Math.round(state.rows * ch);
+            canvas.width = Math.max(1, Math.round(state.cols * cw));
+            canvas.height = Math.max(1, Math.round(state.rows * ch));
             const ctx = canvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
 
-            ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
+            try {
+                ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
+            } catch (e) {
+                console.warn('draw bg failed', e);
+                showToast('繪製背景失敗');
+                return;
+            }
 
             // 非均等格子座標
             const colW = [];
@@ -716,12 +735,17 @@
                 const [x, y] = key.split('-').map(Number);
                 drawPromises.push(new Promise((resolve) => {
                     const img = new Image();
+                    img.crossOrigin = 'anonymous';
                     img.onload = () => {
-                        const cellW = colW[x];
-                        const cellH = rowH[y];
-                        const padX = cellW * 0.08;
-                        const padY = cellH * 0.08;
-                        ctx.drawImage(img, colX[x] + padX, rowY[y] + padY, cellW - padX * 2, cellH - padY * 2);
+                        try {
+                            const cellW = colW[x];
+                            const cellH = rowH[y];
+                            const padX = cellW * 0.08;
+                            const padY = cellH * 0.08;
+                            ctx.drawImage(img, colX[x] + padX, rowY[y] + padY, cellW - padX * 2, cellH - padY * 2);
+                        } catch (e) {
+                            console.warn('draw unit failed', e);
+                        }
                         resolve();
                     };
                     img.onerror = resolve;
@@ -730,33 +754,64 @@
             }
             await Promise.all(drawPromises);
 
-            // 複製到剪貼簿
+            let blob = null;
             try {
-                const blob = await new Promise((resolve, reject) => {
-                    canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
-                });
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ]);
-                showToast('已複製模板到剪貼簿！可用 Ctrl+V 貼上');
-                return;
-            } catch (err) {
-                console.warn('Clipboard failed:', err);
+                blob = await canvasToBlob(canvas);
+            } catch (e) {
+                console.warn('toBlob failed, try dataURL', e);
+                try {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const res = await fetch(dataUrl);
+                    blob = await res.blob();
+                } catch (e2) {
+                    console.warn('dataURL path failed', e2);
+                    showToast('產生圖片失敗（可能是圖片跨域限制）');
+                    return;
+                }
             }
 
-            // 後備：下載
+            // 1) 剪貼簿
+            if (navigator.clipboard && window.ClipboardItem) {
+                try {
+                    // 部分瀏覽器需要 Promise 形式的 blob
+                    const item = new ClipboardItem({
+                        'image/png': blob instanceof Blob ? blob : Promise.resolve(blob)
+                    });
+                    await navigator.clipboard.write([item]);
+                    showToast('已複製模板到剪貼簿！可用 Ctrl+V 貼上');
+                    return;
+                } catch (err) {
+                    console.warn('Clipboard write failed:', err);
+                }
+                // 再試一次：用 Promise 包起來
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': Promise.resolve(blob) })
+                    ]);
+                    showToast('已複製模板到剪貼簿！可用 Ctrl+V 貼上');
+                    return;
+                } catch (err2) {
+                    console.warn('Clipboard write retry failed:', err2);
+                }
+            }
+
+            // 2) 後備：觸發下載
             try {
-                const dataUrl = canvas.toDataURL('image/png');
+                const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = dataUrl;
+                a.href = url;
                 a.download = 'board-template.png';
+                a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                showToast('無法寫入剪貼簿，已改為下載 board-template.png');
-            } catch (err2) {
-                console.warn('Download failed:', err2);
-                showToast('複製失敗，請確認瀏覽器權限或改用本機伺服器開啟');
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                }, 2000);
+                showToast('無法寫入剪貼簿，已下載 board-template.png');
+            } catch (err3) {
+                console.warn('Download failed:', err3);
+                showToast('複製失敗：請用 Chrome / Edge，並允許剪貼簿權限');
             }
         }
 
