@@ -462,8 +462,15 @@
                 state.nativeCellW = img.naturalWidth / state.cols;
                 state.nativeCellH = img.naturalHeight / state.rows;
 
-                state.colFracs = [100/734, 99/734, 110/750, 95/689, 80/620, 95/684, 109/734];
-                state.rowFracs = [110/562, 115/562, 116/562, 116/562, 115/562];
+                // 進行歸一化處理（確保列與行的比例加總精確為 1）
+                const rawCol = [100, 99, 110, 95, 80, 95, 109];
+                const sumCol = rawCol.reduce((a, b) => a + b, 0);
+                state.colFracs = rawCol.map(v => v / sumCol);
+
+                const rawRow = [110, 115, 116, 116, 115];
+                const sumRow = rawRow.reduce((a, b) => a + b, 0);
+                state.rowFracs = rawRow.map(v => v / sumRow);
+
                 createBoard();
             };
             img.src = url;
@@ -677,7 +684,6 @@
             themeToggle.textContent = isLight ? '深色模式' : '淺色模式';
         });
 
-
         // ==================== Copy Template ====================
         function canvasToBlob(canvas) {
             return new Promise((resolve, reject) => {
@@ -697,11 +703,9 @@
 
             showToast('正在產生圖片…');
 
-            const cw = state.nativeCellW || state.cellW;
-            const ch = state.nativeCellH || state.cellH;
             const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, Math.round(state.cols * cw));
-            canvas.height = Math.max(1, Math.round(state.rows * ch));
+            canvas.width = state.bgImage.naturalWidth;
+            canvas.height = state.bgImage.naturalHeight;
             const ctx = canvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
 
@@ -713,19 +717,10 @@
                 return;
             }
 
-            // 非均等格子座標
-            const colW = [];
-            const rowH = [];
-            if (state.colFracs && state.colFracs.length === state.cols) {
-                for (let i = 0; i < state.cols; i++) colW.push(state.colFracs[i] * canvas.width);
-            } else {
-                for (let i = 0; i < state.cols; i++) colW.push(canvas.width / state.cols);
-            }
-            if (state.rowFracs && state.rowFracs.length === state.rows) {
-                for (let i = 0; i < state.rows; i++) rowH.push(state.rowFracs[i] * canvas.height);
-            } else {
-                for (let i = 0; i < state.rows; i++) rowH.push(canvas.height / state.rows);
-            }
+            // 計算各列/行在 Canvas 上的精確像素位置
+            const colW = state.colFracs.map(f => f * canvas.width);
+            const rowH = state.rowFracs.map(f => f * canvas.height);
+
             const colX = [0];
             for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
             const rowY = [0];
@@ -743,7 +738,28 @@
                             const cellH = rowH[y];
                             const padX = cellW * 0.08;
                             const padY = cellH * 0.08;
-                            ctx.drawImage(img, colX[x] + padX, rowY[y] + padY, cellW - padX * 2, cellH - padY * 2);
+
+                            const boxW = cellW - padX * 2;
+                            const boxH = cellH - padY * 2;
+
+                            // 模擬 CSS object-fit: contain (保持長寬比例並居中)
+                            const imgAspect = img.naturalWidth / img.naturalHeight;
+                            const boxAspect = boxW / boxH;
+
+                            let drawW = boxW;
+                            let drawH = boxH;
+                            let drawX = colX[x] + padX;
+                            let drawY = rowY[y] + padY;
+
+                            if (imgAspect > boxAspect) {
+                                drawH = boxW / imgAspect;
+                                drawY += (boxH - drawH) / 2;
+                            } else {
+                                drawW = boxH * imgAspect;
+                                drawX += (boxW - drawW) / 2;
+                            }
+
+                            ctx.drawImage(img, drawX, drawY, drawW, drawH);
                         } catch (e) {
                             console.warn('draw unit failed', e);
                         }
@@ -774,7 +790,6 @@
             // 1) 剪貼簿
             if (navigator.clipboard && window.ClipboardItem) {
                 try {
-                    // 部分瀏覽器需要 Promise 形式的 blob
                     const item = new ClipboardItem({
                         'image/png': blob instanceof Blob ? blob : Promise.resolve(blob)
                     });
@@ -784,7 +799,6 @@
                 } catch (err) {
                     console.warn('Clipboard write failed:', err);
                 }
-                // 再試一次：用 Promise 包起來
                 try {
                     await navigator.clipboard.write([
                         new ClipboardItem({ 'image/png': Promise.resolve(blob) })
