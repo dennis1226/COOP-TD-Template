@@ -463,7 +463,7 @@
                 state.nativeCellH = img.naturalHeight / state.rows;
 
                 // 進行歸一化處理（確保列與行的比例加總精確為 1）
-                const rawCol = [90, 90, 100, 100, 85, 98, 108];
+                const rawCol = [90, 95, 95, 95, 95, 98, 108];
                 const sumCol = rawCol.reduce((a, b) => a + b, 0);
                 state.colFracs = rawCol.map(v => v / sumCol);
 
