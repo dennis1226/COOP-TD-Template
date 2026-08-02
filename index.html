@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>魔物模板編輯器</title>
+    <title>COOP-TD-Template</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -148,7 +148,7 @@
             background: rgba(255, 255, 255, 0.2) !important;
         }
 
-        /* 禁放區域樣式 */
+        /* Disabled area styles */
         .cell.disabled {
             cursor: not-allowed !important;
             background: rgba(231, 76, 60, 0.15);
@@ -429,13 +429,13 @@
             loadedIcons: [],
             bgImage: null,
 
-            // 🚫 精確禁放區域座標清單 (X-Y, 0 為起始索引)
+            // 🚫 Exact list of blocked area coordinates (X-Y, 0 is the starting index)
             blockedCells: new Set([
-                '0-0', '6-0',                // Row 0: 最左上角沙地、最右上角樹叢/牆壁 (5-0 為草地，可放置)
-                '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', // Row 1: 橫向沙地通道與牆邊 (僅 3-1 中央 T 字草地可放置)
-                '2-2', '4-2',                // Row 2: 左右兩條直向黃色通道
-                '2-3', '4-3',                // Row 3: 左右兩條直向黃色通道
-                '2-4', '3-4', '4-4'          // Row 4: 底部橫向黃色通道與中央木牆底座
+                '0-0', '6-0',                // Row 0: Top-left sand, top-right bush/wall (5-0 is grass, can be placed)
+                '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', // Row 1: Horizontal sand path and wall edge (only 3-1 center T-shaped grass can be placed)
+                '2-2', '4-2',                // Row 2: Left and right vertical yellow paths
+                '2-3', '4-3',                // Row 3: Left and right vertical yellow paths
+                '2-4', '3-4', '4-4'          // Row 4: Bottom horizontal yellow path and center wooden wall base
             ])
         };
 
@@ -461,7 +461,7 @@
             return `${x}-${y}`;
         }
 
-        // ==================== Background (固定 board-bg-hedge.png) ====================
+        // ==================== Background (Fixed board-bg-hedge.png) ====================
         function loadFixedBackground() {
             const url = 'board-bg-hedge.png';
             boardBgEl.style.backgroundImage = `url('${url}')`;
@@ -480,7 +480,7 @@
                 state.nativeCellW = img.naturalWidth / state.cols;
                 state.nativeCellH = img.naturalHeight / state.rows;
 
-                // 進行歸一化處理（確保列與行的比例加總精確為 1）
+                // Normalize (ensure the sum of column and row proportions is exactly 1)
                 const rawCol = [93, 95, 95, 96, 95, 98, 100];
                 const sumCol = rawCol.reduce((a, b) => a + b, 0);
                 state.colFracs = rawCol.map(v => v / sumCol);
@@ -522,7 +522,7 @@
                     const key = getCellKey(x, y);
                     const isBlocked = state.blockedCells && state.blockedCells.has(key);
 
-                    // 如果是禁放區域，加上 disabled class
+                    // If it is a disabled area, add the disabled class
                     if (isBlocked) {
                         cell.classList.add('disabled');
                     }
@@ -537,7 +537,7 @@
                     cell.addEventListener('dragover', (e) => {
                         e.preventDefault();
                         if (isBlocked) {
-                            e.dataTransfer.dropEffect = 'none'; // 滑鼠顯示禁止放置圖示
+                            e.dataTransfer.dropEffect = 'none'; // Mouse shows forbidden placement icon
                             return;
                         }
                         e.dataTransfer.dropEffect = 'copy';
@@ -598,7 +598,7 @@
                 return;
             }
 
-            // 檢查是否點擊到禁放區域
+            // Check if clicked on a disabled area
             if (state.blockedCells && state.blockedCells.has(key)) {
                 showToast('非草地區域（通道/牆壁）不允許放置魔物！');
                 return;
@@ -758,7 +758,7 @@
                 return;
             }
 
-            // 計算各列/行在 Canvas 上的精確像素位置
+            // Calculate the exact pixel position of each column/row on the Canvas
             const colW = state.colFracs.map(f => f * canvas.width);
             const rowH = state.rowFracs.map(f => f * canvas.height);
 
@@ -783,7 +783,7 @@
                             const boxW = cellW - padX * 2;
                             const boxH = cellH - padY * 2;
 
-                            // 模擬 CSS object-fit: contain (保持長寬比例並居中)
+                            // Simulate CSS object-fit: contain (keep aspect ratio and center)
                             const imgAspect = img.naturalWidth / img.naturalHeight;
                             const boxAspect = boxW / boxH;
 
@@ -828,7 +828,7 @@
                 }
             }
 
-            // 1) 剪貼簿
+            // 1) Clipboard
             if (navigator.clipboard && window.ClipboardItem) {
                 try {
                     const item = new ClipboardItem({
@@ -851,7 +851,7 @@
                 }
             }
 
-            // 2) 後備：觸發下載
+            // 2) Fallback: Trigger download
             try {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
