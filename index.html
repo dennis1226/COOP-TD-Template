@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>魔物棋盤編輯器</title>
+    <title>魔物模板編輯器</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -351,7 +351,7 @@
 </head>
 <body>
     <div class="fixed-header">
-        <h1 class="header-title">魔物棋盤編輯器</h1>
+        <h1 class="header-title">魔物模板編輯器</h1>
         <div class="header-actions">
             <button id="themeToggle" class="secondary">淺色模式</button>
         </div>
@@ -370,7 +370,7 @@
         <div class="controls-panel">
             <!-- Board Size -->
             <div class="section">
-                <div class="section-title">棋盤大小</div>
+                <div class="section-title">模板大小</div>
                 <select id="gridSizeSelect">
                     <option value="7x5">7 × 5</option>
                 </select>
@@ -378,11 +378,12 @@
 
             <!-- Units (auto-loaded from icon/) -->
             <div class="section">
-                <div class="section-title">魔物圖片 <span style="font-weight:400;font-size:12px;opacity:0.7;">（自動讀取 icon/）</span></div>
+                <div class="section-title">魔物圖片</div>
                 <div class="units-grid" id="unitsGrid">
                     <div class="empty-units">正在讀取 icon 資料夾…</div>
                 </div>
-                <div class="hint">將圖片拖曳到棋盤格子上即可放置</div>
+                <div class="hint">將圖片拖曳到模板格子上即可放置</div>
+                <div class="hint">點擊圖片後再點擊模板也可放置</div>
             </div>
 
             <!-- Tools -->
@@ -395,7 +396,7 @@
                 <div class="button-group" style="margin-top:8px;">
                     <button id="copyTemplateBtn" class="success">複製模板</button>
                 </div>
-                <div class="hint">按下後會截取棋盤圖片到剪貼簿，可用 Ctrl+V 貼上</div>
+                <div class="hint">按下後會截取模板圖片到剪貼簿，可用 Ctrl+V 貼上</div>
             </div>
         </div>
     </div>
@@ -605,7 +606,7 @@
                 opt.className = 'unit-option';
                 opt.dataset.id = icon.id;
                 opt.draggable = true;
-                opt.title = icon.name + '（拖曳到棋盤）';
+                opt.title = icon.name + '（拖曳到模板）';
 
                 const img = document.createElement('img');
                 img.src = icon.src;
@@ -663,10 +664,10 @@
 
         clearBtn.addEventListener('click', () => {
             if (Object.keys(state.units).length === 0) return;
-            if (confirm('確定要清空整個棋盤嗎？')) {
+            if (confirm('確定要清空整個模板嗎？')) {
                 state.units = {};
                 createBoard();
-                showToast('棋盤已清空');
+                showToast('模板已清空');
             }
         });
 
