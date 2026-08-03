@@ -79,13 +79,19 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .header-actions button {
+            flex: initial;
         }
 
         .container {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            max-width: 1600px;
+            gap: 24px;
+            width: 100%;
+            max-width: 1800px;
             margin: 0 auto;
             padding: 20px;
             align-items: flex-start;
@@ -171,18 +177,7 @@
         /* Controls Panel */
         .controls-panel {
             flex: 1;
-            min-width: 280px;
-            max-width: 380px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        /* Templates Panel (Right side) */
-        .templates-panel {
-            flex: 1;
-            min-width: 280px;
-            max-width: 340px;
+            min-width: 320px;
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -193,6 +188,7 @@
             border-radius: 10px;
             padding: 16px;
             box-shadow: 0 2px 10px var(--shadow-color);
+            width: 100%;
         }
 
         .section-title {
@@ -202,6 +198,7 @@
             color: var(--accent);
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 6px;
         }
 
@@ -238,6 +235,7 @@
             transition: all 0.2s;
             flex: 1;
             min-width: 60px;
+            white-space: nowrap;
         }
 
         button:hover {
@@ -271,11 +269,12 @@
         /* Units grid */
         .units-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
             gap: 8px;
-            max-height: 220px;
+            max-height: 280px;
             overflow-y: auto;
             padding: 4px;
+            width: 100%;
         }
 
         .unit-option {
@@ -328,12 +327,58 @@
             grid-column: 1 / -1;
         }
 
-        /* Saved Templates List */
+        /* Drawer Overlay and Container */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1002;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .drawer-overlay.open {
+            display: block;
+            opacity: 1;
+        }
+
+        .templates-drawer {
+            position: fixed;
+            top: 0;
+            right: -360px;
+            width: 350px;
+            height: 100vh;
+            background: var(--panel-bg);
+            box-shadow: -4px 0 20px var(--shadow-color);
+            z-index: 1003;
+            transition: right 0.3s ease;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .templates-drawer.open {
+            right: 0;
+        }
+
+        .drawer-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            min-width: auto;
+            flex: initial;
+        }
+
         .saved-templates-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            max-height: 520px;
+            flex: 1;
             overflow-y: auto;
             padding-right: 2px;
         }
@@ -388,8 +433,11 @@
         }
 
         @media (max-width: 1100px) {
-            .controls-panel, .templates-panel {
-                max-width: 100%;
+            .container {
+                width: 100%;
+            }
+            .templates-drawer {
+                width: 300px;
             }
         }
     </style>
@@ -398,7 +446,20 @@
     <div class="fixed-header">
         <h1 class="header-title">魔物模板編輯器</h1>
         <div class="header-actions">
+            <button id="openDrawerBtn" class="primary">📁 模板庫</button>
             <button id="themeToggle" class="secondary">淺色模式</button>
+        </div>
+    </div>
+
+    <!-- 側邊欄遮罩與抽屜 -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="templates-drawer" id="templatesDrawer">
+        <div class="section-title">
+            <span>📁 模板庫</span>
+            <button class="drawer-close-btn" id="closeDrawerBtn">✕</button>
+        </div>
+        <div class="saved-templates-list" id="savedTemplatesList">
+            <!-- 歷史模板會顯示在這裡 -->
         </div>
     </div>
 
@@ -411,7 +472,7 @@
             </div>
         </div>
 
-        <!-- Middle Controls Panel -->
+        <!-- Controls Panel -->
         <div class="controls-panel">
             <!-- Units -->
             <div class="section">
@@ -441,17 +502,7 @@
                 <div class="section-title">儲存目前模板</div>
                 <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (例如：第一關防守)" maxlength="20">
                 <div class="button-group" style="margin-top: 8px;">
-                    <button id="saveTemplateBtn" class="primary">儲存至隊形庫</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Side Panel: Saved Templates -->
-        <div class="templates-panel">
-            <div class="section">
-                <div class="section-title">📁 已儲存的模板</div>
-                <div class="saved-templates-list" id="savedTemplatesList">
-                    <!-- 歷史模板會顯示在這裡 -->
+                    <button id="saveTemplateBtn" class="primary">儲存至模板庫</button>
                 </div>
             </div>
         </div>
@@ -544,10 +595,30 @@
         const themeToggle = document.getElementById('themeToggle');
         const toastEl = document.getElementById('toast');
 
-        // Save & List DOM
+        // Save & Drawer DOM
         const saveTemplateBtn = document.getElementById('saveTemplateBtn');
         const templateNameInput = document.getElementById('templateNameInput');
         const savedTemplatesList = document.getElementById('savedTemplatesList');
+        const openDrawerBtn = document.getElementById('openDrawerBtn');
+        const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+        const drawerOverlay = document.getElementById('drawerOverlay');
+        const templatesDrawer = document.getElementById('templatesDrawer');
+        const templateCountEl = document.getElementById('templateCount');
+
+        // ==================== Drawer Controls ====================
+        function openDrawer() {
+            templatesDrawer.classList.add('open');
+            drawerOverlay.classList.add('open');
+        }
+
+        function closeDrawer() {
+            templatesDrawer.classList.remove('open');
+            drawerOverlay.classList.remove('open');
+        }
+
+        openDrawerBtn.addEventListener('click', openDrawer);
+        closeDrawerBtn.addEventListener('click', closeDrawer);
+        drawerOverlay.addEventListener('click', closeDrawer);
 
         // ==================== Helpers ====================
         function showToast(msg, duration = 2200) {
@@ -952,7 +1023,6 @@
         });
 
         // ==================== Save & Load Template Logic ====================
-        // 儲存按鈕
         saveTemplateBtn.addEventListener('click', () => {
             const rawName = templateNameInput.value.trim();
             const now = new Date();
@@ -982,9 +1052,11 @@
             renderSavedTemplatesList();
         });
 
-        // 渲染右側隊形列表
         function renderSavedTemplatesList() {
             const templates = getSavedTemplates();
+            if (templateCountEl) {
+                templateCountEl.textContent = templates.length;
+            }
             savedTemplatesList.innerHTML = '';
 
             if (templates.length === 0) {
@@ -1003,12 +1075,11 @@
                     <div class="template-card-meta">時間：${item.date} | 魔物數：${count}</div>
                     <div class="template-card-actions">
                         <button class="success load-btn">載入隊形</button>
-                        <button class="secondary rename-btn">更改名字</button>
+                        <button class="secondary rename-btn">改名</button>
                         <button class="danger delete-btn">刪除</button>
                     </div>
                 `;
 
-                // 載入按鈕
                 card.querySelector('.load-btn').addEventListener('click', () => {
                     const restoredUnits = {};
                     const rawUnits = item.units || {};
@@ -1027,10 +1098,10 @@
 
                     state.units = restoredUnits;
                     createBoard();
+                    closeDrawer();
                     showToast(`已載入隊形：「${item.name}」`);
                 });
 
-                // 改名按鈕
                 card.querySelector('.rename-btn').addEventListener('click', () => {
                     const newName = prompt('請輸入新的模板名稱：', item.name);
                     if (newName !== null) {
@@ -1050,7 +1121,6 @@
                     }
                 });
 
-                // 刪除按鈕
                 card.querySelector('.delete-btn').addEventListener('click', () => {
                     if (confirm(`確定要刪除模板「${item.name}」嗎？`)) {
                         const updated = getSavedTemplates().filter(t => t.id !== item.id);
