@@ -262,7 +262,6 @@
         .unit-option.selected { border-color: var(--button-primary); box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.35); }
         .unit-option img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* Multi-form badge */
         .forms-badge {
             position: absolute;
             top: 2px;
@@ -279,7 +278,7 @@
         .hint { font-size: 12px; opacity: 0.7; margin-top: 6px; line-height: 1.4; }
         .empty-units { text-align: center; padding: 20px 10px; opacity: 0.6; font-size: 13px; grid-column: 1 / -1; }
 
-        /* Form Switcher Modal */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -390,9 +389,7 @@
                 <span id="formModalTitle">選擇魔物形態</span>
                 <button class="drawer-close-btn" id="closeFormModalBtn">✕</button>
             </div>
-            <div class="forms-grid" id="formsGrid">
-                <!-- 形態選項動態生成 -->
-            </div>
+            <div class="forms-grid" id="formsGrid"></div>
         </div>
     </div>
 
@@ -467,16 +464,75 @@
             } catch (e) {}
         }
 
+        // ==================== 超強強化的舊格式容錯解析器 ====================
+        function normalizePlacedUnit(placed) {
+            if (!placed) return null;
+
+            let baseId = null;
+            let formIndex = 0;
+
+            // 1. 若舊格式為物件 (如 { baseId: "monster_1" }, { id: "monster_1" }, { src: "icon/image1.png" })
+            if (typeof placed === 'object' && placed !== null) {
+                if (placed.baseId) baseId = String(placed.baseId);
+                else if (placed.id) baseId = String(placed.id);
+                else if (placed.unitId) baseId = String(placed.unitId);
+
+                if (typeof placed.formIndex === 'number') {
+                    formIndex = placed.formIndex;
+                }
+
+                if (!baseId && (placed.src || placed.img || placed.image)) {
+                    placed = placed.src || placed.img || placed.image;
+                }
+            }
+
+            // 2. 若舊格式為純數字 (如 1, 14)
+            if (typeof placed === 'number') {
+                baseId = `monster_${placed}`;
+            }
+
+            // 3. 若舊格式為字串 (如 "monster_1", "1", "icon/image1.png", "icon/image14_1.png")
+            if (typeof placed === 'string') {
+                const matchMulti = placed.match(/image(\d+)_(\d+)\.png/i);
+                if (matchMulti) {
+                    baseId = `monster_${matchMulti[1]}`;
+                    formIndex = Math.max(0, parseInt(matchMulti[2], 10) - 1);
+                } else {
+                    const matchSingle = placed.match(/image(\d+)\.png/i);
+                    if (matchSingle) {
+                        baseId = `monster_${matchSingle[1]}`;
+                        formIndex = 0;
+                    } else if (placed.startsWith('monster_')) {
+                        baseId = placed;
+                    } else if (placed.startsWith('monster')) {
+                        baseId = `monster_${placed.replace('monster', '')}`;
+                    } else if (!isNaN(parseInt(placed, 10))) {
+                        baseId = `monster_${parseInt(placed, 10)}`;
+                    }
+                }
+            }
+
+            if (!baseId) return null;
+
+            // 統一格式為 "monster_X"
+            if (!baseId.startsWith('monster_')) {
+                const num = baseId.replace(/\D/g, '');
+                if (num) baseId = `monster_${num}`;
+            }
+
+            return { baseId, formIndex };
+        }
+
         // ==================== State ====================
         const state = {
             cols: 7, rows: 5,
             cellW: 105, cellH: 112,
             colFracs: null, rowFracs: null,
             selectedUnitId: null,
-            selectedFormIndex: 0, // 當前選中的預設形態 index
+            selectedFormIndex: 0,
             deleteMode: false,
-            units: {}, // key "x-y" -> { baseId, formIndex }
-            loadedMonsters: [], // Array of { id, name, forms: [{ formIndex, src, name }] }
+            units: {}, 
+            loadedMonsters: [], 
             bgImage: null,
 
             blockedCells: new Set([
@@ -498,13 +554,11 @@
         const themeToggle = document.getElementById('themeToggle');
         const toastEl = document.getElementById('toast');
 
-        // Modal DOM
         const formModalOverlay = document.getElementById('formModalOverlay');
         const closeFormModalBtn = document.getElementById('closeFormModalBtn');
         const formsGrid = document.getElementById('formsGrid');
         const formModalTitle = document.getElementById('formModalTitle');
 
-        // Drawer DOM
         const saveTemplateBtn = document.getElementById('saveTemplateBtn');
         const templateNameInput = document.getElementById('templateNameInput');
         const savedTemplatesList = document.getElementById('savedTemplatesList');
@@ -541,7 +595,6 @@
                 `;
                 item.addEventListener('click', () => {
                     state.selectedFormIndex = idx;
-                    // 更新右側選單的預覽圖片
                     const opt = unitsGrid.querySelector(`[data-id="${monster.id}"]`);
                     if (opt) {
                         const optImg = opt.querySelector('img');
@@ -557,7 +610,8 @@
         }
 
         function openFormModalForCell(cellKey) {
-            const placed = state.units[cellKey];
+            const rawPlaced = state.units[cellKey];
+            const placed = normalizePlacedUnit(rawPlaced);
             if (!placed) return;
 
             const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
@@ -577,7 +631,10 @@
                     <span>${form.name}</span>
                 `;
                 item.addEventListener('click', () => {
-                    state.units[cellKey].formIndex = idx;
+                    state.units[cellKey] = {
+                        baseId: placed.baseId,
+                        formIndex: idx
+                    };
                     createBoard();
                     closeFormModal();
                     showToast(`格子形態已切換為：${form.name}`);
@@ -647,25 +704,30 @@
 
                     if (isBlocked) cell.classList.add('disabled');
 
-                    const placed = state.units[key];
+                    const rawPlaced = state.units[key];
+                    const placed = normalizePlacedUnit(rawPlaced);
+                    
                     if (placed) {
+                        state.units[key] = placed;
                         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
-                        if (monster && monster.forms[placed.formIndex]) {
-                            const img = document.createElement('img');
-                            img.className = 'unit-img';
-                            img.src = monster.forms[placed.formIndex].src;
-                            cell.appendChild(img);
+                        if (monster) {
+                            // 加上備用防護：若 formIndex 無效則回退到 forms[0]
+                            const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
+                            if (targetForm) {
+                                const img = document.createElement('img');
+                                img.className = 'unit-img';
+                                img.src = targetForm.src;
+                                cell.appendChild(img);
+                            }
                         }
                     }
 
-                    // Click & Double Click Event on Board Cell
                     cell.addEventListener('click', () => onCellClick(x, y));
                     cell.addEventListener('dblclick', (e) => {
                         e.preventDefault();
                         if (state.units[key]) openFormModalForCell(key);
                     });
 
-                    // Drag and Drop
                     cell.addEventListener('dragover', (e) => {
                         e.preventDefault();
                         if (isBlocked) return;
@@ -760,12 +822,12 @@
             }
 
             if (state.loadedMonsters.length === 0) {
-                unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1_1.png, image1_2.png)</div>`;
+                unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1.png 或 image14_1.png)</div>`;
                 renderSavedTemplatesList();
+                createBoard();
                 return;
             }
 
-            // 渲染右側選單圖示
             state.loadedMonsters.forEach(monster => {
                 const opt = document.createElement('div');
                 opt.className = 'unit-option';
@@ -785,24 +847,20 @@
                     opt.appendChild(badge);
                 }
 
-                // 核心邏輯：點擊與雙擊魔物選項
                 const handleOptionSelect = () => {
                     const isAlreadySelected = (state.selectedUnitId === monster.id);
 
                     if (isAlreadySelected) {
-                        // 如果已經是選取狀態，再次點擊時彈出形態選單
                         openFormModalForMenu(monster);
                     } else {
-                        // 首次點擊：選取該魔物
                         document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
                         opt.classList.add('selected');
                         state.selectedUnitId = monster.id;
-                        state.selectedFormIndex = 0; // 重置為形態 1
+                        state.selectedFormIndex = 0;
                         state.deleteMode = false;
                         deleteModeBtn.classList.remove('active');
                         deleteModeBtn.textContent = '刪除模式';
 
-                        // 如果該魔物有多個形態，給予提示
                         if (monster.forms.length > 1) {
                             showToast(`已選取 ${monster.name}，再次點擊可切換形態`);
                         }
@@ -825,7 +883,7 @@
                 unitsGrid.appendChild(opt);
             });
 
-            showToast(`已載入 ${state.loadedMonsters.length} 種魔物選單`);
+            createBoard();
             renderSavedTemplatesList();
         }
 
@@ -871,11 +929,15 @@
             const rowY = [0]; for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
 
             const drawPromises = [];
-            for (const [key, placed] of Object.entries(state.units)) {
+            for (const [key, rawPlaced] of Object.entries(state.units)) {
+                const placed = normalizePlacedUnit(rawPlaced);
+                if (!placed) continue;
+
                 const [x, y] = key.split('-').map(Number);
                 const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
                 if (!monster) continue;
-                const formSrc = monster.forms[placed.formIndex]?.src || monster.forms[0].src;
+                const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
+                if (!targetForm) continue;
 
                 drawPromises.push(new Promise((resolve) => {
                     const img = new Image();
@@ -897,7 +959,7 @@
                         resolve();
                     };
                     img.onerror = resolve;
-                    img.src = formSrc;
+                    img.src = targetForm.src;
                 }));
             }
             await Promise.all(drawPromises);
@@ -928,7 +990,7 @@
                 id: Date.now(),
                 name: templateName,
                 date: `${now.getMonth()+1}/${now.getDate()}`,
-                units: state.units
+                units: JSON.parse(JSON.stringify(state.units))
             });
             saveSavedTemplates(templates);
             templateNameInput.value = '';
@@ -953,10 +1015,17 @@
                 `;
 
                 card.querySelector('.load-btn').addEventListener('click', () => {
-                    state.units = item.units || {};
+                    const rawUnits = item.units || {};
+                    const normalizedUnits = {};
+                    for (const [key, val] of Object.entries(rawUnits)) {
+                        const norm = normalizePlacedUnit(val);
+                        if (norm) normalizedUnits[key] = norm;
+                    }
+
+                    state.units = JSON.parse(JSON.stringify(normalizedUnits));
                     createBoard();
                     closeDrawer();
-                    showToast(`已載入隊形：「${item.name}」`);
+                    showToast(`已成功載入隊形：「${item.name}」`);
                 });
 
                 card.querySelector('.delete-btn').addEventListener('click', () => {
