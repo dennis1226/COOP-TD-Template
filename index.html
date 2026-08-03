@@ -84,10 +84,11 @@
         .container {
             display: flex;
             flex-wrap: wrap;
-            gap: 24px;
-            max-width: 1400px;
+            gap: 20px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
+            align-items: flex-start;
         }
 
         /* Board */
@@ -148,7 +149,6 @@
             background: rgba(255, 255, 255, 0.2) !important;
         }
 
-        /* Disabled area styles */
         .cell.disabled {
             cursor: not-allowed !important;
             background: transparent;
@@ -172,7 +172,17 @@
         .controls-panel {
             flex: 1;
             min-width: 280px;
-            max-width: 420px;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Templates Panel (Right side) */
+        .templates-panel {
+            flex: 1;
+            min-width: 280px;
+            max-width: 340px;
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -195,7 +205,7 @@
             gap: 6px;
         }
 
-        select {
+        select, input[type="text"] {
             width: 100%;
             padding: 8px 10px;
             border-radius: 6px;
@@ -203,6 +213,11 @@
             background: var(--bg-color);
             color: var(--text-color);
             font-size: 14px;
+            outline: none;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--accent);
         }
 
         .button-group {
@@ -212,7 +227,7 @@
         }
 
         button {
-            padding: 9px 14px;
+            padding: 9px 12px;
             background-color: var(--button-primary);
             color: white;
             border: none;
@@ -222,7 +237,7 @@
             font-size: 13px;
             transition: all 0.2s;
             flex: 1;
-            min-width: 80px;
+            min-width: 60px;
         }
 
         button:hover {
@@ -258,7 +273,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 8px;
-            max-height: 280px;
+            max-height: 220px;
             overflow-y: auto;
             padding: 4px;
         }
@@ -298,22 +313,6 @@
             object-fit: contain;
         }
 
-        .unit-option .unit-name {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            font-size: 9px;
-            text-align: center;
-            background: rgba(0,0,0,0.65);
-            color: #fff;
-            padding: 1px 2px;
-            border-radius: 0 0 6px 6px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
         .hint {
             font-size: 12px;
             opacity: 0.7;
@@ -321,13 +320,50 @@
             line-height: 1.4;
         }
 
-        /* Empty state */
         .empty-units {
             text-align: center;
-            padding: 30px 10px;
+            padding: 20px 10px;
             opacity: 0.6;
             font-size: 13px;
             grid-column: 1 / -1;
+        }
+
+        /* Saved Templates List */
+        .saved-templates-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .template-card {
+            background: var(--cell-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .template-card-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: var(--text-color);
+            word-break: break-all;
+        }
+
+        .template-card-meta {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        .template-card-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
         }
 
         /* Toast */
@@ -351,8 +387,8 @@
             opacity: 1;
         }
 
-        @media (max-width: 768px) {
-            .controls-panel {
+        @media (max-width: 1100px) {
+            .controls-panel, .templates-panel {
                 max-width: 100%;
             }
         }
@@ -375,17 +411,9 @@
             </div>
         </div>
 
-        <!-- Controls -->
+        <!-- Middle Controls Panel -->
         <div class="controls-panel">
-            <!-- Board Size -->
-            <div class="section">
-                <div class="section-title">模板大小</div>
-                <select id="gridSizeSelect">
-                    <option value="7x5">7 × 5</option>
-                </select>
-            </div>
-
-            <!-- Units (auto-loaded from icon/) -->
+            <!-- Units -->
             <div class="section">
                 <div class="section-title">魔物圖片</div>
                 <div class="units-grid" id="unitsGrid">
@@ -403,9 +431,28 @@
                     <button id="clearBtn" class="danger">清空模板</button>
                 </div>
                 <div class="button-group" style="margin-top:8px;">
-                    <button id="copyTemplateBtn" class="success">複製模板</button>
+                    <button id="copyTemplateBtn" class="success">複製模板圖片</button>
                 </div>
                 <div class="hint">按下後會截取模板圖片到剪貼簿，可用 Ctrl+V 貼上</div>
+            </div>
+
+            <!-- 儲存模板區塊 -->
+            <div class="section">
+                <div class="section-title">儲存目前模板</div>
+                <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (例如：第一關防守)" maxlength="20">
+                <div class="button-group" style="margin-top: 8px;">
+                    <button id="saveTemplateBtn" class="primary">儲存至隊形庫</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side Panel: Saved Templates -->
+        <div class="templates-panel">
+            <div class="section">
+                <div class="section-title">📁 已儲存的模板</div>
+                <div class="saved-templates-list" id="savedTemplatesList">
+                    <!-- 歷史模板會顯示在這裡 -->
+                </div>
             </div>
         </div>
     </div>
@@ -413,6 +460,55 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // ==================== Storage Management ====================
+        const STORAGE_KEY = 'coop_saved_templates';
+
+        function setCookie(name, value, days = 365) {
+            try {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                const expires = "expires=" + date.toUTCString();
+                document.cookie = `${name}=${encodeURIComponent(value)}; ${expires}; path=/; SameSite=Strict`;
+            } catch (e) {
+                console.warn("Set Cookie failed:", e);
+            }
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i].trim();
+                if (c.indexOf(nameEQ) === 0) {
+                    return decodeURIComponent(c.substring(nameEQ.length, c.length));
+                }
+            }
+            return null;
+        }
+
+        function getSavedTemplates() {
+            try {
+                const localData = localStorage.getItem(STORAGE_KEY);
+                if (localData) return JSON.parse(localData);
+            } catch (e) {}
+
+            const cookieData = getCookie(STORAGE_KEY);
+            if (cookieData) {
+                try { return JSON.parse(cookieData); } catch (e) {}
+            }
+            return [];
+        }
+
+        function saveSavedTemplates(templates) {
+            const jsonStr = JSON.stringify(templates);
+            try {
+                localStorage.setItem(STORAGE_KEY, jsonStr);
+            } catch (e) {
+                console.warn("LocalStorage failed:", e);
+            }
+            setCookie(STORAGE_KEY, jsonStr);
+        }
+
         // ==================== State ====================
         const state = {
             cols: 7,
@@ -429,13 +525,12 @@
             loadedIcons: [],
             bgImage: null,
 
-            // 🚫 Exact list of blocked area coordinates (X-Y, 0 is the starting index)
             blockedCells: new Set([
-                '0-0', '6-0',                // Row 0: Top-left sand, top-right bush/wall (5-0 is grass, can be placed)
-                '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', // Row 1: Horizontal sand path and wall edge (only 3-1 center T-shaped grass can be placed)
-                '2-2', '4-2',                // Row 2: Left and right vertical yellow paths
-                '2-3', '4-3',                // Row 3: Left and right vertical yellow paths
-                '2-4', '3-4', '4-4'          // Row 4: Bottom horizontal yellow path and center wooden wall base
+                '0-0', '6-0',
+                '0-1', '1-1', '2-1', '4-1', '5-1', '6-1',
+                '2-2', '4-2',
+                '2-3', '4-3',
+                '2-4', '3-4', '4-4'
             ])
         };
 
@@ -443,12 +538,16 @@
         const boardEl = document.getElementById('gameBoard');
         const boardBgEl = document.getElementById('boardBackground');
         const unitsGrid = document.getElementById('unitsGrid');
-        const gridSizeSelect = document.getElementById('gridSizeSelect');
         const deleteModeBtn = document.getElementById('deleteModeBtn');
         const clearBtn = document.getElementById('clearBtn');
         const copyTemplateBtn = document.getElementById('copyTemplateBtn');
         const themeToggle = document.getElementById('themeToggle');
         const toastEl = document.getElementById('toast');
+
+        // Save & List DOM
+        const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+        const templateNameInput = document.getElementById('templateNameInput');
+        const savedTemplatesList = document.getElementById('savedTemplatesList');
 
         // ==================== Helpers ====================
         function showToast(msg, duration = 2200) {
@@ -461,7 +560,7 @@
             return `${x}-${y}`;
         }
 
-        // ==================== Background (Fixed board-bg-hedge.png) ====================
+        // ==================== Background ====================
         function loadFixedBackground() {
             const url = 'board-bg-hedge.png';
             boardBgEl.style.backgroundImage = `url('${url}')`;
@@ -472,7 +571,6 @@
                 state.bgImage = img;
                 state.cols = 7;
                 state.rows = 5;
-                gridSizeSelect.value = '7x5';
                 const maxW = window.innerWidth < 768 ? 340 : 700;
                 const scale = Math.min(1, maxW / img.naturalWidth);
                 state.cellW = Math.round((img.naturalWidth / state.cols) * scale);
@@ -480,7 +578,6 @@
                 state.nativeCellW = img.naturalWidth / state.cols;
                 state.nativeCellH = img.naturalHeight / state.rows;
 
-                // Normalize (ensure the sum of column and row proportions is exactly 1)
                 const rawCol = [93, 95, 95, 96, 95, 98, 100];
                 const sumCol = rawCol.reduce((a, b) => a + b, 0);
                 state.colFracs = rawCol.map(v => v / sumCol);
@@ -522,7 +619,6 @@
                     const key = getCellKey(x, y);
                     const isBlocked = state.blockedCells && state.blockedCells.has(key);
 
-                    // If it is a disabled area, add the disabled class
                     if (isBlocked) {
                         cell.classList.add('disabled');
                     }
@@ -537,7 +633,7 @@
                     cell.addEventListener('dragover', (e) => {
                         e.preventDefault();
                         if (isBlocked) {
-                            e.dataTransfer.dropEffect = 'none'; // Mouse shows forbidden placement icon
+                            e.dataTransfer.dropEffect = 'none';
                             return;
                         }
                         e.dataTransfer.dropEffect = 'copy';
@@ -598,7 +694,6 @@
                 return;
             }
 
-            // Check if clicked on a disabled area
             if (state.blockedCells && state.blockedCells.has(key)) {
                 showToast('非草地區域（通道/牆壁）不允許放置魔物！');
                 return;
@@ -610,12 +705,11 @@
             }
         }
 
-        // ==================== Auto-load Icons from icon/ ====================
+        // ==================== Auto-load Icons ====================
         async function autoLoadIcons() {
             state.loadedIcons = [];
             unitsGrid.innerHTML = '';
             const maxTry = 50;
-            const found = [];
 
             const tryLoad = (n) => new Promise((resolve) => {
                 const src = `icon/image${n}.png`;
@@ -629,6 +723,7 @@
                 Array.from({ length: maxTry + 1 }, (_, i) => tryLoad(i))
             );
 
+            const found = [];
             results
                 .filter(r => r.ok)
                 .sort((a, b) => a.n - b.n)
@@ -646,6 +741,7 @@
                         找不到魔物圖片<br>
                         請在 icon 資料夾放入圖片
                     </div>`;
+                renderSavedTemplatesList();
                 return;
             }
 
@@ -682,6 +778,7 @@
             });
 
             showToast(`已自動載入 ${found.length} 張魔物圖片`);
+            renderSavedTemplatesList();
         }
 
         document.addEventListener('dragend', () => {
@@ -689,17 +786,6 @@
         });
 
         // ==================== Controls ====================
-        gridSizeSelect.addEventListener('change', () => {
-            const [cols, rows] = gridSizeSelect.value.split('x').map(Number);
-            state.cols = cols;
-            state.rows = rows;
-            Object.keys(state.units).forEach(key => {
-                const [x, y] = key.split('-').map(Number);
-                if (x >= cols || y >= rows) delete state.units[key];
-            });
-            createBoard();
-        });
-
         deleteModeBtn.addEventListener('click', () => {
             state.deleteMode = !state.deleteMode;
             deleteModeBtn.classList.toggle('active', state.deleteMode);
@@ -725,7 +811,7 @@
             themeToggle.textContent = isLight ? '深色模式' : '淺色模式';
         });
 
-        // ==================== Copy Template ====================
+        // ==================== Copy Template Image ====================
         function canvasToBlob(canvas) {
             return new Promise((resolve, reject) => {
                 try {
@@ -758,7 +844,6 @@
                 return;
             }
 
-            // Calculate the exact pixel position of each column/row on the Canvas
             const colW = state.colFracs.map(f => f * canvas.width);
             const rowH = state.rowFracs.map(f => f * canvas.height);
 
@@ -783,7 +868,6 @@
                             const boxW = cellW - padX * 2;
                             const boxH = cellH - padY * 2;
 
-                            // Simulate CSS object-fit: contain (keep aspect ratio and center)
                             const imgAspect = img.naturalWidth / img.naturalHeight;
                             const boxAspect = boxW / boxH;
 
@@ -828,7 +912,6 @@
                 }
             }
 
-            // 1) Clipboard
             if (navigator.clipboard && window.ClipboardItem) {
                 try {
                     const item = new ClipboardItem({
@@ -840,18 +923,8 @@
                 } catch (err) {
                     console.warn('Clipboard write failed:', err);
                 }
-                try {
-                    await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': Promise.resolve(blob) })
-                    ]);
-                    showToast('已複製模板到剪貼簿！可用 Ctrl+V 貼上');
-                    return;
-                } catch (err2) {
-                    console.warn('Clipboard write retry failed:', err2);
-                }
             }
 
-            // 2) Fallback: Trigger download
             try {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -867,7 +940,7 @@
                 showToast('無法寫入剪貼簿，已下載 board-template.png');
             } catch (err3) {
                 console.warn('Download failed:', err3);
-                showToast('複製失敗：請用 Chrome / Edge，並允許剪貼簿權限');
+                showToast('複製失敗：請用 Chrome / Edge');
             }
         }
 
@@ -877,6 +950,119 @@
                 copyTemplateBtn.disabled = false;
             });
         });
+
+        // ==================== Save & Load Template Logic ====================
+        // 儲存按鈕
+        saveTemplateBtn.addEventListener('click', () => {
+            const rawName = templateNameInput.value.trim();
+            const now = new Date();
+            const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            const templateName = rawName || defaultName;
+
+            const compactUnits = {};
+            for (const [key, unitObj] of Object.entries(state.units)) {
+                compactUnits[key] = unitObj.id;
+            }
+
+            const templates = getSavedTemplates();
+            const newTemplate = {
+                id: Date.now(),
+                name: templateName,
+                date: `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
+                units: compactUnits,
+                cols: state.cols,
+                rows: state.rows
+            };
+
+            templates.unshift(newTemplate);
+            saveSavedTemplates(templates);
+
+            templateNameInput.value = '';
+            showToast(`已儲存隊形：「${templateName}」！`);
+            renderSavedTemplatesList();
+        });
+
+        // 渲染右側隊形列表
+        function renderSavedTemplatesList() {
+            const templates = getSavedTemplates();
+            savedTemplatesList.innerHTML = '';
+
+            if (templates.length === 0) {
+                savedTemplatesList.innerHTML = '<div class="empty-units">尚無儲存的隊形模板</div>';
+                return;
+            }
+
+            templates.forEach((item) => {
+                const count = Object.keys(item.units || {}).length;
+
+                const card = document.createElement('div');
+                card.className = 'template-card';
+
+                card.innerHTML = `
+                    <div class="template-card-title">${item.name}</div>
+                    <div class="template-card-meta">時間：${item.date} | 魔物數：${count}</div>
+                    <div class="template-card-actions">
+                        <button class="success load-btn">載入隊形</button>
+                        <button class="secondary rename-btn">更改名字</button>
+                        <button class="danger delete-btn">刪除</button>
+                    </div>
+                `;
+
+                // 載入按鈕
+                card.querySelector('.load-btn').addEventListener('click', () => {
+                    const restoredUnits = {};
+                    const rawUnits = item.units || {};
+
+                    for (const [key, unitId] of Object.entries(rawUnits)) {
+                        const actualId = typeof unitId === 'object' ? unitId.id : unitId;
+                        const icon = state.loadedIcons.find(i => i.id === actualId);
+                        if (icon) {
+                            restoredUnits[key] = {
+                                id: icon.id,
+                                name: icon.name,
+                                src: icon.src
+                            };
+                        }
+                    }
+
+                    state.units = restoredUnits;
+                    createBoard();
+                    showToast(`已載入隊形：「${item.name}」`);
+                });
+
+                // 改名按鈕
+                card.querySelector('.rename-btn').addEventListener('click', () => {
+                    const newName = prompt('請輸入新的模板名稱：', item.name);
+                    if (newName !== null) {
+                        const trimmed = newName.trim();
+                        if (trimmed) {
+                            const currentTemplates = getSavedTemplates();
+                            const target = currentTemplates.find(t => t.id === item.id);
+                            if (target) {
+                                target.name = trimmed;
+                                saveSavedTemplates(currentTemplates);
+                                renderSavedTemplatesList();
+                                showToast(`模板已改名為：「${trimmed}」`);
+                            }
+                        } else {
+                            showToast('模板名稱不可為空！');
+                        }
+                    }
+                });
+
+                // 刪除按鈕
+                card.querySelector('.delete-btn').addEventListener('click', () => {
+                    if (confirm(`確定要刪除模板「${item.name}」嗎？`)) {
+                        const updated = getSavedTemplates().filter(t => t.id !== item.id);
+                        saveSavedTemplates(updated);
+                        renderSavedTemplatesList();
+                        showToast('模板已刪除');
+                    }
+                });
+
+                savedTemplatesList.appendChild(card);
+            });
+        }
 
         // ==================== Init ====================
         createBoard();
