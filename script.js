@@ -81,7 +81,7 @@ const state = {
     units: {}, 
     loadedMonsters: [], 
     bgImage: null,
-    currentLoadedTemplateId: null, // 紀錄目前載入的模板 ID
+    currentLoadedTemplateId: null,
 
     blockedCells: new Set([
         '0-0', '6-0',
@@ -103,6 +103,7 @@ const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 
 const formModalOverlay = document.getElementById('formModalOverlay');
+const formModal = document.querySelector('.form-modal');
 const closeFormModalBtn = document.getElementById('closeFormModalBtn');
 const formsGrid = document.getElementById('formsGrid');
 const formModalTitle = document.getElementById('formModalTitle');
@@ -116,6 +117,11 @@ const closeDrawerBtn = document.getElementById('closeDrawerBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
+// 防止點擊彈窗內部區域觸發背景關閉事件
+if (formModal) {
+    formModal.addEventListener('click', (e) => e.stopPropagation());
+}
+
 // ==================== Helpers ====================
 function showToast(msg, duration = 2200) {
     toastEl.textContent = msg;
@@ -125,7 +131,6 @@ function showToast(msg, duration = 2200) {
 
 function getCellKey(x, y) { return `${x}-${y}`; }
 
-// 設定目前載入的模板狀態
 function setLoadedTemplate(template) {
     if (template) {
         state.currentLoadedTemplateId = template.id;
@@ -145,18 +150,25 @@ function openFormModalForMenu(monster) {
         return;
     }
 
-    formModalTitle.textContent = `${monster.name} - 選擇預設放置形態`;
+    formModalTitle.textContent = '選擇預設放置形態';
     formsGrid.innerHTML = '';
+
+    const currentIdx = monster.selectedFormIndex || 0;
 
     monster.forms.forEach((form, idx) => {
         const item = document.createElement('div');
-        item.className = `form-item ${idx === state.selectedFormIndex ? 'active' : ''}`;
+        item.className = `form-item ${idx === currentIdx ? 'active' : ''}`;
         item.innerHTML = `
             <img src="${form.src}" alt="${form.name}">
             <span>${form.name}</span>
         `;
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // 記憶此魔物選取的形態
+            monster.selectedFormIndex = idx;
             state.selectedFormIndex = idx;
+
+            // 更新選單上的小圖示
             const opt = unitsGrid.querySelector(`[data-id="${monster.id}"]`);
             if (opt) {
                 const optImg = opt.querySelector('img');
@@ -182,7 +194,7 @@ function openFormModalForCell(cellKey) {
         return;
     }
 
-    formModalTitle.textContent = `${monster.name} - 切換格子形態`;
+    formModalTitle.textContent = '切換格子形態';
     formsGrid.innerHTML = '';
 
     monster.forms.forEach((form, idx) => {
@@ -192,7 +204,8 @@ function openFormModalForCell(cellKey) {
             <img src="${form.src}" alt="${form.name}">
             <span>${form.name}</span>
         `;
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
             state.units[cellKey] = {
                 baseId: placed.baseId,
                 formIndex: idx
@@ -341,7 +354,7 @@ function onCellClick(x, y) {
     }
 }
 
-// ==================== Dynamic Icon Scanning (全平行非同步請求) ====================
+// ==================== Dynamic Icon Scanning ====================
 async function autoLoadIcons() {
     unitsGrid.innerHTML = '<div class="empty-units">正在快速讀取 icon 資料夾…</div>';
     state.loadedMonsters = [];
@@ -383,7 +396,8 @@ async function autoLoadIcons() {
                 id: `monster_${m}`,
                 monsterNum: m,
                 name: `魔物 ${m}`,
-                forms: forms
+                forms: forms,
+                selectedFormIndex: 0 // 初始化記憶形態 index
             };
         }
         return null;
@@ -411,7 +425,7 @@ async function autoLoadIcons() {
         opt.title = `${monster.name}（包含 ${monster.forms.length} 種形態，點擊切換形態）`;
 
         const img = document.createElement('img');
-        img.src = monster.forms[0].src;
+        img.src = monster.forms[monster.selectedFormIndex || 0].src;
         img.draggable = false;
         opt.appendChild(img);
 
@@ -431,7 +445,8 @@ async function autoLoadIcons() {
                 document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
                 opt.classList.add('selected');
                 state.selectedUnitId = monster.id;
-                state.selectedFormIndex = 0;
+                // 讀取該魔物上次記住的形態
+                state.selectedFormIndex = monster.selectedFormIndex || 0;
                 state.deleteMode = false;
                 deleteModeBtn.classList.remove('active');
                 deleteModeBtn.textContent = '刪除模式';
@@ -453,6 +468,7 @@ async function autoLoadIcons() {
             document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
             opt.classList.add('selected');
             state.selectedUnitId = monster.id;
+            state.selectedFormIndex = monster.selectedFormIndex || 0;
         });
 
         unitsGrid.appendChild(opt);
