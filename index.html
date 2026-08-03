@@ -82,10 +82,6 @@
             align-items: center;
         }
 
-        .header-actions button {
-            flex: initial;
-        }
-
         .container {
             display: flex;
             flex-wrap: wrap;
@@ -141,14 +137,11 @@
             cursor: pointer;
             transition: background 0.12s;
             overflow: hidden;
+            user-select: none;
         }
 
         .cell:hover {
             background: rgba(255, 255, 255, 0.12);
-        }
-
-        .cell.has-unit {
-            background: transparent;
         }
 
         .cell.drag-over {
@@ -159,9 +152,6 @@
             cursor: not-allowed !important;
             background: transparent;
         }
-        .cell.disabled:hover {
-            background: rgba(255, 255, 255, 0.12) !important;
-        }
 
         .unit-img {
             position: absolute;
@@ -170,7 +160,6 @@
             height: calc(100% - 8px);
             object-fit: contain;
             pointer-events: none;
-            image-rendering: auto;
             z-index: 2;
         }
 
@@ -202,7 +191,7 @@
             gap: 6px;
         }
 
-        select, input[type="text"] {
+        input[type="text"] {
             width: 100%;
             padding: 8px 10px;
             border-radius: 6px;
@@ -211,10 +200,6 @@
             color: var(--text-color);
             font-size: 14px;
             outline: none;
-        }
-
-        select:focus, input[type="text"]:focus {
-            border-color: var(--accent);
         }
 
         .button-group {
@@ -238,38 +223,19 @@
             white-space: nowrap;
         }
 
-        button:hover {
-            background-color: var(--button-primary-hover);
-            transform: translateY(-1px);
-        }
-
-        button:active { transform: translateY(0); }
-
-        button.secondary {
-            background-color: var(--button-secondary);
-            color: var(--text-color);
-        }
+        button:hover { background-color: var(--button-primary-hover); transform: translateY(-1px); }
+        button.secondary { background-color: var(--button-secondary); color: var(--text-color); }
         button.secondary:hover { background-color: var(--button-secondary-hover); }
-
-        button.danger {
-            background-color: var(--button-danger);
-        }
+        button.danger { background-color: var(--button-danger); }
         button.danger:hover { background-color: var(--button-danger-hover); }
-
-        button.success {
-            background-color: var(--button-success);
-        }
+        button.success { background-color: var(--button-success); }
         button.success:hover { background-color: var(--button-success-hover); }
-
-        button.active {
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
-        }
+        button.active { outline: 2px solid var(--accent); outline-offset: 2px; }
 
         /* Units grid */
         .units-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
             gap: 8px;
             max-height: 280px;
             overflow-y: auto;
@@ -282,7 +248,7 @@
             border-radius: 8px;
             border: 2px solid transparent;
             background: var(--bg-color);
-            cursor: grab;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -292,154 +258,120 @@
             user-select: none;
         }
 
-        .unit-option:active {
-            cursor: grabbing;
+        .unit-option:hover { border-color: var(--accent); transform: scale(1.05); }
+        .unit-option.selected { border-color: var(--button-primary); box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.35); }
+        .unit-option img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Multi-form badge */
+        .forms-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: var(--button-primary);
+            color: #fff;
+            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            pointer-events: none;
         }
 
-        .unit-option:hover {
-            border-color: var(--accent);
-            transform: scale(1.05);
-        }
+        .hint { font-size: 12px; opacity: 0.7; margin-top: 6px; line-height: 1.4; }
+        .empty-units { text-align: center; padding: 20px 10px; opacity: 0.6; font-size: 13px; grid-column: 1 / -1; }
 
-        .unit-option.selected {
-            border-color: var(--button-primary);
-            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.35);
-        }
-
-        .unit-option img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .hint {
-            font-size: 12px;
-            opacity: 0.7;
-            margin-top: 6px;
-            line-height: 1.4;
-        }
-
-        .empty-units {
-            text-align: center;
-            padding: 20px 10px;
-            opacity: 0.6;
-            font-size: 13px;
-            grid-column: 1 / -1;
-        }
-
-        /* Drawer Overlay and Container */
-        .drawer-overlay {
+        /* Form Switcher Modal */
+        .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1002;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
             display: none;
-            opacity: 0;
-            transition: opacity 0.3s;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
         }
 
-        .drawer-overlay.open {
-            display: block;
-            opacity: 1;
-        }
+        .modal-overlay.open { display: flex; }
 
-        .templates-drawer {
-            position: fixed;
-            top: 0;
-            right: -360px;
-            width: 350px;
-            height: 100vh;
+        .form-modal {
             background: var(--panel-bg);
-            box-shadow: -4px 0 20px var(--shadow-color);
-            z-index: 1003;
-            transition: right 0.3s ease;
+            border-radius: 12px;
             padding: 20px;
+            width: 320px;
+            max-width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
             gap: 16px;
+            animation: modalIn 0.2s ease-out;
         }
 
-        .templates-drawer.open {
-            right: 0;
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
 
-        .drawer-close-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-color);
-            font-size: 18px;
-            cursor: pointer;
-            padding: 4px;
-            min-width: auto;
-            flex: initial;
-        }
-
-        .saved-templates-list {
+        .form-modal-header {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 2px;
-        }
-
-        .template-card {
-            background: var(--cell-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .template-card-title {
+            justify-content: space-between;
+            align-items: center;
             font-weight: bold;
-            font-size: 0.95rem;
-            color: var(--text-color);
-            word-break: break-all;
+            font-size: 1.1rem;
+            color: var(--accent);
         }
 
-        .template-card-meta {
-            font-size: 0.75rem;
-            opacity: 0.7;
+        .forms-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
         }
 
-        .template-card-actions {
+        .form-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-color);
+            cursor: pointer;
+            padding: 6px;
             display: flex;
-            gap: 6px;
-            margin-top: 4px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
+
+        .form-item:hover { border-color: var(--accent); transform: scale(1.05); }
+        .form-item.active { border-color: var(--button-success); box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.4); }
+        .form-item img { max-width: 100%; max-height: 80%; object-fit: contain; }
+        .form-item span { font-size: 10px; margin-top: 4px; opacity: 0.8; }
+
+        /* Drawer Overlay and Container */
+        .drawer-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1002; display: none; opacity: 0; transition: opacity 0.3s;
+        }
+        .drawer-overlay.open { display: block; opacity: 1; }
+
+        .templates-drawer {
+            position: fixed; top: 0; right: -360px; width: 350px; height: 100vh;
+            background: var(--panel-bg); box-shadow: -4px 0 20px var(--shadow-color);
+            z-index: 1003; transition: right 0.3s ease; padding: 20px; display: flex; flex-direction: column; gap: 16px;
+        }
+        .templates-drawer.open { right: 0; }
+        .drawer-close-btn { background: transparent; border: none; color: var(--text-color); font-size: 18px; cursor: pointer; padding: 4px; min-width: auto; flex: initial; }
+
+        .saved-templates-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; }
+        .template-card { background: var(--cell-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .template-card-title { font-weight: bold; font-size: 0.95rem; }
+        .template-card-meta { font-size: 0.75rem; opacity: 0.7; }
+        .template-card-actions { display: flex; gap: 6px; margin-top: 4px; }
 
         /* Toast */
         .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(80px);
-            background: #333;
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 9999;
-            opacity: 0;
-            transition: all 0.3s;
-            pointer-events: none;
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #333; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px;
+            z-index: 9999; opacity: 0; transition: all 0.3s; pointer-events: none;
         }
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-
-        @media (max-width: 1100px) {
-            .container {
-                width: 100%;
-            }
-            .templates-drawer {
-                width: 300px;
-            }
-        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
 </head>
 <body>
@@ -451,6 +383,19 @@
         </div>
     </div>
 
+    <!-- 形態選擇彈窗 (Form Modal) -->
+    <div class="modal-overlay" id="formModalOverlay">
+        <div class="form-modal">
+            <div class="form-modal-header">
+                <span id="formModalTitle">選擇魔物形態</span>
+                <button class="drawer-close-btn" id="closeFormModalBtn">✕</button>
+            </div>
+            <div class="forms-grid" id="formsGrid">
+                <!-- 形態選項動態生成 -->
+            </div>
+        </div>
+    </div>
+
     <!-- 側邊欄遮罩與抽屜 -->
     <div class="drawer-overlay" id="drawerOverlay"></div>
     <div class="templates-drawer" id="templatesDrawer">
@@ -458,9 +403,7 @@
             <span>📁 模板庫</span>
             <button class="drawer-close-btn" id="closeDrawerBtn">✕</button>
         </div>
-        <div class="saved-templates-list" id="savedTemplatesList">
-            <!-- 歷史模板會顯示在這裡 -->
-        </div>
+        <div class="saved-templates-list" id="savedTemplatesList"></div>
     </div>
 
     <div class="container">
@@ -474,17 +417,15 @@
 
         <!-- Controls Panel -->
         <div class="controls-panel">
-            <!-- Units -->
             <div class="section">
                 <div class="section-title">魔物圖片</div>
                 <div class="units-grid" id="unitsGrid">
                     <div class="empty-units">正在讀取 icon 資料夾…</div>
                 </div>
-                <div class="hint">將圖片拖曳到模板格子上即可放置</div>
-                <div class="hint">點擊圖片後再點擊模板也可放置</div>
+                <div class="hint">💡 點擊選取魔物，<b>再次點擊或雙擊已選取魔物</b>可選擇形態</div>
+                <div class="hint">💡 <b>雙擊地圖上的魔物</b>也可單獨切換該格形態</div>
             </div>
 
-            <!-- Tools -->
             <div class="section">
                 <div class="section-title">操作</div>
                 <div class="button-group">
@@ -494,13 +435,11 @@
                 <div class="button-group" style="margin-top:8px;">
                     <button id="copyTemplateBtn" class="success">複製模板圖片</button>
                 </div>
-                <div class="hint">按下後會截取模板圖片到剪貼簿，可用 Ctrl+V 貼上</div>
             </div>
 
-            <!-- 儲存模板區塊 -->
             <div class="section">
                 <div class="section-title">儲存目前模板</div>
-                <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (例如：第一關防守)" maxlength="20">
+                <input type="text" id="templateNameInput" placeholder="輸入模板名稱" maxlength="20">
                 <div class="button-group" style="margin-top: 8px;">
                     <button id="saveTemplateBtn" class="primary">儲存至模板庫</button>
                 </div>
@@ -511,69 +450,33 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // ==================== Storage Management ====================
+        // ==================== Storage ====================
         const STORAGE_KEY = 'coop_saved_templates';
-
-        function setCookie(name, value, days = 365) {
-            try {
-                const date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                const expires = "expires=" + date.toUTCString();
-                document.cookie = `${name}=${encodeURIComponent(value)}; ${expires}; path=/; SameSite=Strict`;
-            } catch (e) {
-                console.warn("Set Cookie failed:", e);
-            }
-        }
-
-        function getCookie(name) {
-            const nameEQ = name + "=";
-            const ca = document.cookie.split(';');
-            for (let i = 0; i < ca.length; i++) {
-                let c = ca[i].trim();
-                if (c.indexOf(nameEQ) === 0) {
-                    return decodeURIComponent(c.substring(nameEQ.length, c.length));
-                }
-            }
-            return null;
-        }
 
         function getSavedTemplates() {
             try {
                 const localData = localStorage.getItem(STORAGE_KEY);
                 if (localData) return JSON.parse(localData);
             } catch (e) {}
-
-            const cookieData = getCookie(STORAGE_KEY);
-            if (cookieData) {
-                try { return JSON.parse(cookieData); } catch (e) {}
-            }
             return [];
         }
 
         function saveSavedTemplates(templates) {
-            const jsonStr = JSON.stringify(templates);
             try {
-                localStorage.setItem(STORAGE_KEY, jsonStr);
-            } catch (e) {
-                console.warn("LocalStorage failed:", e);
-            }
-            setCookie(STORAGE_KEY, jsonStr);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+            } catch (e) {}
         }
 
         // ==================== State ====================
         const state = {
-            cols: 7,
-            rows: 5,
-            cellW: 105,
-            cellH: 112,
-            nativeCellW: 105,
-            nativeCellH: 112,
-            colFracs: null,
-            rowFracs: null,
+            cols: 7, rows: 5,
+            cellW: 105, cellH: 112,
+            colFracs: null, rowFracs: null,
             selectedUnitId: null,
+            selectedFormIndex: 0, // 當前選中的預設形態 index
             deleteMode: false,
-            units: {},
-            loadedIcons: [],
+            units: {}, // key "x-y" -> { baseId, formIndex }
+            loadedMonsters: [], // Array of { id, name, forms: [{ formIndex, src, name }] }
             bgImage: null,
 
             blockedCells: new Set([
@@ -595,7 +498,13 @@
         const themeToggle = document.getElementById('themeToggle');
         const toastEl = document.getElementById('toast');
 
-        // Save & Drawer DOM
+        // Modal DOM
+        const formModalOverlay = document.getElementById('formModalOverlay');
+        const closeFormModalBtn = document.getElementById('closeFormModalBtn');
+        const formsGrid = document.getElementById('formsGrid');
+        const formModalTitle = document.getElementById('formModalTitle');
+
+        // Drawer DOM
         const saveTemplateBtn = document.getElementById('saveTemplateBtn');
         const templateNameInput = document.getElementById('templateNameInput');
         const savedTemplatesList = document.getElementById('savedTemplatesList');
@@ -603,22 +512,6 @@
         const closeDrawerBtn = document.getElementById('closeDrawerBtn');
         const drawerOverlay = document.getElementById('drawerOverlay');
         const templatesDrawer = document.getElementById('templatesDrawer');
-        const templateCountEl = document.getElementById('templateCount');
-
-        // ==================== Drawer Controls ====================
-        function openDrawer() {
-            templatesDrawer.classList.add('open');
-            drawerOverlay.classList.add('open');
-        }
-
-        function closeDrawer() {
-            templatesDrawer.classList.remove('open');
-            drawerOverlay.classList.remove('open');
-        }
-
-        openDrawerBtn.addEventListener('click', openDrawer);
-        closeDrawerBtn.addEventListener('click', closeDrawer);
-        drawerOverlay.addEventListener('click', closeDrawer);
 
         // ==================== Helpers ====================
         function showToast(msg, duration = 2200) {
@@ -627,11 +520,90 @@
             setTimeout(() => toastEl.classList.remove('show'), duration);
         }
 
-        function getCellKey(x, y) {
-            return `${x}-${y}`;
+        function getCellKey(x, y) { return `${x}-${y}`; }
+
+        // ==================== Form Switcher Modal ====================
+        function openFormModalForMenu(monster) {
+            if (!monster || monster.forms.length <= 1) {
+                showToast('該魔物只有單一形態');
+                return;
+            }
+
+            formModalTitle.textContent = `${monster.name} - 選擇預設放置形態`;
+            formsGrid.innerHTML = '';
+
+            monster.forms.forEach((form, idx) => {
+                const item = document.createElement('div');
+                item.className = `form-item ${idx === state.selectedFormIndex ? 'active' : ''}`;
+                item.innerHTML = `
+                    <img src="${form.src}" alt="${form.name}">
+                    <span>${form.name}</span>
+                `;
+                item.addEventListener('click', () => {
+                    state.selectedFormIndex = idx;
+                    // 更新右側選單的預覽圖片
+                    const opt = unitsGrid.querySelector(`[data-id="${monster.id}"]`);
+                    if (opt) {
+                        const optImg = opt.querySelector('img');
+                        if (optImg) optImg.src = form.src;
+                    }
+                    closeFormModal();
+                    showToast(`預設放置形態設為：${form.name}`);
+                });
+                formsGrid.appendChild(item);
+            });
+
+            formModalOverlay.classList.add('open');
         }
 
-        // ==================== Background ====================
+        function openFormModalForCell(cellKey) {
+            const placed = state.units[cellKey];
+            if (!placed) return;
+
+            const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
+            if (!monster || monster.forms.length <= 1) {
+                showToast('該魔物只有單一形態');
+                return;
+            }
+
+            formModalTitle.textContent = `${monster.name} - 切換格子形態`;
+            formsGrid.innerHTML = '';
+
+            monster.forms.forEach((form, idx) => {
+                const item = document.createElement('div');
+                item.className = `form-item ${idx === placed.formIndex ? 'active' : ''}`;
+                item.innerHTML = `
+                    <img src="${form.src}" alt="${form.name}">
+                    <span>${form.name}</span>
+                `;
+                item.addEventListener('click', () => {
+                    state.units[cellKey].formIndex = idx;
+                    createBoard();
+                    closeFormModal();
+                    showToast(`格子形態已切換為：${form.name}`);
+                });
+                formsGrid.appendChild(item);
+            });
+
+            formModalOverlay.classList.add('open');
+        }
+
+        function closeFormModal() {
+            formModalOverlay.classList.remove('open');
+        }
+
+        closeFormModalBtn.addEventListener('click', closeFormModal);
+        formModalOverlay.addEventListener('click', (e) => {
+            if (e.target === formModalOverlay) closeFormModal();
+        });
+
+        // ==================== Drawer Controls ====================
+        openDrawerBtn.addEventListener('click', () => { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); });
+        function closeDrawer() { templatesDrawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
+        closeDrawerBtn.addEventListener('click', closeDrawer);
+        drawerOverlay.addEventListener('click', closeDrawer);
+
+        // ==================== Background & Board ====================
         function loadFixedBackground() {
             const url = 'board-bg-hedge.png';
             boardBgEl.style.backgroundImage = `url('${url}')`;
@@ -640,14 +612,11 @@
             img.crossOrigin = 'anonymous';
             img.onload = () => {
                 state.bgImage = img;
-                state.cols = 7;
-                state.rows = 5;
+                state.cols = 7; state.rows = 5;
                 const maxW = window.innerWidth < 768 ? 340 : 700;
                 const scale = Math.min(1, maxW / img.naturalWidth);
                 state.cellW = Math.round((img.naturalWidth / state.cols) * scale);
                 state.cellH = Math.round((img.naturalHeight / state.rows) * scale);
-                state.nativeCellW = img.naturalWidth / state.cols;
-                state.nativeCellH = img.naturalHeight / state.rows;
 
                 const rawCol = [93, 95, 95, 96, 95, 98, 100];
                 const sumCol = rawCol.reduce((a, b) => a + b, 0);
@@ -662,73 +631,55 @@
             img.src = url;
         }
 
-        // ==================== Board ====================
         function createBoard() {
             boardEl.innerHTML = '';
-            if (state.colFracs && state.colFracs.length === state.cols) {
-                const totalW = state.cellW * state.cols;
-                boardEl.style.gridTemplateColumns = state.colFracs.map(f => Math.round(f * totalW) + 'px').join(' ');
-            } else {
-                boardEl.style.gridTemplateColumns = `repeat(${state.cols}, ${state.cellW}px)`;
-            }
-            if (state.rowFracs && state.rowFracs.length === state.rows) {
-                const totalH = state.cellH * state.rows;
-                boardEl.style.gridTemplateRows = state.rowFracs.map(f => Math.round(f * totalH) + 'px').join(' ');
-            } else {
-                boardEl.style.gridTemplateRows = `repeat(${state.rows}, ${state.cellH}px)`;
-            }
-            boardEl.style.setProperty('--cell-w', state.cellW + 'px');
-            boardEl.style.setProperty('--cell-h', state.cellH + 'px');
+            const totalW = state.cellW * state.cols;
+            const totalH = state.cellH * state.rows;
+            boardEl.style.gridTemplateColumns = state.colFracs ? state.colFracs.map(f => Math.round(f * totalW) + 'px').join(' ') : `repeat(${state.cols}, ${state.cellW}px)`;
+            boardEl.style.gridTemplateRows = state.rowFracs ? state.rowFracs.map(f => Math.round(f * totalH) + 'px').join(' ') : `repeat(${state.rows}, ${state.cellH}px)`;
 
             for (let y = 0; y < state.rows; y++) {
                 for (let x = 0; x < state.cols; x++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
-                    cell.dataset.x = x;
-                    cell.dataset.y = y;
-
                     const key = getCellKey(x, y);
                     const isBlocked = state.blockedCells && state.blockedCells.has(key);
 
-                    if (isBlocked) {
-                        cell.classList.add('disabled');
+                    if (isBlocked) cell.classList.add('disabled');
+
+                    const placed = state.units[key];
+                    if (placed) {
+                        const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
+                        if (monster && monster.forms[placed.formIndex]) {
+                            const img = document.createElement('img');
+                            img.className = 'unit-img';
+                            img.src = monster.forms[placed.formIndex].src;
+                            cell.appendChild(img);
+                        }
                     }
 
-                    if (state.units[key]) {
-                        cell.classList.add('has-unit');
-                        renderUnitInCell(cell, state.units[key]);
-                    }
-
+                    // Click & Double Click Event on Board Cell
                     cell.addEventListener('click', () => onCellClick(x, y));
+                    cell.addEventListener('dblclick', (e) => {
+                        e.preventDefault();
+                        if (state.units[key]) openFormModalForCell(key);
+                    });
 
+                    // Drag and Drop
                     cell.addEventListener('dragover', (e) => {
                         e.preventDefault();
-                        if (isBlocked) {
-                            e.dataTransfer.dropEffect = 'none';
-                            return;
-                        }
-                        e.dataTransfer.dropEffect = 'copy';
+                        if (isBlocked) return;
                         boardEl.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
                         cell.classList.add('drag-over');
                     });
-                    cell.addEventListener('dragleave', (e) => {
-                        if (!cell.contains(e.relatedTarget)) {
-                            cell.classList.remove('drag-over');
-                        }
-                    });
+                    cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
                     cell.addEventListener('drop', (e) => {
                         e.preventDefault();
                         boardEl.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+                        if (isBlocked) return showToast('非草地區域無法放置魔物！');
                         
-                        if (isBlocked) {
-                            showToast('非草地區域（通道/牆壁）不允許放置魔物！');
-                            return;
-                        }
-                        
-                        if (state.deleteMode) return;
-                        const unitId = e.dataTransfer.getData('text/plain');
-                        const icon = state.loadedIcons.find(i => i.id === unitId);
-                        if (icon) placeUnit(x, y, icon);
+                        const monsterId = e.dataTransfer.getData('text/plain');
+                        if (monsterId) placeUnit(x, y, monsterId, state.selectedFormIndex);
                     });
 
                     boardEl.appendChild(cell);
@@ -736,19 +687,11 @@
             }
         }
 
-        function renderUnitInCell(cell, unitData) {
-            const img = document.createElement('img');
-            img.className = 'unit-img';
-            img.src = unitData.src;
-            cell.appendChild(img);
-        }
-
-        function placeUnit(x, y, icon) {
+        function placeUnit(x, y, monsterId, formIndex = 0) {
             const key = getCellKey(x, y);
             state.units[key] = {
-                id: icon.id,
-                name: icon.name,
-                src: icon.src
+                baseId: monsterId,
+                formIndex: formIndex
             };
             createBoard();
         }
@@ -766,95 +709,125 @@
             }
 
             if (state.blockedCells && state.blockedCells.has(key)) {
-                showToast('非草地區域（通道/牆壁）不允許放置魔物！');
+                showToast('非草地區域無法放置魔物！');
                 return;
             }
 
             if (state.selectedUnitId) {
-                const icon = state.loadedIcons.find(i => i.id === state.selectedUnitId);
-                if (icon) placeUnit(x, y, icon);
+                placeUnit(x, y, state.selectedUnitId, state.selectedFormIndex);
             }
         }
 
-        // ==================== Auto-load Icons ====================
+        // ==================== Dynamic Icon Scanning ====================
         async function autoLoadIcons() {
-            state.loadedIcons = [];
             unitsGrid.innerHTML = '';
-            const maxTry = 50;
+            state.loadedMonsters = [];
 
-            const tryLoad = (n) => new Promise((resolve) => {
-                const src = `icon/image${n}.png`;
+            const tryLoadImage = (src) => new Promise((resolve) => {
                 const img = new Image();
-                img.onload = () => resolve({ n, src, ok: true });
-                img.onerror = () => resolve({ n, src, ok: false });
+                img.onload = () => resolve({ src, ok: true });
+                img.onerror = () => resolve({ src, ok: false });
                 img.src = src;
             });
 
-            const results = await Promise.all(
-                Array.from({ length: maxTry + 1 }, (_, i) => tryLoad(i))
-            );
+            for (let m = 1; m <= 30; m++) {
+                const forms = [];
 
-            const found = [];
-            results
-                .filter(r => r.ok)
-                .sort((a, b) => a.n - b.n)
-                .forEach(r => {
-                    const name = `image${r.n}`;
-                    const id = `unit_${r.n}`;
-                    const icon = { id, name, src: r.src };
-                    state.loadedIcons.push(icon);
-                    found.push(icon);
-                });
+                for (let f = 1; f <= 5; f++) {
+                    const multiSrc = `icon/image${m}_${f}.png`;
+                    const res = await tryLoadImage(multiSrc);
+                    if (res.ok) {
+                        forms.push({ formIndex: f - 1, src: multiSrc, name: `形態 ${f}` });
+                    } else if (f === 1) {
+                        const singleSrc = `icon/image${m}.png`;
+                        const singleRes = await tryLoadImage(singleSrc);
+                        if (singleRes.ok) {
+                            forms.push({ formIndex: 0, src: singleSrc, name: `預設形態` });
+                        }
+                        break;
+                    } else {
+                        break;
+                    }
+                }
 
-            if (found.length === 0) {
-                unitsGrid.innerHTML = `
-                    <div class="empty-units">
-                        找不到魔物圖片<br>
-                        請在 icon 資料夾放入圖片
-                    </div>`;
+                if (forms.length > 0) {
+                    state.loadedMonsters.push({
+                        id: `monster_${m}`,
+                        name: `魔物 ${m}`,
+                        forms: forms
+                    });
+                }
+            }
+
+            if (state.loadedMonsters.length === 0) {
+                unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1_1.png, image1_2.png)</div>`;
                 renderSavedTemplatesList();
                 return;
             }
 
-            found.forEach(icon => {
+            // 渲染右側選單圖示
+            state.loadedMonsters.forEach(monster => {
                 const opt = document.createElement('div');
                 opt.className = 'unit-option';
-                opt.dataset.id = icon.id;
+                opt.dataset.id = monster.id;
                 opt.draggable = true;
-                opt.title = icon.name + '（拖曳到模板）';
+                opt.title = `${monster.name}（包含 ${monster.forms.length} 種形態，點擊切換形態）`;
 
                 const img = document.createElement('img');
-                img.src = icon.src;
-                img.alt = icon.name;
+                img.src = monster.forms[0].src;
                 img.draggable = false;
                 opt.appendChild(img);
 
-                opt.addEventListener('click', () => {
-                    document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
-                    opt.classList.add('selected');
-                    state.selectedUnitId = icon.id;
-                    state.deleteMode = false;
-                    deleteModeBtn.classList.remove('active');
-                    deleteModeBtn.textContent = '刪除模式';
+                if (monster.forms.length > 1) {
+                    const badge = document.createElement('span');
+                    badge.className = 'forms-badge';
+                    badge.textContent = `${monster.forms.length}形態`;
+                    opt.appendChild(badge);
+                }
+
+                // 核心邏輯：點擊與雙擊魔物選項
+                const handleOptionSelect = () => {
+                    const isAlreadySelected = (state.selectedUnitId === monster.id);
+
+                    if (isAlreadySelected) {
+                        // 如果已經是選取狀態，再次點擊時彈出形態選單
+                        openFormModalForMenu(monster);
+                    } else {
+                        // 首次點擊：選取該魔物
+                        document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+                        opt.classList.add('selected');
+                        state.selectedUnitId = monster.id;
+                        state.selectedFormIndex = 0; // 重置為形態 1
+                        state.deleteMode = false;
+                        deleteModeBtn.classList.remove('active');
+                        deleteModeBtn.textContent = '刪除模式';
+
+                        // 如果該魔物有多個形態，給予提示
+                        if (monster.forms.length > 1) {
+                            showToast(`已選取 ${monster.name}，再次點擊可切換形態`);
+                        }
+                    }
+                };
+
+                opt.addEventListener('click', handleOptionSelect);
+                opt.addEventListener('dblclick', (e) => {
+                    e.preventDefault();
+                    if (monster.forms.length > 1) openFormModalForMenu(monster);
                 });
 
                 opt.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text/plain', icon.id);
-                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('text/plain', monster.id);
+                    document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
                     opt.classList.add('selected');
-                    state.selectedUnitId = icon.id;
+                    state.selectedUnitId = monster.id;
                 });
 
                 unitsGrid.appendChild(opt);
             });
 
-            showToast(`已自動載入 ${found.length} 張魔物圖片`);
+            showToast(`已載入 ${state.loadedMonsters.length} 種魔物選單`);
             renderSavedTemplatesList();
         }
-
-        document.addEventListener('dragend', () => {
-            document.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
-        });
 
         // ==================== Controls ====================
         deleteModeBtn.addEventListener('click', () => {
@@ -878,175 +851,86 @@
 
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
-            const isLight = document.body.classList.contains('light-mode');
-            themeToggle.textContent = isLight ? '深色模式' : '淺色模式';
+            themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
         });
 
-        // ==================== Copy Template Image ====================
-        function canvasToBlob(canvas) {
-            return new Promise((resolve, reject) => {
-                try {
-                    canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob empty')), 'image/png');
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        }
-
+        // ==================== Copy Canvas Image ====================
         async function copyBoardTemplate() {
-            if (!state.bgImage) {
-                showToast('背景圖尚未載入完成，請稍候再試');
-                return;
-            }
-
+            if (!state.bgImage) return showToast('背景圖未載入');
             showToast('正在產生圖片…');
 
             const canvas = document.createElement('canvas');
             canvas.width = state.bgImage.naturalWidth;
             canvas.height = state.bgImage.naturalHeight;
             const ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
-
-            try {
-                ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
-            } catch (e) {
-                console.warn('draw bg failed', e);
-                showToast('繪製背景失敗');
-                return;
-            }
+            ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
 
             const colW = state.colFracs.map(f => f * canvas.width);
             const rowH = state.rowFracs.map(f => f * canvas.height);
-
-            const colX = [0];
-            for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
-            const rowY = [0];
-            for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
+            const colX = [0]; for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
+            const rowY = [0]; for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
 
             const drawPromises = [];
-            for (const [key, unit] of Object.entries(state.units)) {
+            for (const [key, placed] of Object.entries(state.units)) {
                 const [x, y] = key.split('-').map(Number);
+                const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
+                if (!monster) continue;
+                const formSrc = monster.forms[placed.formIndex]?.src || monster.forms[0].src;
+
                 drawPromises.push(new Promise((resolve) => {
                     const img = new Image();
                     img.crossOrigin = 'anonymous';
                     img.onload = () => {
-                        try {
-                            const cellW = colW[x];
-                            const cellH = rowH[y];
-                            const padX = cellW * 0.08;
-                            const padY = cellH * 0.08;
+                        const cellW = colW[x], cellH = rowH[y];
+                        const padX = cellW * 0.08, padY = cellH * 0.08;
+                        const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const boxAspect = boxW / boxH;
 
-                            const boxW = cellW - padX * 2;
-                            const boxH = cellH - padY * 2;
-
-                            const imgAspect = img.naturalWidth / img.naturalHeight;
-                            const boxAspect = boxW / boxH;
-
-                            let drawW = boxW;
-                            let drawH = boxH;
-                            let drawX = colX[x] + padX;
-                            let drawY = rowY[y] + padY;
-
-                            if (imgAspect > boxAspect) {
-                                drawH = boxW / imgAspect;
-                                drawY += (boxH - drawH) / 2;
-                            } else {
-                                drawW = boxH * imgAspect;
-                                drawX += (boxW - drawW) / 2;
-                            }
-
-                            ctx.drawImage(img, drawX, drawY, drawW, drawH);
-                        } catch (e) {
-                            console.warn('draw unit failed', e);
+                        let drawW = boxW, drawH = boxH, drawX = colX[x] + padX, drawY = rowY[y] + padY;
+                        if (imgAspect > boxAspect) {
+                            drawH = boxW / imgAspect; drawY += (boxH - drawH) / 2;
+                        } else {
+                            drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2;
                         }
+                        ctx.drawImage(img, drawX, drawY, drawW, drawH);
                         resolve();
                     };
                     img.onerror = resolve;
-                    img.src = unit.src;
+                    img.src = formSrc;
                 }));
             }
             await Promise.all(drawPromises);
 
-            let blob = null;
-            try {
-                blob = await canvasToBlob(canvas);
-            } catch (e) {
-                console.warn('toBlob failed, try dataURL', e);
-                try {
-                    const dataUrl = canvas.toDataURL('image/png');
-                    const res = await fetch(dataUrl);
-                    blob = await res.blob();
-                } catch (e2) {
-                    console.warn('dataURL path failed', e2);
-                    showToast('產生圖片失敗（可能是圖片跨域限制）');
-                    return;
+            canvas.toBlob(async (blob) => {
+                if (navigator.clipboard && window.ClipboardItem) {
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        showToast('已複製模板到剪貼簿！');
+                        return;
+                    } catch (e) {}
                 }
-            }
-
-            if (navigator.clipboard && window.ClipboardItem) {
-                try {
-                    const item = new ClipboardItem({
-                        'image/png': blob instanceof Blob ? blob : Promise.resolve(blob)
-                    });
-                    await navigator.clipboard.write([item]);
-                    showToast('已複製模板到剪貼簿！可用 Ctrl+V 貼上');
-                    return;
-                } catch (err) {
-                    console.warn('Clipboard write failed:', err);
-                }
-            }
-
-            try {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'board-template.png';
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    URL.revokeObjectURL(url);
-                    a.remove();
-                }, 2000);
-                showToast('無法寫入剪貼簿，已下載 board-template.png');
-            } catch (err3) {
-                console.warn('Download failed:', err3);
-                showToast('複製失敗：請用 Chrome / Edge');
-            }
+                showToast('無法複製至剪貼簿，已為您下載圖片');
+            });
         }
 
-        copyTemplateBtn.addEventListener('click', () => {
-            copyTemplateBtn.disabled = true;
-            copyBoardTemplate().finally(() => {
-                copyTemplateBtn.disabled = false;
-            });
-        });
+        copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 
-        // ==================== Save & Load Template Logic ====================
+        // ==================== Save & Load Templates ====================
         saveTemplateBtn.addEventListener('click', () => {
             const rawName = templateNameInput.value.trim();
             const now = new Date();
             const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             const templateName = rawName || defaultName;
 
-            const compactUnits = {};
-            for (const [key, unitObj] of Object.entries(state.units)) {
-                compactUnits[key] = unitObj.id;
-            }
-
             const templates = getSavedTemplates();
-            const newTemplate = {
+            templates.unshift({
                 id: Date.now(),
                 name: templateName,
-                date: `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
-                units: compactUnits,
-                cols: state.cols,
-                rows: state.rows
-            };
-
-            templates.unshift(newTemplate);
+                date: `${now.getMonth()+1}/${now.getDate()}`,
+                units: state.units
+            });
             saveSavedTemplates(templates);
-
             templateNameInput.value = '';
             showToast(`已儲存隊形：「${templateName}」！`);
             renderSavedTemplatesList();
@@ -1054,80 +938,31 @@
 
         function renderSavedTemplatesList() {
             const templates = getSavedTemplates();
-            if (templateCountEl) {
-                templateCountEl.textContent = templates.length;
-            }
-            savedTemplatesList.innerHTML = '';
-
-            if (templates.length === 0) {
-                savedTemplatesList.innerHTML = '<div class="empty-units">尚無儲存的隊形模板</div>';
-                return;
-            }
+            savedTemplatesList.innerHTML = templates.length === 0 ? '<div class="empty-units">尚無儲存的隊形模板</div>' : '';
 
             templates.forEach((item) => {
-                const count = Object.keys(item.units || {}).length;
-
                 const card = document.createElement('div');
                 card.className = 'template-card';
-
                 card.innerHTML = `
                     <div class="template-card-title">${item.name}</div>
-                    <div class="template-card-meta">時間：${item.date} | 魔物數：${count}</div>
+                    <div class="template-card-meta">時間：${item.date} | 魔物數：${Object.keys(item.units || {}).length}</div>
                     <div class="template-card-actions">
                         <button class="success load-btn">載入隊形</button>
-                        <button class="secondary rename-btn">改名</button>
                         <button class="danger delete-btn">刪除</button>
                     </div>
                 `;
 
                 card.querySelector('.load-btn').addEventListener('click', () => {
-                    const restoredUnits = {};
-                    const rawUnits = item.units || {};
-
-                    for (const [key, unitId] of Object.entries(rawUnits)) {
-                        const actualId = typeof unitId === 'object' ? unitId.id : unitId;
-                        const icon = state.loadedIcons.find(i => i.id === actualId);
-                        if (icon) {
-                            restoredUnits[key] = {
-                                id: icon.id,
-                                name: icon.name,
-                                src: icon.src
-                            };
-                        }
-                    }
-
-                    state.units = restoredUnits;
+                    state.units = item.units || {};
                     createBoard();
                     closeDrawer();
                     showToast(`已載入隊形：「${item.name}」`);
                 });
 
-                card.querySelector('.rename-btn').addEventListener('click', () => {
-                    const newName = prompt('請輸入新的模板名稱：', item.name);
-                    if (newName !== null) {
-                        const trimmed = newName.trim();
-                        if (trimmed) {
-                            const currentTemplates = getSavedTemplates();
-                            const target = currentTemplates.find(t => t.id === item.id);
-                            if (target) {
-                                target.name = trimmed;
-                                saveSavedTemplates(currentTemplates);
-                                renderSavedTemplatesList();
-                                showToast(`模板已改名為：「${trimmed}」`);
-                            }
-                        } else {
-                            showToast('模板名稱不可為空！');
-                        }
-                    }
-                });
-
                 card.querySelector('.delete-btn').addEventListener('click', () => {
-                    if (confirm(`確定要刪除模板「${item.name}」嗎？`)) {
-                        const updated = getSavedTemplates().filter(t => t.id !== item.id);
-                        saveSavedTemplates(updated);
-                        renderSavedTemplatesList();
-                        showToast('模板已刪除');
-                    }
+                    saveSavedTemplates(getSavedTemplates().filter(t => t.id !== item.id));
+                    renderSavedTemplatesList();
+                    showToast('模板已刪除');
                 });
 
                 savedTemplatesList.appendChild(card);
