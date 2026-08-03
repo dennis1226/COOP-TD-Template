@@ -792,9 +792,9 @@
             }
         }
 
-        // ==================== Dynamic Icon Scanning ====================
+        // ==================== Dynamic Icon Scanning (優化版：全平行非同步請求) ====================
         async function autoLoadIcons() {
-            unitsGrid.innerHTML = '';
+            unitsGrid.innerHTML = '<div class="empty-units">正在快速讀取 icon 資料夾…</div>';
             state.loadedMonsters = [];
 
             const tryLoadImage = (src) => new Promise((resolve) => {
@@ -804,34 +804,52 @@
                 img.src = src;
             });
 
-            for (let m = 1; m <= 30; m++) {
-                const forms = [];
+            // 針對單一魔物平行檢測多種形態與單形態圖片
+            const checkMonster = async (m) => {
+                const multiSrcs = Array.from({ length: 5 }, (_, i) => `icon/image${m}_${i + 1}.png`);
+                const singleSrc = `icon/image${m}.png`;
 
-                for (let f = 1; f <= 5; f++) {
-                    const multiSrc = `icon/image${m}_${f}.png`;
-                    const res = await tryLoadImage(multiSrc);
-                    if (res.ok) {
-                        forms.push({ formIndex: f - 1, src: multiSrc, name: `形態 ${f}` });
-                    } else if (f === 1) {
-                        const singleSrc = `icon/image${m}.png`;
-                        const singleRes = await tryLoadImage(singleSrc);
-                        if (singleRes.ok) {
-                            forms.push({ formIndex: 0, src: singleSrc, name: `預設形態` });
+                // 平行發送該魔物的所有圖片請求，避免串行等待
+                const results = await Promise.all([
+                    ...multiSrcs.map(src => tryLoadImage(src)),
+                    tryLoadImage(singleSrc)
+                ]);
+
+                const multiResults = results.slice(0, 5);
+                const singleResult = results[5];
+
+                const forms = [];
+                if (multiResults[0].ok) {
+                    for (let i = 0; i < 5; i++) {
+                        if (multiResults[i].ok) {
+                            forms.push({ formIndex: i, src: multiSrcs[i], name: `形態 ${i + 1}` });
+                        } else {
+                            break;
                         }
-                        break;
-                    } else {
-                        break;
                     }
+                } else if (singleResult.ok) {
+                    forms.push({ formIndex: 0, src: singleSrc, name: `預設形態` });
                 }
 
                 if (forms.length > 0) {
-                    state.loadedMonsters.push({
+                    return {
                         id: `monster_${m}`,
+                        monsterNum: m,
                         name: `魔物 ${m}`,
                         forms: forms
-                    });
+                    };
                 }
-            }
+                return null;
+            };
+
+            // 1 ~ 30 號魔物全部同時進行平行掃描
+            const monsterPromises = Array.from({ length: 30 }, (_, i) => checkMonster(i + 1));
+            const results = await Promise.all(monsterPromises);
+
+            // 過濾無效魔物並依編號排序
+            state.loadedMonsters = results.filter(Boolean).sort((a, b) => a.monsterNum - b.monsterNum);
+
+            unitsGrid.innerHTML = '';
 
             if (state.loadedMonsters.length === 0) {
                 unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1_1.png)</div>`;
