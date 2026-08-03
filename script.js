@@ -131,16 +131,39 @@ function showToast(msg, duration = 2200) {
 
 function getCellKey(x, y) { return `${x}-${y}`; }
 
+// 根據輸入框名稱動態切換按鈕顯示
+function updateSaveButtonsVisibility() {
+    const rawName = templateNameInput.value.trim();
+    const templates = getSavedTemplates();
+    
+    // 檢查庫中是否存在該名稱的模板
+    const existingTemplate = templates.find(t => t.name === rawName);
+
+    if (existingTemplate && rawName !== '') {
+        // 庫中有同名模板 -> 隱藏「儲存」，顯示「更新」
+        saveTemplateBtn.style.display = 'none';
+        updateTemplateBtn.style.display = 'block';
+        state.currentLoadedTemplateId = existingTemplate.id;
+    } else {
+        // 庫中無此名稱（或是輸入框為空） -> 顯示「儲存」，隱藏「更新」
+        saveTemplateBtn.style.display = 'block';
+        updateTemplateBtn.style.display = 'none';
+        state.currentLoadedTemplateId = null;
+    }
+}
+
+// 監聽名稱輸入框變化，即時切換按鈕
+templateNameInput.addEventListener('input', updateSaveButtonsVisibility);
+
 function setLoadedTemplate(template) {
     if (template) {
         state.currentLoadedTemplateId = template.id;
         templateNameInput.value = template.name;
-        updateTemplateBtn.style.display = 'block';
     } else {
         state.currentLoadedTemplateId = null;
         templateNameInput.value = '';
-        updateTemplateBtn.style.display = 'none';
     }
+    updateSaveButtonsVisibility();
 }
 
 // ==================== Form Switcher Modal ====================
@@ -164,11 +187,9 @@ function openFormModalForMenu(monster) {
         `;
         item.addEventListener('click', (e) => {
             e.stopPropagation();
-            // 記憶此魔物選取的形態
             monster.selectedFormIndex = idx;
             state.selectedFormIndex = idx;
 
-            // 更新選單上的小圖示
             const opt = unitsGrid.querySelector(`[data-id="${monster.id}"]`);
             if (opt) {
                 const optImg = opt.querySelector('img');
@@ -397,7 +418,7 @@ async function autoLoadIcons() {
                 monsterNum: m,
                 name: `魔物 ${m}`,
                 forms: forms,
-                selectedFormIndex: 0 // 初始化記憶形態 index
+                selectedFormIndex: 0
             };
         }
         return null;
@@ -445,7 +466,6 @@ async function autoLoadIcons() {
                 document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
                 opt.classList.add('selected');
                 state.selectedUnitId = monster.id;
-                // 讀取該魔物上次記住的形態
                 state.selectedFormIndex = monster.selectedFormIndex || 0;
                 state.deleteMode = false;
                 deleteModeBtn.classList.remove('active');
@@ -608,14 +628,16 @@ updateTemplateBtn.addEventListener('click', () => {
 
     const rawName = templateNameInput.value.trim();
     const updatedName = rawName || templates[index].name;
+    const now = new Date();
 
     templates[index].name = updatedName;
-    templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
+    templates[index].date = `${now.getMonth()+1}/${now.getDate()}`;
     templates[index].units = JSON.parse(JSON.stringify(state.units));
 
     saveSavedTemplates(templates);
     showToast(`已更新隊形：「${updatedName}」！`);
     renderSavedTemplatesList();
+    updateSaveButtonsVisibility();
 });
 
 function renderSavedTemplatesList() {
@@ -654,6 +676,8 @@ function renderSavedTemplatesList() {
                 saveSavedTemplates(getSavedTemplates().filter(t => t.id !== item.id));
                 if (state.currentLoadedTemplateId === item.id) {
                     setLoadedTemplate(null);
+                } else {
+                    updateSaveButtonsVisibility();
                 }
                 renderSavedTemplatesList();
                 showToast('模板已刪除');
@@ -668,3 +692,4 @@ function renderSavedTemplatesList() {
 createBoard();
 loadFixedBackground();
 autoLoadIcons();
+updateSaveButtonsVisibility();
