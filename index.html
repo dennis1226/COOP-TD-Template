@@ -439,6 +439,8 @@
                 <input type="text" id="templateNameInput" placeholder="輸入模板名稱" maxlength="20">
                 <div class="button-group" style="margin-top: 8px;">
                     <button id="saveTemplateBtn" class="primary">儲存至模板庫</button>
+                    <!-- 動態顯示的更新模板按鈕 -->
+                    <button id="updateTemplateBtn" class="success" style="display: none;">更新模板</button>
                 </div>
             </div>
         </div>
@@ -464,14 +466,13 @@
             } catch (e) {}
         }
 
-        // ==================== 超強強化的舊格式容錯解析器 ====================
+        // ==================== 舊格式容錯解析器 ====================
         function normalizePlacedUnit(placed) {
             if (!placed) return null;
 
             let baseId = null;
             let formIndex = 0;
 
-            // 1. 若舊格式為物件 (如 { baseId: "monster_1" }, { id: "monster_1" }, { src: "icon/image1.png" })
             if (typeof placed === 'object' && placed !== null) {
                 if (placed.baseId) baseId = String(placed.baseId);
                 else if (placed.id) baseId = String(placed.id);
@@ -486,12 +487,10 @@
                 }
             }
 
-            // 2. 若舊格式為純數字 (如 1, 14)
             if (typeof placed === 'number') {
                 baseId = `monster_${placed}`;
             }
 
-            // 3. 若舊格式為字串 (如 "monster_1", "1", "icon/image1.png", "icon/image14_1.png")
             if (typeof placed === 'string') {
                 const matchMulti = placed.match(/image(\d+)_(\d+)\.png/i);
                 if (matchMulti) {
@@ -514,7 +513,6 @@
 
             if (!baseId) return null;
 
-            // 統一格式為 "monster_X"
             if (!baseId.startsWith('monster_')) {
                 const num = baseId.replace(/\D/g, '');
                 if (num) baseId = `monster_${num}`;
@@ -534,6 +532,7 @@
             units: {}, 
             loadedMonsters: [], 
             bgImage: null,
+            currentLoadedTemplateId: null, // 紀錄目前載入的模板 ID
 
             blockedCells: new Set([
                 '0-0', '6-0',
@@ -560,6 +559,7 @@
         const formModalTitle = document.getElementById('formModalTitle');
 
         const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+        const updateTemplateBtn = document.getElementById('updateTemplateBtn');
         const templateNameInput = document.getElementById('templateNameInput');
         const savedTemplatesList = document.getElementById('savedTemplatesList');
         const openDrawerBtn = document.getElementById('openDrawerBtn');
@@ -575,6 +575,19 @@
         }
 
         function getCellKey(x, y) { return `${x}-${y}`; }
+
+        // 設定目前載入的模板狀態
+        function setLoadedTemplate(template) {
+            if (template) {
+                state.currentLoadedTemplateId = template.id;
+                templateNameInput.value = template.name;
+                updateTemplateBtn.style.display = 'block';
+            } else {
+                state.currentLoadedTemplateId = null;
+                templateNameInput.value = '';
+                updateTemplateBtn.style.display = 'none';
+            }
+        }
 
         // ==================== Form Switcher Modal ====================
         function openFormModalForMenu(monster) {
@@ -711,7 +724,6 @@
                         state.units[key] = placed;
                         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
                         if (monster) {
-                            // 加上備用防護：若 formIndex 無效則回退到 forms[0]
                             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
                             if (targetForm) {
                                 const img = document.createElement('img');
@@ -822,7 +834,7 @@
             }
 
             if (state.loadedMonsters.length === 0) {
-                unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1.png 或 image14_1.png)</div>`;
+                unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1_1.png)</div>`;
                 renderSavedTemplatesList();
                 createBoard();
                 return;
@@ -900,8 +912,9 @@
 
         clearBtn.addEventListener('click', () => {
             if (Object.keys(state.units).length === 0) return;
-            if (confirm('確定要清空整個模板嗎？')) {
+            if (confirm('確定要清空目前的畫布內容嗎？')) {
                 state.units = {};
+                setLoadedTemplate(null); // 清空時重置載入狀態
                 createBoard();
                 showToast('模板已清空');
             }
@@ -978,23 +991,55 @@
 
         copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 
-        // ==================== Save & Load Templates ====================
+        // ==================== Save & Load & Update Templates ====================
+        // 1. 儲存為全新模板
         saveTemplateBtn.addEventListener('click', () => {
             const rawName = templateNameInput.value.trim();
             const now = new Date();
             const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             const templateName = rawName || defaultName;
 
-            const templates = getSavedTemplates();
-            templates.unshift({
+            const newTemplate = {
                 id: Date.now(),
                 name: templateName,
                 date: `${now.getMonth()+1}/${now.getDate()}`,
                 units: JSON.parse(JSON.stringify(state.units))
-            });
+            };
+
+            const templates = getSavedTemplates();
+            templates.unshift(newTemplate);
             saveSavedTemplates(templates);
-            templateNameInput.value = '';
+
+            // 儲存後自動設定為目前載入狀態
+            setLoadedTemplate(newTemplate);
+
             showToast(`已儲存隊形：「${templateName}」！`);
+            renderSavedTemplatesList();
+        });
+
+        // 2. 更新現有模板
+        updateTemplateBtn.addEventListener('click', () => {
+            if (!state.currentLoadedTemplateId) return;
+
+            const templates = getSavedTemplates();
+            const index = templates.findIndex(t => t.id === state.currentLoadedTemplateId);
+
+            if (index === -1) {
+                showToast('找不到原模板，可能已被刪除');
+                setLoadedTemplate(null);
+                return;
+            }
+
+            const rawName = templateNameInput.value.trim();
+            const now = new Date();
+            const updatedName = rawName || templates[index].name;
+
+            templates[index].name = updatedName;
+            templates[index].date = `${now.getMonth()+1}/${now.getDate()}`;
+            templates[index].units = JSON.parse(JSON.stringify(state.units));
+
+            saveSavedTemplates(templates);
+            showToast(`已更新隊形：「${updatedName}」！`);
             renderSavedTemplatesList();
         });
 
@@ -1014,6 +1059,7 @@
                     </div>
                 `;
 
+                // 載入按鈕邏輯
                 card.querySelector('.load-btn').addEventListener('click', () => {
                     const rawUnits = item.units || {};
                     const normalizedUnits = {};
@@ -1023,15 +1069,23 @@
                     }
 
                     state.units = JSON.parse(JSON.stringify(normalizedUnits));
+                    setLoadedTemplate(item); // 帶入名稱並顯示更新按鈕
                     createBoard();
                     closeDrawer();
                     showToast(`已成功載入隊形：「${item.name}」`);
                 });
 
+                // 刪除按鈕邏輯
                 card.querySelector('.delete-btn').addEventListener('click', () => {
-                    saveSavedTemplates(getSavedTemplates().filter(t => t.id !== item.id));
-                    renderSavedTemplatesList();
-                    showToast('模板已刪除');
+                    if (confirm(`確定要刪除隊形模板「${item.name}」嗎？`)) {
+                        saveSavedTemplates(getSavedTemplates().filter(t => t.id !== item.id));
+                        // 若刪除的是當前載入的模板，則重置狀態
+                        if (state.currentLoadedTemplateId === item.id) {
+                            setLoadedTemplate(null);
+                        }
+                        renderSavedTemplatesList();
+                        showToast('模板已刪除');
+                    }
                 });
 
                 savedTemplatesList.appendChild(card);
