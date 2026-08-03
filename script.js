@@ -571,42 +571,26 @@ async function copyBoardTemplate() {
 copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 
 // ==================== Save & Load & Update Templates ====================
-// ==================== Save & Load & Update Templates ====================
 saveTemplateBtn.addEventListener('click', () => {
     const rawName = templateNameInput.value.trim();
     const now = new Date();
     const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     const templateName = rawName || defaultName;
 
+    const newTemplate = {
+        id: Date.now(),
+        name: templateName,
+        date: `${now.getMonth()+1}/${now.getDate()}`,
+        units: JSON.parse(JSON.stringify(state.units))
+    };
+
     const templates = getSavedTemplates();
-    
-    // 檢查是否有同名的模板
-    const existingIndex = templates.findIndex(t => t.name === templateName);
-
-    if (existingIndex !== -1) {
-        // 【重名處理】：覆蓋現有模板
-        templates[existingIndex].date = `${now.getMonth()+1}/${now.getDate()}`;
-        templates[existingIndex].units = JSON.parse(JSON.stringify(state.units));
-        
-        // 更新目前載入狀態
-        setLoadedTemplate(templates[existingIndex]);
-        showToast(`已覆蓋既有隊形：「${templateName}」！`);
-    } else {
-        // 【無重名】：新增為新模板
-        const newTemplate = {
-            id: Date.now(),
-            name: templateName,
-            date: `${now.getMonth()+1}/${now.getDate()}`,
-            units: JSON.parse(JSON.stringify(state.units))
-        };
-        templates.unshift(newTemplate);
-        
-        // 更新目前載入狀態
-        setLoadedTemplate(newTemplate);
-        showToast(`已儲存隊形：「${templateName}」！`);
-    }
-
+    templates.unshift(newTemplate);
     saveSavedTemplates(templates);
+
+    setLoadedTemplate(newTemplate);
+
+    showToast(`已儲存隊形：「${templateName}」！`);
     renderSavedTemplatesList();
 });
 
