@@ -133,7 +133,7 @@ function getCellKey(x, y) { return `${x}-${y}`; }
 
 // 根據輸入框名稱動態切換按鈕顯示
 function updateSaveButtonsVisibility() {
-    const rawName = templateNameInput.value.trim();
+    const rawName = templateNameInput.value.trim().slice(0, 12);
     const templates = getSavedTemplates();
     
     // 檢查庫中是否存在該名稱的模板
@@ -592,9 +592,9 @@ copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 
 // ==================== Save & Load & Update Templates ====================
 saveTemplateBtn.addEventListener('click', () => {
-    const rawName = templateNameInput.value.trim();
+    const rawName = templateNameInput.value.trim().slice(0, 12);
     const now = new Date();
-    const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 12);
     const templateName = rawName || defaultName;
 
     const newTemplate = {
@@ -626,12 +626,11 @@ updateTemplateBtn.addEventListener('click', () => {
         return;
     }
 
-    const rawName = templateNameInput.value.trim();
+    const rawName = templateNameInput.value.trim().slice(0, 12);
     const updatedName = rawName || templates[index].name;
-    const now = new Date();
 
     templates[index].name = updatedName;
-    templates[index].date = `${now.getMonth()+1}/${now.getDate()}`;
+    templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
     templates[index].units = JSON.parse(JSON.stringify(state.units));
 
     saveSavedTemplates(templates);
@@ -639,6 +638,40 @@ updateTemplateBtn.addEventListener('click', () => {
     renderSavedTemplatesList();
     updateSaveButtonsVisibility();
 });
+
+function renameTemplate(id) {
+    const templates = getSavedTemplates();
+    const target = templates.find(t => t.id === id);
+    if (!target) return;
+
+    const newName = prompt('請輸入新的模板名稱（最多12字）：', target.name);
+    if (newName !== null && newName.trim() !== '') {
+        const trimmedName = newName.trim().slice(0, 12);
+        target.name = trimmedName;
+        saveSavedTemplates(templates);
+        renderSavedTemplatesList();
+        
+        // 如果目前載入的正好是此模板，同步更新輸入框
+        if (state.currentLoadedTemplateId === id) {
+            templateNameInput.value = target.name;
+            updateSaveButtonsVisibility();
+        }
+        showToast('模板名稱已更新！');
+    }
+}
+
+function deleteTemplate(id, name) {
+    if (confirm(`確定要刪除隊形模板「${name}」嗎？`)) {
+        saveSavedTemplates(getSavedTemplates().filter(t => t.id !== id));
+        if (state.currentLoadedTemplateId === id) {
+            setLoadedTemplate(null);
+        } else {
+            updateSaveButtonsVisibility();
+        }
+        renderSavedTemplatesList();
+        showToast('模板已刪除');
+    }
+}
 
 function renderSavedTemplatesList() {
     const templates = getSavedTemplates();
@@ -648,14 +681,30 @@ function renderSavedTemplatesList() {
         const card = document.createElement('div');
         card.className = 'template-card';
         card.innerHTML = `
-            <div class="template-card-title">${item.name}</div>
+            <button class="template-card-delete-icon" title="刪除模板">✕</button>
+            <div class="template-card-title">
+                <span class="title-text">${item.name}</span>
+                <button class="edit-name-btn" title="更改名稱">✏️</button>
+            </div>
             <div class="template-card-meta">時間：${item.date} | 魔物數：${Object.keys(item.units || {}).length}</div>
             <div class="template-card-actions">
                 <button class="success load-btn">載入隊形</button>
-                <button class="danger delete-btn">刪除</button>
             </div>
         `;
 
+        // 右上角 X 刪除按鈕
+        card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteTemplate(item.id, item.name);
+        });
+
+        // 鉛筆按鈕點擊事件：修改名字
+        card.querySelector('.edit-name-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            renameTemplate(item.id);
+        });
+
+        // 載入按鈕
         card.querySelector('.load-btn').addEventListener('click', () => {
             const rawUnits = item.units || {};
             const normalizedUnits = {};
@@ -669,19 +718,6 @@ function renderSavedTemplatesList() {
             createBoard();
             closeDrawer();
             showToast(`已成功載入隊形：「${item.name}」`);
-        });
-
-        card.querySelector('.delete-btn').addEventListener('click', () => {
-            if (confirm(`確定要刪除隊形模板「${item.name}」嗎？`)) {
-                saveSavedTemplates(getSavedTemplates().filter(t => t.id !== item.id));
-                if (state.currentLoadedTemplateId === item.id) {
-                    setLoadedTemplate(null);
-                } else {
-                    updateSaveButtonsVisibility();
-                }
-                renderSavedTemplatesList();
-                showToast('模板已刪除');
-            }
         });
 
         savedTemplatesList.appendChild(card);
