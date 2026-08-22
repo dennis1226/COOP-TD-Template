@@ -89,6 +89,8 @@ body {
 /* Board */
 .board-wrapper {
     flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .board-container {
@@ -154,6 +156,29 @@ body {
     object-fit: contain;
     pointer-events: none;
     z-index: 2;
+}
+
+/* 格子左上角的順序數字標籤 */
+.order-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(241, 196, 15, 0.95);
+    color: #111;
+    font-weight: 800;
+    font-size: 13px;
+    line-height: 1;
+    min-width: 20px;
+    height: 20px;
+    padding: 2px 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    z-index: 5;
+    pointer-events: none;
+    border: 1.5px solid #fff;
 }
 
 /* Controls Panel */
@@ -223,7 +248,7 @@ button.danger { background-color: var(--button-danger); }
 button.danger:hover { background-color: var(--button-danger-hover); }
 button.success { background-color: var(--button-success); }
 button.success:hover { background-color: var(--button-success-hover); }
-button.active { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 
 /* Units grid */
 .units-grid {

@@ -78,6 +78,8 @@ const state = {
     selectedUnitId: null,
     selectedFormIndex: 0,
     deleteMode: false,
+    markOrderMode: false, // 標示順序模式
+    orders: {},           // 記錄格子的順序：{ "x-y": 數字 }
     units: {}, 
     loadedMonsters: [], 
     bgImage: null,
@@ -98,6 +100,7 @@ const boardBgEl = document.getElementById('boardBackground');
 const unitsGrid = document.getElementById('unitsGrid');
 const deleteModeBtn = document.getElementById('deleteModeBtn');
 const clearBtn = document.getElementById('clearBtn');
+const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
@@ -117,7 +120,6 @@ const closeDrawerBtn = document.getElementById('closeDrawerBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
-// 防止點擊彈窗內部區域觸發背景關閉事件
 if (formModal) {
     formModal.addEventListener('click', (e) => e.stopPropagation());
 }
@@ -131,28 +133,23 @@ function showToast(msg, duration = 2200) {
 
 function getCellKey(x, y) { return `${x}-${y}`; }
 
-// 根據輸入框名稱動態切換按鈕顯示
 function updateSaveButtonsVisibility() {
     const rawName = templateNameInput.value.trim().slice(0, 12);
     const templates = getSavedTemplates();
     
-    // 檢查庫中是否存在該名稱的模板
     const existingTemplate = templates.find(t => t.name === rawName);
 
     if (existingTemplate && rawName !== '') {
-        // 庫中有同名模板 -> 隱藏「儲存」，顯示「更新」
         saveTemplateBtn.style.display = 'none';
         updateTemplateBtn.style.display = 'block';
         state.currentLoadedTemplateId = existingTemplate.id;
     } else {
-        // 庫中無此名稱（或是輸入框為空） -> 顯示「儲存」，隱藏「更新」
         saveTemplateBtn.style.display = 'block';
         updateTemplateBtn.style.display = 'none';
         state.currentLoadedTemplateId = null;
     }
 }
 
-// 監聽名稱輸入框變化，即時切換按鈕
 templateNameInput.addEventListener('input', updateSaveButtonsVisibility);
 
 function setLoadedTemplate(template) {
@@ -296,6 +293,8 @@ function createBoard() {
             const cell = document.createElement('div');
             cell.className = 'cell';
             const key = getCellKey(x, y);
+            cell.dataset.key = key;
+
             const isBlocked = state.blockedCells && state.blockedCells.has(key);
 
             if (isBlocked) cell.classList.add('disabled');
@@ -317,10 +316,18 @@ function createBoard() {
                 }
             }
 
+            // 如果該格子有設定標記順序數字，渲染在左上角
+            if (state.orders[key]) {
+                const badge = document.createElement('div');
+                badge.className = 'order-badge';
+                badge.textContent = state.orders[key];
+                cell.appendChild(badge);
+            }
+
             cell.addEventListener('click', () => onCellClick(x, y));
             cell.addEventListener('dblclick', (e) => {
                 e.preventDefault();
-                if (state.units[key]) openFormModalForCell(key);
+                if (state.units[key] && !state.markOrderMode) openFormModalForCell(key);
             });
 
             cell.addEventListener('dragover', (e) => {
@@ -356,20 +363,50 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
 function onCellClick(x, y) {
     const key = getCellKey(x, y);
 
+    // 1. 標示順序模式
+    if (state.markOrderMode) {
+        if (!state.units[key]) {
+            showToast('該位置沒有魔物，無法設定順序！');
+            return;
+        }
+
+        // 如果該位置已經標示過，點擊可取消該位置的標示
+        if (state.orders[key]) {
+            delete state.orders[key];
+            createBoard();
+            showToast('已移除該格子的順序標示');
+            return;
+        }
+
+        const currentCount = Object.keys(state.orders).length;
+        if (currentCount >= 20) {
+            showToast('已達到最大標示數量（20個）！');
+            return;
+        }
+
+        state.orders[key] = currentCount + 1;
+        createBoard();
+        return;
+    }
+
+    // 2. 刪除模式
     if (state.deleteMode) {
         if (state.units[key]) {
             delete state.units[key];
+            delete state.orders[key];
             createBoard();
             showToast('已刪除');
         }
         return;
     }
 
+    // 3. 阻擋區判定
     if (state.blockedCells && state.blockedCells.has(key)) {
         showToast('非草地區域無法放置魔物！');
         return;
     }
 
+    // 4. 普通放置模式
     if (state.selectedUnitId) {
         placeUnit(x, y, state.selectedUnitId, state.selectedFormIndex);
     }
@@ -467,9 +504,14 @@ async function autoLoadIcons() {
                 opt.classList.add('selected');
                 state.selectedUnitId = monster.id;
                 state.selectedFormIndex = monster.selectedFormIndex || 0;
+                
+                // 關閉其他模式
                 state.deleteMode = false;
                 deleteModeBtn.classList.remove('active');
                 deleteModeBtn.textContent = '刪除模式';
+
+                state.markOrderMode = false;
+                markOrderBtn.classList.remove('active');
 
                 if (monster.forms.length > 1) {
                     showToast(`已選取 ${monster.name}，再次點擊可切換形態`);
@@ -506,16 +548,43 @@ deleteModeBtn.addEventListener('click', () => {
     if (state.deleteMode) {
         state.selectedUnitId = null;
         document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+        // 關閉標示順序模式
+        state.markOrderMode = false;
+        markOrderBtn.classList.remove('active');
+    }
+});
+
+// 標示順序按鈕事件
+markOrderBtn.addEventListener('click', () => {
+    state.markOrderMode = !state.markOrderMode;
+    markOrderBtn.classList.toggle('active', state.markOrderMode);
+
+    if (state.markOrderMode) {
+        // 重置目前的號碼
+        state.orders = {};
+        createBoard();
+
+        // 取消其他選擇狀態
+        state.selectedUnitId = null;
+        document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+        state.deleteMode = false;
+        deleteModeBtn.classList.remove('active');
+        deleteModeBtn.textContent = '刪除模式';
+
+        showToast('已重置順序，請點擊魔物格開始標示 (1-20)');
+    } else {
+        showToast('已停止標示順序');
     }
 });
 
 clearBtn.addEventListener('click', () => {
-    if (Object.keys(state.units).length === 0) return;
-    if (confirm('確定要清空目前的畫布內容嗎？')) {
+    if (Object.keys(state.units).length === 0 && Object.keys(state.orders).length === 0) return;
+    if (confirm('確定要清空目前的畫布與順序標示嗎？')) {
         state.units = {};
+        state.orders = {};
         setLoadedTemplate(null);
         createBoard();
-        showToast('模板已清空');
+        showToast('模板與順序已清空');
     }
 });
 
@@ -568,6 +637,31 @@ async function copyBoardTemplate() {
                     drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2;
                 }
                 ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+                // 畫出順序號碼 (包含繪製背景圓點與數字)
+                if (state.orders[key]) {
+                    const numStr = String(state.orders[key]);
+                    const badgeX = colX[x] + cellW * 0.15;
+                    const badgeY = rowY[y] + cellH * 0.18;
+                    const radius = cellW * 0.12;
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'rgba(241, 196, 15, 0.95)';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#111111';
+                    ctx.font = `bold ${radius * 1.2}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(numStr, badgeX, badgeY);
+                    ctx.restore();
+                }
+
                 resolve();
             };
             img.onerror = resolve;
@@ -601,7 +695,8 @@ saveTemplateBtn.addEventListener('click', () => {
         id: Date.now(),
         name: templateName,
         date: `${now.getMonth()+1}/${now.getDate()}`,
-        units: JSON.parse(JSON.stringify(state.units))
+        units: JSON.parse(JSON.stringify(state.units)),
+        orders: JSON.parse(JSON.stringify(state.orders))
     };
 
     const templates = getSavedTemplates();
@@ -632,6 +727,7 @@ updateTemplateBtn.addEventListener('click', () => {
     templates[index].name = updatedName;
     templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
     templates[index].units = JSON.parse(JSON.stringify(state.units));
+    templates[index].orders = JSON.parse(JSON.stringify(state.orders));
 
     saveSavedTemplates(templates);
     showToast(`已更新隊形：「${updatedName}」！`);
@@ -651,7 +747,6 @@ function renameTemplate(id) {
         saveSavedTemplates(templates);
         renderSavedTemplatesList();
         
-        // 如果目前載入的正好是此模板，同步更新輸入框
         if (state.currentLoadedTemplateId === id) {
             templateNameInput.value = target.name;
             updateSaveButtonsVisibility();
@@ -692,19 +787,16 @@ function renderSavedTemplatesList() {
             </div>
         `;
 
-        // 右上角 X 刪除按鈕
         card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => {
             e.stopPropagation();
             deleteTemplate(item.id, item.name);
         });
 
-        // 鉛筆按鈕點擊事件：修改名字
         card.querySelector('.edit-name-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             renameTemplate(item.id);
         });
 
-        // 載入按鈕
         card.querySelector('.load-btn').addEventListener('click', () => {
             const rawUnits = item.units || {};
             const normalizedUnits = {};
@@ -714,6 +806,8 @@ function renderSavedTemplatesList() {
             }
 
             state.units = JSON.parse(JSON.stringify(normalizedUnits));
+            state.orders = item.orders ? JSON.parse(JSON.stringify(item.orders)) : {};
+
             setLoadedTemplate(item);
             createBoard();
             closeDrawer();
