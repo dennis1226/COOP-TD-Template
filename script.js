@@ -38,14 +38,12 @@ const TERRAIN_CONFIGS = {
         name: '城牆地形',
         cols: 7,
         rows: 3,
-        // 扣除左右各 3% 邊界後，7 欄均勻分佈
         colFracs: Array(7).fill((1 - 0.03 * 2) / 7),
-        // 扣除頂部 19% 與底部 3% 後，3 行均勻分佈 (1 - 0.19 - 0.03 = 0.78)
         rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
-        paddingTopRatio: 0.19,    // 頂部扣除 19%
-        paddingBottomRatio: 0.03, // 底部扣除 3%
-        paddingLeftRatio: 0.03,   // 左右各扣除 3%
-        blockedCells: new Set()   // 3x7 共 21 格全開放
+        paddingTopRatio: 0.19,
+        paddingBottomRatio: 0.03,
+        paddingLeftRatio: 0.03,
+        blockedCells: new Set()
     }
 };
 
@@ -120,6 +118,7 @@ const state = {
     bgImage: null,
     currentBg: 'background/board-bg-hedge.png',
     currentLoadedTemplateId: null,
+    maxBoardWidth: 700,
 
     terrainData: {
         'background/board-bg-hedge.png': { units: {}, orders: {} },
@@ -168,6 +167,7 @@ const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
+const boardWidthSelect = document.getElementById('boardWidthSelect');
 
 const formModalOverlay = document.getElementById('formModalOverlay');
 const formModal = document.querySelector('.form-modal');
@@ -339,7 +339,7 @@ function loadFixedBackground(bgPath = state.currentBg) {
         state.paddingBottomRatio = config.paddingBottomRatio || 0;
         state.paddingLeftRatio = config.paddingLeftRatio || 0;
 
-        const maxW = window.innerWidth < 768 ? 340 : 700;
+        const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
         const scale = Math.min(1, maxW / img.naturalWidth);
         
         const playableW = img.naturalWidth * (1 - state.paddingLeftRatio * 2);
@@ -364,13 +364,19 @@ if (bgSelect) {
     });
 }
 
+if (boardWidthSelect) {
+    boardWidthSelect.addEventListener('change', (e) => {
+        state.maxBoardWidth = parseInt(e.target.value, 10);
+        loadFixedBackground(state.currentBg);
+    });
+}
+
 function createBoard() {
     boardEl.innerHTML = '';
     
-    // 依比例計算整張圖的寬高與邊界
-    const maxW = window.innerWidth < 768 ? 340 : 700;
-    const fullImgW = state.bgImage ? Math.min(maxW, state.bgImage.naturalWidth) : 700;
-    const fullImgH = state.bgImage ? (fullImgW * (state.bgImage.naturalHeight / state.bgImage.naturalWidth)) : 500;
+    const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
+    const fullImgW = state.bgImage ? Math.min(maxW, state.bgImage.naturalWidth) : maxW;
+    const fullImgH = state.bgImage ? (fullImgW * (state.bgImage.naturalHeight / state.bgImage.naturalWidth)) : (maxW * 0.7);
 
     const topPaddingPx = fullImgH * state.paddingTopRatio;
     const bottomPaddingPx = fullImgH * state.paddingBottomRatio;
@@ -391,6 +397,8 @@ function createBoard() {
         for (let x = 0; x < state.cols; x++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
+            if (state.deleteMode) cell.classList.add('delete-mode-active');
+            
             const key = getCellKey(x, y);
             cell.dataset.key = key;
 
@@ -415,6 +423,7 @@ function createBoard() {
                 }
             }
 
+            // 確保順序標示於的最上圖層 (Z-Index 5)
             if (state.orders[key]) {
                 const badge = document.createElement('div');
                 badge.className = 'order-badge';
@@ -425,7 +434,7 @@ function createBoard() {
             cell.addEventListener('click', () => onCellClick(x, y));
             cell.addEventListener('dblclick', (e) => {
                 e.preventDefault();
-                if (state.units[key] && !state.markOrderMode) openFormModalForCell(key);
+                if (state.units[key] && !state.markOrderMode && !state.deleteMode) openFormModalForCell(key);
             });
 
             cell.addEventListener('dragover', (e) => {
@@ -490,7 +499,7 @@ function onCellClick(x, y) {
             delete state.units[key];
             delete state.orders[key];
             createBoard();
-            showToast('已刪除');
+            showToast('已刪除格內魔物');
         }
         return;
     }
@@ -507,7 +516,7 @@ function onCellClick(x, y) {
 
 // ==================== Dynamic Icon Scanning ====================
 async function autoLoadIcons() {
-    unitsGrid.innerHTML = '<div class="empty-units">正在快速讀取 icon 資料夾…</div>';
+    unitsGrid.innerHTML = '<div class="empty-units">正在讀取 icon 資料夾…</div>';
     state.loadedMonsters = [];
 
     const tryLoadImage = (src) => new Promise((resolve) => {
@@ -598,15 +607,23 @@ async function autoLoadIcons() {
                 state.selectedUnitId = monster.id;
                 state.selectedFormIndex = monster.selectedFormIndex || 0;
                 
-                state.deleteMode = false;
-                deleteModeBtn.classList.remove('active');
-                deleteModeBtn.textContent = '刪除模式';
+                // 選取魔物時自動關閉刪除模式與順序模式
+                if (state.deleteMode) {
+                    state.deleteMode = false;
+                    deleteModeBtn.classList.remove('danger');
+                    deleteModeBtn.classList.add('secondary');
+                    deleteModeBtn.textContent = '🗑️ 刪除模式';
+                }
 
-                state.markOrderMode = false;
-                markOrderBtn.classList.remove('active');
+                if (state.markOrderMode) {
+                    state.markOrderMode = false;
+                    markOrderBtn.classList.remove('active');
+                }
+
+                createBoard();
 
                 if (monster.forms.length > 1) {
-                    showToast(`已選取 ${monster.name}，再次點擊可切換形態`);
+                    showToast(`已選取 ${monster.name}，再次點擊可切換預設形態`);
                 }
             }
         };
@@ -635,14 +652,23 @@ async function autoLoadIcons() {
 // ==================== Controls ====================
 deleteModeBtn.addEventListener('click', () => {
     state.deleteMode = !state.deleteMode;
-    deleteModeBtn.classList.toggle('active', state.deleteMode);
-    deleteModeBtn.textContent = state.deleteMode ? '取消刪除' : '刪除模式';
+    
     if (state.deleteMode) {
+        deleteModeBtn.classList.remove('secondary');
+        deleteModeBtn.classList.add('danger');
+        deleteModeBtn.textContent = '✕ 退出刪除';
+        
         state.selectedUnitId = null;
         document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
         state.markOrderMode = false;
         markOrderBtn.classList.remove('active');
+    } else {
+        deleteModeBtn.classList.remove('danger');
+        deleteModeBtn.classList.add('secondary');
+        deleteModeBtn.textContent = '🗑️ 刪除模式';
     }
+    
+    createBoard();
 });
 
 markOrderBtn.addEventListener('click', () => {
@@ -651,15 +677,16 @@ markOrderBtn.addEventListener('click', () => {
 
     if (state.markOrderMode) {
         state.orders = {};
-        createBoard();
 
         state.selectedUnitId = null;
         document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
         state.deleteMode = false;
-        deleteModeBtn.classList.remove('active');
-        deleteModeBtn.textContent = '刪除模式';
+        deleteModeBtn.classList.remove('danger');
+        deleteModeBtn.classList.add('secondary');
+        deleteModeBtn.textContent = '🗑️ 刪除模式';
 
-        showToast('已重置順序，請點擊魔物格開始標示 (1-20)');
+        createBoard();
+        showToast('已重置順序，請依次點擊魔物格標示 (1-20)');
     } else {
         showToast('已停止標示順序');
     }
@@ -681,10 +708,10 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
 });
 
-// ==================== Copy Canvas Image ====================
+// ==================== Copy Canvas Image (二階段繪製防圖層遮擋) ====================
 async function copyBoardTemplate() {
     if (!state.bgImage) return showToast('背景圖未載入');
-    showToast('正在產生圖片…');
+    showToast('正在產生高畫質圖片…');
 
     const canvas = document.createElement('canvas');
     canvas.width = state.bgImage.naturalWidth;
@@ -704,6 +731,7 @@ async function copyBoardTemplate() {
     const colX = [sideOffsetPx]; for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
     const rowY = [topOffsetPx]; for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
 
+    // 階段 1：繪製所有魔物圖片
     const drawPromises = [];
     for (const [key, rawPlaced] of Object.entries(state.units)) {
         const placed = normalizePlacedUnit(rawPlaced);
@@ -732,47 +760,53 @@ async function copyBoardTemplate() {
                     drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2;
                 }
                 ctx.drawImage(img, drawX, drawY, drawW, drawH);
-
-                if (state.orders[key]) {
-                    const numStr = String(state.orders[key]);
-                    const badgeX = colX[x] + cellW * 0.15;
-                    const badgeY = rowY[y] + cellH * 0.18;
-                    const radius = cellW * 0.12;
-
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'rgba(241, 196, 15, 0.95)';
-                    ctx.fill();
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#111111';
-                    ctx.font = `bold ${radius * 1.2}px sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(numStr, badgeX, badgeY);
-                    ctx.restore();
-                }
-
                 resolve();
             };
             img.onerror = resolve;
             img.src = targetForm.src;
         }));
     }
+    
+    // 等待所有魔物圖片繪製完畢
     await Promise.all(drawPromises);
+
+    // 階段 2：最後統一繪製順序標籤 (確保極高圖層權重，絕不被圖片遮擋)
+    for (const [key, orderNum] of Object.entries(state.orders)) {
+        if (!state.units[key]) continue;
+        const [x, y] = key.split('-').map(Number);
+        const cellW = colW[x], cellH = rowH[y];
+
+        const numStr = String(orderNum);
+        const badgeX = colX[x] + cellW * 0.18;
+        const badgeY = rowY[y] + cellH * 0.18;
+        const radius = Math.max(12, cellW * 0.13);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(241, 196, 15, 0.98)';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.fillStyle = '#111111';
+        ctx.font = `bold ${radius * 1.25}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(numStr, badgeX, badgeY);
+        ctx.restore();
+    }
 
     canvas.toBlob(async (blob) => {
         if (navigator.clipboard && window.ClipboardItem) {
             try {
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                showToast('已複製模板到剪貼簿！');
+                showToast('已複製高畫質模板圖片至剪貼簿！');
                 return;
             } catch (e) {}
         }
-        showToast('無法複製至剪貼簿，已為您下載圖片');
+        showToast('無法直接存取剪貼簿，已爲您下載圖片');
     });
 }
 
