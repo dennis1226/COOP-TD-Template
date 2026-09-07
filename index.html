@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COOP-TD-Template</title>
+    <title>魔物模板編輯器</title>
     <!-- 引入外部 CSS -->
     <link rel="stylesheet" href="style.css">
     <!-- 引入外部 JS（加入 defer 確保 DOM 載入後執行） -->
@@ -51,11 +51,18 @@
         <!-- Controls Panel -->
         <div class="controls-panel">
             <div class="section">
-                <div class="section-title">選擇地形</div>
+                <div class="section-title">選擇地形與尺寸</div>
                 <select id="bgSelect" class="bg-select">
                     <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
                     <option value="background/board-bg-guardwall.png">城牆地形</option>
                 </select>
+                <div style="margin-top: 8px;">
+                    <select id="boardWidthSelect" class="bg-select">
+                        <option value="700">棋盤寬度：標準 (700px)</option>
+                        <option value="900">棋盤寬度：中型 (900px)</option>
+                        <option value="1100">棋盤寬度：大型 (1100px)</option>
+                    </select>
+                </div>
             </div>
 
             <div class="section">
@@ -64,29 +71,26 @@
                     <div class="empty-units">正在讀取 icon 資料夾…</div>
                 </div>
                 <div class="hint">💡 點擊選取魔物，再次點擊模板即可放下</div>
-                <div class="hint">💡 點擊選取魔物，再次點擊魔物可切換形態</div>
-                <div class="hint">💡 雙擊模板上的魔物也可切換形態</div>
+                <div class="hint">💡 點擊已選取魔物或雙擊棋盤魔物可切換形態</div>
             </div>
 
             <div class="section">
-                <div class="section-title">操作</div>
+                <div class="section-title">工具與操作</div>
                 <div class="button-group">
-                    <button id="deleteModeBtn" class="secondary">刪除模式</button>
-                    <button id="clearBtn" class="danger">清空模板</button>
+                    <button id="deleteModeBtn" class="secondary">🗑️ 刪除模式</button>
+                    <button id="clearBtn" class="danger">清空當前地形</button>
                 </div>
                 <div class="button-group" style="margin-top:8px;">
-                    <button id="markOrderBtn" class="secondary">🔢 標示魔物製作順序</button>
+                    <button id="markOrderBtn" class="secondary">🔢 標示製作順序</button>
                     <button id="copyTemplateBtn" class="success">複製模板圖片</button>
                 </div>
             </div>
 
             <div class="section">
-                <div class="section-title">儲存目前模板</div>
-                <!-- 限制輸入文字最多12個字 -->
-                <input type="text" id="templateNameInput" placeholder="輸入模板名稱" maxlength="12">
+                <div class="section-title">儲存隊形模板</div>
+                <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多12字)" maxlength="12">
                 <div class="button-group" style="margin-top: 8px;">
                     <button id="saveTemplateBtn" class="primary">儲存至模板庫</button>
-                    <!-- 動態顯示的更新模板按鈕 -->
                     <button id="updateTemplateBtn" class="success" style="display: none;">更新模板</button>
                 </div>
             </div>

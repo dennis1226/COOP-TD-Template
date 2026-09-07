@@ -86,11 +86,12 @@ body {
     align-items: flex-start;
 }
 
-/* Board */
+/* Board Wrapper */
 .board-wrapper {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
+    max-width: 100%;
 }
 
 .board-container {
@@ -139,6 +140,10 @@ body {
     background: rgba(255, 255, 255, 0.12);
 }
 
+.cell.delete-mode-active:hover {
+    background: rgba(231, 76, 60, 0.3) !important;
+}
+
 .cell.drag-over {
     background: rgba(255, 255, 255, 0.2) !important;
 }
@@ -158,33 +163,33 @@ body {
     z-index: 2;
 }
 
-/* 格子左上角的順序數字標籤 */
+/* 格子左上角順序數字標籤 (最上層 Z-index 5) */
 .order-badge {
     position: absolute;
     top: 4px;
     left: 4px;
-    background: rgba(241, 196, 15, 0.95);
+    background: rgba(241, 196, 15, 0.98);
     color: #111;
     font-weight: 800;
     font-size: 13px;
     line-height: 1;
-    min-width: 20px;
-    height: 20px;
+    min-width: 22px;
+    height: 22px;
     padding: 2px 4px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
     z-index: 5;
     pointer-events: none;
-    border: 1.5px solid #fff;
+    border: 1.5px solid #ffffff;
 }
 
 /* Controls Panel */
 .controls-panel {
     flex: 1;
-    min-width: 320px;
+    min-width: 300px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -389,7 +394,6 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     position: relative;
 }
 
-/* 卡片標題與鉛筆改名圖示 */
 .template-card-title { 
     font-weight: bold; 
     font-size: 0.95rem; 
@@ -422,7 +426,6 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 .template-card-meta { font-size: 0.75rem; opacity: 0.7; }
 .template-card-actions { display: flex; gap: 6px; margin-top: 4px; }
 
-/* 右上角 X 刪除按鈕 */
 .template-card-delete-icon {
     position: absolute;
     top: 6px;
