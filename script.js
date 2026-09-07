@@ -15,10 +15,15 @@ function saveSavedTemplates(templates) {
     } catch (e) {}
 }
 
-// 地形配置檔 (可根據需求新增與自訂可放置格子/阻擋區)
+// ==================== 地形獨立配置檔 ====================
 const TERRAIN_CONFIGS = {
     'background/board-bg-hedge.png': {
         name: '綠籬地形',
+        cols: 7,
+        rows: 5,
+        // 綠籬專屬比例
+        colFracs: [93, 95, 95, 96, 95, 98, 100].map(v => v / 672),
+        rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
         blockedCells: new Set([
             '0-0', '6-0',
             '0-1', '1-1', '2-1', '4-1', '5-1', '6-1',
@@ -29,7 +34,12 @@ const TERRAIN_CONFIGS = {
     },
     'background/board-bg-guardwall.png': {
         name: '城牆地形',
-        blockedCells: new Set() // 城牆地形的獨立不可放置區域，預設全可放 (可根據需求加入 'x-y')
+        cols: 7,
+        rows: 3,
+        // 城牆專屬比例 (7x3 均勻分佈)
+        colFracs: Array(7).fill(1 / 7),
+        rowFracs: Array(3).fill(1 / 3),
+        blockedCells: new Set() // 3x7 共 21 格全開放
     }
 };
 
@@ -96,10 +106,10 @@ const state = {
     selectedUnitId: null,
     selectedFormIndex: 0,
     deleteMode: false,
-    markOrderMode: false, // 標示順序模式
+    markOrderMode: false,
     loadedMonsters: [], 
     bgImage: null,
-    currentBg: 'background/board-bg-hedge.png', // 預設地形路徑
+    currentBg: 'background/board-bg-hedge.png',
     currentLoadedTemplateId: null,
 
     // 各地形獨立儲存魔物與順序
@@ -108,7 +118,6 @@ const state = {
         'background/board-bg-guardwall.png': { units: {}, orders: {} }
     },
 
-    // 取得當前地形的 units
     get units() {
         if (!this.terrainData[this.currentBg]) {
             this.terrainData[this.currentBg] = { units: {}, orders: {} };
@@ -122,7 +131,6 @@ const state = {
         this.terrainData[this.currentBg].units = val;
     },
 
-    // 取得當前地形的 orders
     get orders() {
         if (!this.terrainData[this.currentBg]) {
             this.terrainData[this.currentBg] = { units: {}, orders: {} };
@@ -136,7 +144,6 @@ const state = {
         this.terrainData[this.currentBg].orders = val;
     },
 
-    // 取得當前地形的不可放置格子
     get blockedCells() {
         return TERRAIN_CONFIGS[this.currentBg]?.blockedCells || new Set();
     }
@@ -309,23 +316,23 @@ function loadFixedBackground(bgPath = state.currentBg) {
 
     boardBgEl.style.backgroundImage = `url('${bgPath}')`;
 
+    const config = TERRAIN_CONFIGS[bgPath] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
         state.bgImage = img;
-        state.cols = 7; state.rows = 5;
+        
+        // 套用地形配置的行列數與比例
+        state.cols = config.cols;
+        state.rows = config.rows;
+        state.colFracs = config.colFracs;
+        state.rowFracs = config.rowFracs;
+
         const maxW = window.innerWidth < 768 ? 340 : 700;
         const scale = Math.min(1, maxW / img.naturalWidth);
         state.cellW = Math.round((img.naturalWidth / state.cols) * scale);
         state.cellH = Math.round((img.naturalHeight / state.rows) * scale);
-
-        const rawCol = [93, 95, 95, 96, 95, 98, 100];
-        const sumCol = rawCol.reduce((a, b) => a + b, 0);
-        state.colFracs = rawCol.map(v => v / sumCol);
-
-        const rawRow = [110, 115, 116, 116, 115];
-        const sumRow = rawRow.reduce((a, b) => a + b, 0);
-        state.rowFracs = rawRow.map(v => v / sumRow);
 
         createBoard();
     };
@@ -861,7 +868,6 @@ function renderSavedTemplatesList() {
             if (item.terrainData) {
                 state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
             } else {
-                // 相容舊存檔格式
                 const savedBg = item.bg || 'background/board-bg-hedge.png';
                 state.terrainData = {
                     'background/board-bg-hedge.png': { units: {}, orders: {} },
