@@ -178,6 +178,7 @@ const formModalTitle = document.getElementById('formModalTitle');
 const saveTemplateBtn = document.getElementById('saveTemplateBtn');
 const updateTemplateBtn = document.getElementById('updateTemplateBtn');
 const templateNameInput = document.getElementById('templateNameInput');
+const templateDescInput = document.getElementById('templateDescInput');
 const savedTemplatesList = document.getElementById('savedTemplatesList');
 const openDrawerBtn = document.getElementById('openDrawerBtn');
 const closeDrawerBtn = document.getElementById('closeDrawerBtn');
@@ -220,9 +221,11 @@ function setLoadedTemplate(template) {
     if (template) {
         state.currentLoadedTemplateId = template.id;
         templateNameInput.value = template.name;
+        templateDescInput.value = template.description || '';
     } else {
         state.currentLoadedTemplateId = null;
         templateNameInput.value = '';
+        templateDescInput.value = '';
     }
     updateSaveButtonsVisibility();
 }
@@ -723,14 +726,51 @@ async function copyBoardTemplate() {
     
     if (!bgImg) return showToast('背景圖未載入');
 
+    const descText = templateDescInput ? templateDescInput.value.trim() : '';
+
+    // 計算說明文字畫布額外高度
+    let extraHeight = 0;
+    const padding = 20;
+    const fontSize = 20;
+    const lineHeight = 28;
+    let lines = [];
+
+    if (descText) {
+        const dummyCtx = canvas.getContext('2d');
+        dummyCtx.font = `${fontSize}px sans-serif`;
+        const maxWidth = bgImg.naturalWidth - (padding * 2);
+        
+        // 分行處理
+        const paragraphs = descText.split('\n');
+        paragraphs.forEach(para => {
+            let currentLine = '';
+            for (let char of para) {
+                const testLine = currentLine + char;
+                if (dummyCtx.measureText(testLine).width > maxWidth && currentLine !== '') {
+                    lines.push(currentLine);
+                    currentLine = char;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            lines.push(currentLine);
+        });
+
+        extraHeight = (lines.length * lineHeight) + (padding * 2) + 30; // 30px for section title
+    }
+
     canvas.width = bgImg.naturalWidth;
-    canvas.height = bgImg.naturalHeight;
+    canvas.height = bgImg.naturalHeight + extraHeight;
     const ctx = canvas.getContext('2d');
 
-    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    // 填滿背景底色
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const scaleX = canvas.width / boardRect.width;
-    const scaleY = canvas.height / boardRect.height;
+    ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth, bgImg.naturalHeight);
+
+    const scaleX = bgImg.naturalWidth / boardRect.width;
+    const scaleY = bgImg.naturalHeight / boardRect.height;
 
     const drawPromises = [];
 
@@ -821,6 +861,36 @@ async function copyBoardTemplate() {
         ctx.restore();
     });
 
+    // 如果有說明文字，繪製底部說明欄
+    if (descText && lines.length > 0) {
+        const startY = bgImg.naturalHeight;
+        
+        ctx.fillStyle = '#2d2d2d';
+        ctx.fillRect(0, startY, canvas.width, extraHeight);
+
+        ctx.strokeStyle = '#444444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, startY);
+        ctx.lineTo(canvas.width, startY);
+        ctx.stroke();
+
+        ctx.fillStyle = '#5b9bd5';
+        ctx.font = `bold 22px sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('【陣容說明與攻略技巧】', padding, startY + padding);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${fontSize}px sans-serif`;
+        let textY = startY + padding + 35;
+        
+        lines.forEach(line => {
+            ctx.fillText(line, padding, textY);
+            textY += lineHeight;
+        });
+    }
+
     canvas.toBlob(async (blob) => {
         if (!blob) {
             showToast('匯出失敗，請重試');
@@ -854,6 +924,7 @@ saveTemplateBtn.addEventListener('click', () => {
     const newTemplate = {
         id: Date.now(),
         name: templateName,
+        description: templateDescInput.value.trim(),
         date: `${now.getMonth()+1}/${now.getDate()}`,
         bg: state.currentBg,
         terrainData: JSON.parse(JSON.stringify(state.terrainData))
@@ -885,6 +956,7 @@ updateTemplateBtn.addEventListener('click', () => {
     const updatedName = rawName || templates[index].name;
 
     templates[index].name = updatedName;
+    templates[index].description = templateDescInput.value.trim();
     templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
     templates[index].bg = state.currentBg;
     templates[index].terrainData = JSON.parse(JSON.stringify(state.terrainData));

@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>魔物模板編輯器</title>
-    <!-- 引入外部 CSS -->
     <link rel="stylesheet" href="style.css">
-    <!-- 引入外部 JS（加入 defer 確保 DOM 載入後執行） -->
     <script src="script.js" defer></script>
 </head>
 <body>
@@ -18,7 +16,6 @@
         </div>
     </div>
 
-    <!-- 形態選擇彈窗 (Form Modal) -->
     <div class="modal-overlay" id="formModalOverlay">
         <div class="form-modal">
             <div class="form-modal-header">
@@ -29,7 +26,6 @@
         </div>
     </div>
 
-    <!-- 側邊欄遮罩與抽屜 -->
     <div class="drawer-overlay" id="drawerOverlay"></div>
     <div class="templates-drawer" id="templatesDrawer">
         <div class="section-title">
@@ -40,15 +36,17 @@
     </div>
 
     <div class="container">
-        <!-- Board -->
         <div class="board-wrapper">
             <div class="board-container" id="boardContainer">
                 <div class="board-background" id="boardBackground"></div>
                 <div class="board" id="gameBoard"></div>
             </div>
+            <div class="section" style="margin-top: 16px;">
+                <div class="section-title">陣容說明與攻略技巧</div>
+                <textarea id="templateDescInput" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="5" style="width: 100%; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-size: 14px; outline: none; resize: vertical; box-sizing: border-box;"></textarea>
+            </div>
         </div>
 
-        <!-- Controls Panel -->
         <div class="controls-panel">
             <div class="section">
                 <div class="section-title">選擇地形與尺寸</div>
