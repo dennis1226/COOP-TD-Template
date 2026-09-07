@@ -156,7 +156,7 @@ const state = {
     }
 };
 
-// ==================== DOM ====================
+// ==================== DOM Elements ====================
 const boardEl = document.getElementById('gameBoard');
 const boardBgEl = document.getElementById('boardBackground');
 const unitsGrid = document.getElementById('unitsGrid');
@@ -423,7 +423,6 @@ function createBoard() {
                 }
             }
 
-            // 確保順序標示於最上圖層
             if (state.orders[key]) {
                 const badge = document.createElement('div');
                 badge.className = 'order-badge';
@@ -707,119 +706,139 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
 });
 
-// ==================== Copy Canvas Image (精準多地形座標計算與強效順序圖層覆蓋) ====================
+// ==================== Copy Canvas Image (DOM 精確定位版) ====================
 async function copyBoardTemplate() {
-    if (!state.bgImage) return showToast('背景圖未載入');
+    const board = document.getElementById('gameBoard');
+    if (!board) return showToast('找不到棋盤元件');
+    
     showToast('正在產生高畫質圖片…');
 
-    const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
+    const boardRect = board.getBoundingClientRect();
+    const cells = board.querySelectorAll('.cell');
+    
+    if (cells.length === 0) return showToast('棋盤尚無格子');
 
     const canvas = document.createElement('canvas');
-    canvas.width = state.bgImage.naturalWidth;
-    canvas.height = state.bgImage.naturalHeight;
+    const bgImg = state.bgImage;
+    
+    if (!bgImg) return showToast('背景圖未載入');
+
+    canvas.width = bgImg.naturalWidth;
+    canvas.height = bgImg.naturalHeight;
     const ctx = canvas.getContext('2d');
-    
-    // 繪製背景圖
-    ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
 
-    const topOffsetPx = canvas.height * (config.paddingTopRatio || 0);
-    const bottomOffsetPx = canvas.height * (config.paddingBottomRatio || 0);
-    const sideOffsetPx = canvas.width * (config.paddingLeftRatio || 0);
+    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-    const playableW = canvas.width - sideOffsetPx * 2;
-    const playableH = canvas.height - topOffsetPx - bottomOffsetPx;
+    const scaleX = canvas.width / boardRect.width;
+    const scaleY = canvas.height / boardRect.height;
 
-    const colW = config.colFracs.map(f => f * playableW);
-    const rowH = config.rowFracs.map(f => f * playableH);
-    
-    const colX = [sideOffsetPx]; 
-    for (let i = 0; i < config.cols; i++) colX.push(colX[i] + colW[i]);
-    
-    const rowY = [topOffsetPx]; 
-    for (let i = 0; i < config.rows; i++) rowY.push(rowY[i] + rowH[i]);
-
-    // 階段 1：繪製所有魔物圖片
     const drawPromises = [];
-    for (const [key, rawPlaced] of Object.entries(state.units)) {
-        const placed = normalizePlacedUnit(rawPlaced);
-        if (!placed) continue;
 
-        const [x, y] = key.split('-').map(Number);
-        if (x >= config.cols || y >= config.rows) continue;
+    cells.forEach((cell) => {
+        const key = cell.dataset.key;
+        if (!key) return;
+
+        const rawPlaced = state.units[key];
+        const placed = normalizePlacedUnit(rawPlaced);
+        if (!placed) return;
 
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
-        if (!monster) continue;
+        if (!monster) return;
+
         const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
-        if (!targetForm) continue;
+        if (!targetForm) return;
+
+        const cellRect = cell.getBoundingClientRect();
+        const cellX = (cellRect.left - boardRect.left) * scaleX;
+        const cellY = (cellRect.top - boardRect.top) * scaleY;
+        const cellW = cellRect.width * scaleX;
+        const cellH = cellRect.height * scaleY;
 
         drawPromises.push(new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
             img.onload = () => {
-                const cellW = colW[x], cellH = rowH[y];
-                const padX = cellW * 0.08, padY = cellH * 0.08;
-                const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
+                const padX = cellW * 0.05;
+                const padY = cellH * 0.05;
+                const boxW = cellW - padX * 2;
+                const boxH = cellH - padY * 2;
+
                 const imgAspect = img.naturalWidth / img.naturalHeight;
                 const boxAspect = boxW / boxH;
 
-                let drawW = boxW, drawH = boxH, drawX = colX[x] + padX, drawY = rowY[y] + padY;
+                let drawW = boxW, drawH = boxH;
+                let drawX = cellX + padX;
+                let drawY = cellY + padY;
+
                 if (imgAspect > boxAspect) {
-                    drawH = boxW / imgAspect; drawY += (boxH - drawH) / 2;
+                    drawH = boxW / imgAspect;
+                    drawY += (boxH - drawH) / 2;
                 } else {
-                    drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2;
+                    drawW = boxH * imgAspect;
+                    drawX += (boxW - drawW) / 2;
                 }
+
                 ctx.drawImage(img, drawX, drawY, drawW, drawH);
                 resolve();
             };
             img.onerror = resolve;
             img.src = targetForm.src;
         }));
-    }
-    
-    // 等待所有魔物圖片繪製完畢
+    });
+
     await Promise.all(drawPromises);
 
-    // 階段 2：繪製順序數字標籤 (確保極高圖層權重，絕對不會被魔物圖片遮擋)
-    for (const [key, orderNum] of Object.entries(state.orders)) {
-        if (!state.units[key]) continue;
-        const [x, y] = key.split('-').map(Number);
-        if (x >= config.cols || y >= config.rows) continue;
+    cells.forEach((cell) => {
+        const key = cell.dataset.key;
+        if (!key || !state.orders[key] || !state.units[key]) return;
 
-        const cellW = colW[x], cellH = rowH[y];
-        const numStr = String(orderNum);
+        const orderNum = state.orders[key];
+        const cellRect = cell.getBoundingClientRect();
         
-        // 數字 Badge 的中心座標與大小
-        const badgeX = colX[x] + cellW * 0.18;
-        const badgeY = rowY[y] + cellH * 0.22;
-        const radius = Math.max(14, cellW * 0.14);
+        const cellX = (cellRect.left - boardRect.left) * scaleX;
+        const cellY = (cellRect.top - boardRect.top) * scaleY;
+        const cellW = cellRect.width * scaleX;
+        const cellH = cellRect.height * scaleY;
+
+        const badgeX = cellX + cellW * 0.2;
+        const badgeY = cellY + cellH * 0.22;
+        const radius = Math.max(14, cellW * 0.15);
 
         ctx.save();
         ctx.beginPath();
         ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#f1c40f'; // 亮黃底色
+        ctx.fillStyle = '#f1c40f';
         ctx.fill();
         ctx.lineWidth = 3;
-        ctx.strokeStyle = '#ffffff'; // 白邊框
+        ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
         ctx.fillStyle = '#111111';
         ctx.font = `bold ${Math.round(radius * 1.3)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(numStr, badgeX, badgeY);
+        ctx.fillText(String(orderNum), badgeX, badgeY);
         ctx.restore();
-    }
+    });
 
-    // 匯出剪貼簿/圖片
     canvas.toBlob(async (blob) => {
+        if (!blob) {
+            showToast('匯出失敗，請重試');
+            return;
+        }
         if (navigator.clipboard && window.ClipboardItem) {
             try {
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                showToast('已複製高畫質模板圖片（包含順序標籤）至剪貼簿！');
+                showToast('已複製高畫質模板圖片至剪貼簿！');
                 return;
             } catch (e) {}
         }
-        showToast('無法直接存取剪貼簿，已為您下載圖片');
+        
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `coop_board_${Date.now()}.png`;
+        a.click();
+        showToast('已為您下載隊形模板圖片！');
     });
 }
 
