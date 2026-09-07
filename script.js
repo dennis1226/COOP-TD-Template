@@ -21,9 +21,9 @@ const TERRAIN_CONFIGS = {
         name: '綠籬地形',
         cols: 7,
         rows: 5,
-        // 綠籬專屬比例
         colFracs: [93, 95, 95, 96, 95, 98, 100].map(v => v / 672),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
+        paddingTopRatio: 0, // 無頂部邊界
         blockedCells: new Set([
             '0-0', '6-0',
             '0-1', '1-1', '2-1', '4-1', '5-1', '6-1',
@@ -36,9 +36,11 @@ const TERRAIN_CONFIGS = {
         name: '城牆地形',
         cols: 7,
         rows: 3,
-        // 城牆專屬比例 (7x3 均勻分佈)
+        // 7 欄均勻分佈
         colFracs: Array(7).fill(1 / 7),
-        rowFracs: Array(3).fill(1 / 3),
+        // 扣除頂部城牆裝飾後，3 行均勻分佈
+        rowFracs: Array(3).fill((1 - 0.22) / 3),
+        paddingTopRatio: 0.22, // 頂部城牆扣除 22% 高度
         blockedCells: new Set() // 3x7 共 21 格全開放
     }
 };
@@ -103,6 +105,7 @@ const state = {
     cols: 7, rows: 5,
     cellW: 105, cellH: 112,
     colFracs: null, rowFracs: null,
+    paddingTopRatio: 0,
     selectedUnitId: null,
     selectedFormIndex: 0,
     deleteMode: false,
@@ -112,7 +115,6 @@ const state = {
     currentBg: 'background/board-bg-hedge.png',
     currentLoadedTemplateId: null,
 
-    // 各地形獨立儲存魔物與順序
     terrainData: {
         'background/board-bg-hedge.png': { units: {}, orders: {} },
         'background/board-bg-guardwall.png': { units: {}, orders: {} }
@@ -323,16 +325,19 @@ function loadFixedBackground(bgPath = state.currentBg) {
     img.onload = () => {
         state.bgImage = img;
         
-        // 套用地形配置的行列數與比例
         state.cols = config.cols;
         state.rows = config.rows;
         state.colFracs = config.colFracs;
         state.rowFracs = config.rowFracs;
+        state.paddingTopRatio = config.paddingTopRatio || 0;
 
         const maxW = window.innerWidth < 768 ? 340 : 700;
         const scale = Math.min(1, maxW / img.naturalWidth);
         state.cellW = Math.round((img.naturalWidth / state.cols) * scale);
-        state.cellH = Math.round((img.naturalHeight / state.rows) * scale);
+        
+        // 扣除頂部比例後計算純棋盤高度與單格高度
+        const playableH = img.naturalHeight * (1 - state.paddingTopRatio);
+        state.cellH = Math.round((playableH / state.rows) * scale);
 
         createBoard();
     };
@@ -353,9 +358,15 @@ if (bgSelect) {
 function createBoard() {
     boardEl.innerHTML = '';
     const totalW = state.cellW * state.cols;
-    const totalH = state.cellH * state.rows;
+    
+    // 計算棋盤總高與頂部扣除高度
+    const fullImgH = state.bgImage ? (state.cellW * state.cols * (state.bgImage.naturalHeight / state.bgImage.naturalWidth)) : (state.cellH * state.rows);
+    const topPaddingPx = fullImgH * state.paddingTopRatio;
+    const playableH = fullImgH - topPaddingPx;
+
+    boardEl.style.paddingTop = `${topPaddingPx}px`;
     boardEl.style.gridTemplateColumns = state.colFracs ? state.colFracs.map(f => Math.round(f * totalW) + 'px').join(' ') : `repeat(${state.cols}, ${state.cellW}px)`;
-    boardEl.style.gridTemplateRows = state.rowFracs ? state.rowFracs.map(f => Math.round(f * totalH) + 'px').join(' ') : `repeat(${state.rows}, ${state.cellH}px)`;
+    boardEl.style.gridTemplateRows = state.rowFracs ? state.rowFracs.map(f => Math.round(f * playableH) + 'px').join(' ') : `repeat(${state.rows}, ${state.cellH}px)`;
 
     for (let y = 0; y < state.rows; y++) {
         for (let x = 0; x < state.cols; x++) {
@@ -662,10 +673,13 @@ async function copyBoardTemplate() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
 
+    const topOffsetPx = canvas.height * state.paddingTopRatio;
+    const playableH = canvas.height - topOffsetPx;
+
     const colW = state.colFracs.map(f => f * canvas.width);
-    const rowH = state.rowFracs.map(f => f * canvas.height);
+    const rowH = state.rowFracs.map(f => f * playableH);
     const colX = [0]; for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
-    const rowY = [0]; for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
+    const rowY = [topOffsetPx]; for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
 
     const drawPromises = [];
     for (const [key, rawPlaced] of Object.entries(state.units)) {
