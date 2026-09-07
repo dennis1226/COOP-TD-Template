@@ -15,6 +15,24 @@ function saveSavedTemplates(templates) {
     } catch (e) {}
 }
 
+// 地形配置檔 (可根據需求新增與自訂可放置格子/阻擋區)
+const TERRAIN_CONFIGS = {
+    'background/board-bg-hedge.png': {
+        name: '綠籬地形',
+        blockedCells: new Set([
+            '0-0', '6-0',
+            '0-1', '1-1', '2-1', '4-1', '5-1', '6-1',
+            '2-2', '4-2',
+            '2-3', '4-3',
+            '2-4', '3-4', '4-4'
+        ])
+    },
+    'background/board-bg-guardwall.png': {
+        name: '城牆地形',
+        blockedCells: new Set() // 城牆地形的獨立不可放置區域，預設全可放 (可根據需求加入 'x-y')
+    }
+};
+
 // ==================== 舊格式容錯解析器 ====================
 function normalizePlacedUnit(placed) {
     if (!placed) return null;
@@ -79,20 +97,49 @@ const state = {
     selectedFormIndex: 0,
     deleteMode: false,
     markOrderMode: false, // 標示順序模式
-    orders: {},           // 記錄格子的順序：{ "x-y": 數字 }
-    units: {}, 
     loadedMonsters: [], 
     bgImage: null,
     currentBg: 'background/board-bg-hedge.png', // 預設地形路徑
     currentLoadedTemplateId: null,
 
-    blockedCells: new Set([
-        '0-0', '6-0',
-        '0-1', '1-1', '2-1', '4-1', '5-1', '6-1',
-        '2-2', '4-2',
-        '2-3', '4-3',
-        '2-4', '3-4', '4-4'
-    ])
+    // 各地形獨立儲存魔物與順序
+    terrainData: {
+        'background/board-bg-hedge.png': { units: {}, orders: {} },
+        'background/board-bg-guardwall.png': { units: {}, orders: {} }
+    },
+
+    // 取得當前地形的 units
+    get units() {
+        if (!this.terrainData[this.currentBg]) {
+            this.terrainData[this.currentBg] = { units: {}, orders: {} };
+        }
+        return this.terrainData[this.currentBg].units;
+    },
+    set units(val) {
+        if (!this.terrainData[this.currentBg]) {
+            this.terrainData[this.currentBg] = { units: {}, orders: {} };
+        }
+        this.terrainData[this.currentBg].units = val;
+    },
+
+    // 取得當前地形的 orders
+    get orders() {
+        if (!this.terrainData[this.currentBg]) {
+            this.terrainData[this.currentBg] = { units: {}, orders: {} };
+        }
+        return this.terrainData[this.currentBg].orders;
+    },
+    set orders(val) {
+        if (!this.terrainData[this.currentBg]) {
+            this.terrainData[this.currentBg] = { units: {}, orders: {} };
+        }
+        this.terrainData[this.currentBg].orders = val;
+    },
+
+    // 取得當前地形的不可放置格子
+    get blockedCells() {
+        return TERRAIN_CONFIGS[this.currentBg]?.blockedCells || new Set();
+    }
 };
 
 // ==================== DOM ====================
@@ -283,7 +330,6 @@ function loadFixedBackground(bgPath = state.currentBg) {
         createBoard();
     };
     img.onerror = () => {
-        // 舊檔名容錯退回
         if (bgPath !== 'board-bg-hedge.png' && bgPath !== 'background/board-bg-hedge.png') {
             loadFixedBackground('background/board-bg-hedge.png');
         }
@@ -332,7 +378,6 @@ function createBoard() {
                 }
             }
 
-            // 如果該格子有設定標記順序數字，渲染在左上角
             if (state.orders[key]) {
                 const badge = document.createElement('div');
                 badge.className = 'order-badge';
@@ -356,7 +401,7 @@ function createBoard() {
             cell.addEventListener('drop', (e) => {
                 e.preventDefault();
                 boardEl.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
-                if (isBlocked) return showToast('非草地區域無法放置魔物！');
+                if (isBlocked) return showToast('該區域無法放置魔物！');
                 
                 const monsterId = e.dataTransfer.getData('text/plain');
                 if (monsterId) placeUnit(x, y, monsterId, state.selectedFormIndex);
@@ -379,14 +424,12 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
 function onCellClick(x, y) {
     const key = getCellKey(x, y);
 
-    // 1. 標示順序模式
     if (state.markOrderMode) {
         if (!state.units[key]) {
             showToast('該位置沒有魔物，無法設定順序！');
             return;
         }
 
-        // 如果該位置已經標示過，點擊可取消該位置的標示
         if (state.orders[key]) {
             delete state.orders[key];
             createBoard();
@@ -405,7 +448,6 @@ function onCellClick(x, y) {
         return;
     }
 
-    // 2. 刪除模式
     if (state.deleteMode) {
         if (state.units[key]) {
             delete state.units[key];
@@ -416,13 +458,11 @@ function onCellClick(x, y) {
         return;
     }
 
-    // 3. 阻擋區判定
     if (state.blockedCells && state.blockedCells.has(key)) {
-        showToast('非草地區域無法放置魔物！');
+        showToast('該區域無法放置魔物！');
         return;
     }
 
-    // 4. 普通放置模式
     if (state.selectedUnitId) {
         placeUnit(x, y, state.selectedUnitId, state.selectedFormIndex);
     }
@@ -521,7 +561,6 @@ async function autoLoadIcons() {
                 state.selectedUnitId = monster.id;
                 state.selectedFormIndex = monster.selectedFormIndex || 0;
                 
-                // 關閉其他模式
                 state.deleteMode = false;
                 deleteModeBtn.classList.remove('active');
                 deleteModeBtn.textContent = '刪除模式';
@@ -564,23 +603,19 @@ deleteModeBtn.addEventListener('click', () => {
     if (state.deleteMode) {
         state.selectedUnitId = null;
         document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
-        // 關閉標示順序模式
         state.markOrderMode = false;
         markOrderBtn.classList.remove('active');
     }
 });
 
-// 標示順序按鈕事件
 markOrderBtn.addEventListener('click', () => {
     state.markOrderMode = !state.markOrderMode;
     markOrderBtn.classList.toggle('active', state.markOrderMode);
 
     if (state.markOrderMode) {
-        // 重置目前的號碼
         state.orders = {};
         createBoard();
 
-        // 取消其他選擇狀態
         state.selectedUnitId = null;
         document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
         state.deleteMode = false;
@@ -595,12 +630,12 @@ markOrderBtn.addEventListener('click', () => {
 
 clearBtn.addEventListener('click', () => {
     if (Object.keys(state.units).length === 0 && Object.keys(state.orders).length === 0) return;
-    if (confirm('確定要清空目前的畫布與順序標示嗎？')) {
+    if (confirm('確定要清空當前地形的畫布與順序標示嗎？')) {
         state.units = {};
         state.orders = {};
         setLoadedTemplate(null);
         createBoard();
-        showToast('模板與順序已清空');
+        showToast('當前地形模板與順序已清空');
     }
 });
 
@@ -654,7 +689,6 @@ async function copyBoardTemplate() {
                 }
                 ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-                // 畫出順序號碼 (包含繪製背景圓點與數字)
                 if (state.orders[key]) {
                     const numStr = String(state.orders[key]);
                     const badgeX = colX[x] + cellW * 0.15;
@@ -711,9 +745,8 @@ saveTemplateBtn.addEventListener('click', () => {
         id: Date.now(),
         name: templateName,
         date: `${now.getMonth()+1}/${now.getDate()}`,
-        bg: state.currentBg, // 記錄選擇的地形
-        units: JSON.parse(JSON.stringify(state.units)),
-        orders: JSON.parse(JSON.stringify(state.orders))
+        bg: state.currentBg,
+        terrainData: JSON.parse(JSON.stringify(state.terrainData))
     };
 
     const templates = getSavedTemplates();
@@ -743,9 +776,8 @@ updateTemplateBtn.addEventListener('click', () => {
 
     templates[index].name = updatedName;
     templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
-    templates[index].bg = state.currentBg; // 更新選擇的地形
-    templates[index].units = JSON.parse(JSON.stringify(state.units));
-    templates[index].orders = JSON.parse(JSON.stringify(state.orders));
+    templates[index].bg = state.currentBg;
+    templates[index].terrainData = JSON.parse(JSON.stringify(state.terrainData));
 
     saveSavedTemplates(templates);
     showToast(`已更新隊形：「${updatedName}」！`);
@@ -793,13 +825,23 @@ function renderSavedTemplatesList() {
     templates.forEach((item) => {
         const card = document.createElement('div');
         card.className = 'template-card';
+
+        let totalMonsters = 0;
+        if (item.terrainData) {
+            for (const key in item.terrainData) {
+                totalMonsters += Object.keys(item.terrainData[key].units || {}).length;
+            }
+        } else {
+            totalMonsters = Object.keys(item.units || {}).length;
+        }
+
         card.innerHTML = `
             <button class="template-card-delete-icon" title="刪除模板">✕</button>
             <div class="template-card-title">
                 <span class="title-text">${item.name}</span>
                 <button class="edit-name-btn" title="更改名稱">✏️</button>
             </div>
-            <div class="template-card-meta">時間：${item.date} | 魔物數：${Object.keys(item.units || {}).length}</div>
+            <div class="template-card-meta">時間：${item.date} | 魔物數：${totalMonsters}</div>
             <div class="template-card-actions">
                 <button class="success load-btn">載入隊形</button>
             </div>
@@ -816,17 +858,21 @@ function renderSavedTemplatesList() {
         });
 
         card.querySelector('.load-btn').addEventListener('click', () => {
-            const rawUnits = item.units || {};
-            const normalizedUnits = {};
-            for (const [key, val] of Object.entries(rawUnits)) {
-                const norm = normalizePlacedUnit(val);
-                if (norm) normalizedUnits[key] = norm;
+            if (item.terrainData) {
+                state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
+            } else {
+                // 相容舊存檔格式
+                const savedBg = item.bg || 'background/board-bg-hedge.png';
+                state.terrainData = {
+                    'background/board-bg-hedge.png': { units: {}, orders: {} },
+                    'background/board-bg-guardwall.png': { units: {}, orders: {} }
+                };
+                state.terrainData[savedBg] = {
+                    units: JSON.parse(JSON.stringify(item.units || {})),
+                    orders: JSON.parse(JSON.stringify(item.orders || {}))
+                };
             }
 
-            state.units = JSON.parse(JSON.stringify(normalizedUnits));
-            state.orders = item.orders ? JSON.parse(JSON.stringify(item.orders)) : {};
-
-            // 舊 Save 沒有 bg 屬性時預設回退至 hedge 地形
             const savedBg = item.bg || 'background/board-bg-hedge.png';
             loadFixedBackground(savedBg);
 
