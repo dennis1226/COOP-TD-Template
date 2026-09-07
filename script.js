@@ -24,6 +24,7 @@ const TERRAIN_CONFIGS = {
         colFracs: [93, 95, 95, 96, 95, 98, 100].map(v => v / 672),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
         paddingTopRatio: 0,
+        paddingBottomRatio: 0,
         paddingLeftRatio: 0,
         blockedCells: new Set([
             '0-0', '6-0',
@@ -39,11 +40,12 @@ const TERRAIN_CONFIGS = {
         rows: 3,
         // 扣除左右各 3% 邊界後，7 欄均勻分佈
         colFracs: Array(7).fill((1 - 0.03 * 2) / 7),
-        // 扣除頂部 19% 城牆裝飾後，3 行均勻分佈
-        rowFracs: Array(3).fill((1 - 0.19) / 3),
-        paddingTopRatio: 0.19,  // 頂部扣除 19%
-        paddingLeftRatio: 0.03, // 左右各扣除 3%
-        blockedCells: new Set() // 3x7 共 21 格全開放
+        // 扣除頂部 19% 與底部 3% 後，3 行均勻分佈 (1 - 0.19 - 0.03 = 0.78)
+        rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
+        paddingTopRatio: 0.19,    // 頂部扣除 19%
+        paddingBottomRatio: 0.03, // 底部扣除 3%
+        paddingLeftRatio: 0.03,   // 左右各扣除 3%
+        blockedCells: new Set()   // 3x7 共 21 格全開放
     }
 };
 
@@ -108,6 +110,7 @@ const state = {
     cellW: 105, cellH: 112,
     colFracs: null, rowFracs: null,
     paddingTopRatio: 0,
+    paddingBottomRatio: 0,
     paddingLeftRatio: 0,
     selectedUnitId: null,
     selectedFormIndex: 0,
@@ -333,13 +336,14 @@ function loadFixedBackground(bgPath = state.currentBg) {
         state.colFracs = config.colFracs;
         state.rowFracs = config.rowFracs;
         state.paddingTopRatio = config.paddingTopRatio || 0;
+        state.paddingBottomRatio = config.paddingBottomRatio || 0;
         state.paddingLeftRatio = config.paddingLeftRatio || 0;
 
         const maxW = window.innerWidth < 768 ? 340 : 700;
         const scale = Math.min(1, maxW / img.naturalWidth);
         
         const playableW = img.naturalWidth * (1 - state.paddingLeftRatio * 2);
-        const playableH = img.naturalHeight * (1 - state.paddingTopRatio);
+        const playableH = img.naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
         
         state.cellW = Math.round((playableW / state.cols) * scale);
         state.cellH = Math.round((playableH / state.rows) * scale);
@@ -369,12 +373,14 @@ function createBoard() {
     const fullImgH = state.bgImage ? (fullImgW * (state.bgImage.naturalHeight / state.bgImage.naturalWidth)) : 500;
 
     const topPaddingPx = fullImgH * state.paddingTopRatio;
+    const bottomPaddingPx = fullImgH * state.paddingBottomRatio;
     const sidePaddingPx = fullImgW * state.paddingLeftRatio;
 
     const playableW = fullImgW - sidePaddingPx * 2;
-    const playableH = fullImgH - topPaddingPx;
+    const playableH = fullImgH - topPaddingPx - bottomPaddingPx;
 
     boardEl.style.paddingTop = `${topPaddingPx}px`;
+    boardEl.style.paddingBottom = `${bottomPaddingPx}px`;
     boardEl.style.paddingLeft = `${sidePaddingPx}px`;
     boardEl.style.paddingRight = `${sidePaddingPx}px`;
 
@@ -687,10 +693,11 @@ async function copyBoardTemplate() {
     ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
 
     const topOffsetPx = canvas.height * state.paddingTopRatio;
+    const bottomOffsetPx = canvas.height * state.paddingBottomRatio;
     const sideOffsetPx = canvas.width * state.paddingLeftRatio;
 
     const playableW = canvas.width - sideOffsetPx * 2;
-    const playableH = canvas.height - topOffsetPx;
+    const playableH = canvas.height - topOffsetPx - bottomOffsetPx;
 
     const colW = state.colFracs.map(f => f * playableW);
     const rowH = state.rowFracs.map(f => f * playableH);
