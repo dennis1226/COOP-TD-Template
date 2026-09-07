@@ -83,6 +83,7 @@ const state = {
     units: {}, 
     loadedMonsters: [], 
     bgImage: null,
+    currentBg: 'background/board-bg-hedge.png', // 預設地形路徑
     currentLoadedTemplateId: null,
 
     blockedCells: new Set([
@@ -104,6 +105,7 @@ const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
+const bgSelect = document.getElementById('bgSelect');
 
 const formModalOverlay = document.getElementById('formModalOverlay');
 const formModal = document.querySelector('.form-modal');
@@ -254,9 +256,11 @@ closeDrawerBtn.addEventListener('click', closeDrawer);
 drawerOverlay.addEventListener('click', closeDrawer);
 
 // ==================== Background & Board ====================
-function loadFixedBackground() {
-    const url = 'board-bg-hedge.png';
-    boardBgEl.style.backgroundImage = `url('${url}')`;
+function loadFixedBackground(bgPath = state.currentBg) {
+    state.currentBg = bgPath;
+    if (bgSelect) bgSelect.value = bgPath;
+
+    boardBgEl.style.backgroundImage = `url('${bgPath}')`;
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -278,7 +282,19 @@ function loadFixedBackground() {
 
         createBoard();
     };
-    img.src = url;
+    img.onerror = () => {
+        // 舊檔名容錯退回
+        if (bgPath !== 'board-bg-hedge.png' && bgPath !== 'background/board-bg-hedge.png') {
+            loadFixedBackground('background/board-bg-hedge.png');
+        }
+    };
+    img.src = bgPath;
+}
+
+if (bgSelect) {
+    bgSelect.addEventListener('change', (e) => {
+        loadFixedBackground(e.target.value);
+    });
 }
 
 function createBoard() {
@@ -695,6 +711,7 @@ saveTemplateBtn.addEventListener('click', () => {
         id: Date.now(),
         name: templateName,
         date: `${now.getMonth()+1}/${now.getDate()}`,
+        bg: state.currentBg, // 記錄選擇的地形
         units: JSON.parse(JSON.stringify(state.units)),
         orders: JSON.parse(JSON.stringify(state.orders))
     };
@@ -726,6 +743,7 @@ updateTemplateBtn.addEventListener('click', () => {
 
     templates[index].name = updatedName;
     templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
+    templates[index].bg = state.currentBg; // 更新選擇的地形
     templates[index].units = JSON.parse(JSON.stringify(state.units));
     templates[index].orders = JSON.parse(JSON.stringify(state.orders));
 
@@ -807,6 +825,10 @@ function renderSavedTemplatesList() {
 
             state.units = JSON.parse(JSON.stringify(normalizedUnits));
             state.orders = item.orders ? JSON.parse(JSON.stringify(item.orders)) : {};
+
+            // 舊 Save 沒有 bg 屬性時預設回退至 hedge 地形
+            const savedBg = item.bg || 'background/board-bg-hedge.png';
+            loadFixedBackground(savedBg);
 
             setLoadedTemplate(item);
             createBoard();
