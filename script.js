@@ -423,7 +423,7 @@ function createBoard() {
                 }
             }
 
-            // 確保順序標示於的最上圖層 (Z-Index 5)
+            // 確保順序標示於最上圖層
             if (state.orders[key]) {
                 const badge = document.createElement('div');
                 badge.className = 'order-badge';
@@ -607,7 +607,6 @@ async function autoLoadIcons() {
                 state.selectedUnitId = monster.id;
                 state.selectedFormIndex = monster.selectedFormIndex || 0;
                 
-                // 選取魔物時自動關閉刪除模式與順序模式
                 if (state.deleteMode) {
                     state.deleteMode = false;
                     deleteModeBtn.classList.remove('danger');
@@ -708,28 +707,36 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
 });
 
-// ==================== Copy Canvas Image (二階段繪製防圖層遮擋) ====================
+// ==================== Copy Canvas Image (精準多地形座標計算與強效順序圖層覆蓋) ====================
 async function copyBoardTemplate() {
     if (!state.bgImage) return showToast('背景圖未載入');
     showToast('正在產生高畫質圖片…');
+
+    const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
 
     const canvas = document.createElement('canvas');
     canvas.width = state.bgImage.naturalWidth;
     canvas.height = state.bgImage.naturalHeight;
     const ctx = canvas.getContext('2d');
+    
+    // 繪製背景圖
     ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
 
-    const topOffsetPx = canvas.height * state.paddingTopRatio;
-    const bottomOffsetPx = canvas.height * state.paddingBottomRatio;
-    const sideOffsetPx = canvas.width * state.paddingLeftRatio;
+    const topOffsetPx = canvas.height * (config.paddingTopRatio || 0);
+    const bottomOffsetPx = canvas.height * (config.paddingBottomRatio || 0);
+    const sideOffsetPx = canvas.width * (config.paddingLeftRatio || 0);
 
     const playableW = canvas.width - sideOffsetPx * 2;
     const playableH = canvas.height - topOffsetPx - bottomOffsetPx;
 
-    const colW = state.colFracs.map(f => f * playableW);
-    const rowH = state.rowFracs.map(f => f * playableH);
-    const colX = [sideOffsetPx]; for (let i = 0; i < state.cols; i++) colX.push(colX[i] + colW[i]);
-    const rowY = [topOffsetPx]; for (let i = 0; i < state.rows; i++) rowY.push(rowY[i] + rowH[i]);
+    const colW = config.colFracs.map(f => f * playableW);
+    const rowH = config.rowFracs.map(f => f * playableH);
+    
+    const colX = [sideOffsetPx]; 
+    for (let i = 0; i < config.cols; i++) colX.push(colX[i] + colW[i]);
+    
+    const rowY = [topOffsetPx]; 
+    for (let i = 0; i < config.rows; i++) rowY.push(rowY[i] + rowH[i]);
 
     // 階段 1：繪製所有魔物圖片
     const drawPromises = [];
@@ -738,6 +745,8 @@ async function copyBoardTemplate() {
         if (!placed) continue;
 
         const [x, y] = key.split('-').map(Number);
+        if (x >= config.cols || y >= config.rows) continue;
+
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (!monster) continue;
         const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -770,43 +779,47 @@ async function copyBoardTemplate() {
     // 等待所有魔物圖片繪製完畢
     await Promise.all(drawPromises);
 
-    // 階段 2：最後統一繪製順序標籤 (確保極高圖層權重，絕不被圖片遮擋)
+    // 階段 2：繪製順序數字標籤 (確保極高圖層權重，絕對不會被魔物圖片遮擋)
     for (const [key, orderNum] of Object.entries(state.orders)) {
         if (!state.units[key]) continue;
         const [x, y] = key.split('-').map(Number);
-        const cellW = colW[x], cellH = rowH[y];
+        if (x >= config.cols || y >= config.rows) continue;
 
+        const cellW = colW[x], cellH = rowH[y];
         const numStr = String(orderNum);
+        
+        // 數字 Badge 的中心座標與大小
         const badgeX = colX[x] + cellW * 0.18;
-        const badgeY = rowY[y] + cellH * 0.18;
-        const radius = Math.max(12, cellW * 0.13);
+        const badgeY = rowY[y] + cellH * 0.22;
+        const radius = Math.max(14, cellW * 0.14);
 
         ctx.save();
         ctx.beginPath();
         ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(241, 196, 15, 0.98)';
+        ctx.fillStyle = '#f1c40f'; // 亮黃底色
         ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff'; // 白邊框
         ctx.stroke();
 
         ctx.fillStyle = '#111111';
-        ctx.font = `bold ${radius * 1.25}px sans-serif`;
+        ctx.font = `bold ${Math.round(radius * 1.3)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(numStr, badgeX, badgeY);
         ctx.restore();
     }
 
+    // 匯出剪貼簿/圖片
     canvas.toBlob(async (blob) => {
         if (navigator.clipboard && window.ClipboardItem) {
             try {
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                showToast('已複製高畫質模板圖片至剪貼簿！');
+                showToast('已複製高畫質模板圖片（包含順序標籤）至剪貼簿！');
                 return;
             } catch (e) {}
         }
-        showToast('無法直接存取剪貼簿，已爲您下載圖片');
+        showToast('無法直接存取剪貼簿，已為您下載圖片');
     });
 }
 
