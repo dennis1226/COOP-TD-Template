@@ -1,3 +1,4 @@
+/* ==================== Root Variables & Themes ==================== */
 :root {
     --bg-color: #1a1a1a;
     --text-color: #eee;
@@ -163,7 +164,7 @@ body {
     z-index: 2;
 }
 
-/* 格子左上角順序數字標籤 (最上層 Z-index 5) */
+/* 格子左上角順序數字標籤 */
 .order-badge {
     position: absolute;
     top: 4px;
@@ -381,7 +382,15 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 .templates-drawer.open { right: 0; }
 .drawer-close-btn { background: transparent; border: none; color: var(--text-color); font-size: 18px; cursor: pointer; padding: 4px; min-width: auto; flex: initial; }
 
-.saved-templates-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; }
+.saved-templates-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    flex: 1; 
+    overflow-y: auto; 
+    position: relative;
+}
+
 .template-card { 
     background: var(--cell-bg); 
     border: 1px solid var(--border-color); 
@@ -392,6 +401,18 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     flex-direction: column; 
     gap: 6px; 
     position: relative;
+    cursor: grab;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s, opacity 0.2s, border-color 0.2s;
+}
+
+.template-card.starred {
+    border-color: #f1c40f;
+    background: rgba(241, 196, 15, 0.05);
+}
+
+.template-card.dragging {
+    opacity: 0.3;
+    cursor: grabbing;
 }
 
 .template-card-title { 
@@ -401,6 +422,30 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     align-items: center;
     gap: 6px;
     padding-right: 20px;
+}
+
+/* 星號按鈕 */
+.star-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #777;
+    padding: 0 4px;
+    min-width: auto;
+    flex: initial;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.star-btn:hover {
+    transform: scale(1.2);
+    color: #f39c12;
+}
+
+.star-btn.active {
+    color: #f1c40f;
+    text-shadow: 0 0 6px rgba(241, 196, 15, 0.6);
 }
 
 .edit-name-btn {
