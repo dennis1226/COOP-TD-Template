@@ -728,7 +728,6 @@ async function copyBoardTemplate() {
 
     const descText = templateDescInput ? templateDescInput.value.trim() : '';
 
-    // 計算說明文字畫布額外高度
     let extraHeight = 0;
     const padding = 20;
     const fontSize = 20;
@@ -740,7 +739,6 @@ async function copyBoardTemplate() {
         dummyCtx.font = `${fontSize}px sans-serif`;
         const maxWidth = bgImg.naturalWidth - (padding * 2);
         
-        // 分行處理
         const paragraphs = descText.split('\n');
         paragraphs.forEach(para => {
             let currentLine = '';
@@ -756,14 +754,13 @@ async function copyBoardTemplate() {
             lines.push(currentLine);
         });
 
-        extraHeight = (lines.length * lineHeight) + (padding * 2) + 30; // 30px for section title
+        extraHeight = (lines.length * lineHeight) + (padding * 2) + 30;
     }
 
     canvas.width = bgImg.naturalWidth;
     canvas.height = bgImg.naturalHeight + extraHeight;
     const ctx = canvas.getContext('2d');
 
-    // 填滿背景底色
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -861,7 +858,6 @@ async function copyBoardTemplate() {
         ctx.restore();
     });
 
-    // 如果有說明文字，繪製底部說明欄
     if (descText && lines.length > 0) {
         const startY = bgImg.naturalHeight;
         
@@ -921,16 +917,20 @@ saveTemplateBtn.addEventListener('click', () => {
     const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 12);
     const templateName = rawName || defaultName;
 
+    const templates = getSavedTemplates();
+    const maxOrder = templates.reduce((max, t) => Math.max(max, t.order !== undefined ? t.order : 0), 0);
+
     const newTemplate = {
         id: Date.now(),
         name: templateName,
+        starred: false,
+        order: maxOrder + 1,
         description: templateDescInput.value.trim(),
         date: `${now.getMonth()+1}/${now.getDate()}`,
         bg: state.currentBg,
         terrainData: JSON.parse(JSON.stringify(state.terrainData))
     };
 
-    const templates = getSavedTemplates();
     templates.unshift(newTemplate);
     saveSavedTemplates(templates);
 
@@ -987,6 +987,17 @@ function renameTemplate(id) {
     }
 }
 
+function toggleStarTemplate(id) {
+    const templates = getSavedTemplates();
+    const target = templates.find(t => t.id === id);
+    if (!target) return;
+
+    target.starred = !target.starred;
+    saveSavedTemplates(templates);
+    renderSavedTemplatesList();
+    showToast(target.starred ? '已將模板標示星號置頂' : '已取消置頂');
+}
+
 function deleteTemplate(id, name) {
     if (confirm(`確定要刪除隊形模板「${name}」嗎？`)) {
         saveSavedTemplates(getSavedTemplates().filter(t => t.id !== id));
@@ -1000,13 +1011,34 @@ function deleteTemplate(id, name) {
     }
 }
 
+// 拖拽排序全域變數
+let draggedCard = null;
+
 function renderSavedTemplatesList() {
-    const templates = getSavedTemplates();
+    let templates = getSavedTemplates();
+
+    let maxOrder = 0;
+    templates.forEach((t, i) => {
+        if (t.starred === undefined) t.starred = false;
+        if (t.order === undefined) t.order = i + 1;
+        if (t.order > maxOrder) maxOrder = t.order;
+    });
+
+    templates.sort((a, b) => {
+        if (a.starred !== b.starred) {
+            return a.starred ? -1 : 1;
+        }
+        return (a.order || 0) - (b.order || 0);
+    });
+
     savedTemplatesList.innerHTML = templates.length === 0 ? '<div class="empty-units">尚無儲存的隊形模板</div>' : '';
 
-    templates.forEach((item) => {
+    templates.forEach((item, index) => {
         const card = document.createElement('div');
-        card.className = 'template-card';
+        card.className = `template-card ${item.starred ? 'starred' : ''}`;
+        card.draggable = true;
+        card.dataset.id = item.id;
+        card.dataset.starred = item.starred;
 
         let totalMonsters = 0;
         if (item.terrainData) {
@@ -1020,6 +1052,7 @@ function renderSavedTemplatesList() {
         card.innerHTML = `
             <button class="template-card-delete-icon" title="刪除模板">✕</button>
             <div class="template-card-title">
+                <button class="star-btn ${item.starred ? 'active' : ''}" title="${item.starred ? '取消置頂' : '標示星號置頂'}">★</button>
                 <span class="title-text">${item.name}</span>
                 <button class="edit-name-btn" title="更改名稱">✏️</button>
             </div>
@@ -1028,6 +1061,11 @@ function renderSavedTemplatesList() {
                 <button class="success load-btn">載入隊形</button>
             </div>
         `;
+
+        card.querySelector('.star-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleStarTemplate(item.id);
+        });
 
         card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1063,8 +1101,62 @@ function renderSavedTemplatesList() {
             showToast(`已成功載入隊形：「${item.name}」`);
         });
 
+        // 拖拽動畫與即時推擠事件處理
+        card.addEventListener('dragstart', (e) => {
+            draggedCard = card;
+            setTimeout(() => card.classList.add('dragging'), 0);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.id);
+        });
+
+        card.addEventListener('dragend', () => {
+            if (draggedCard) {
+                draggedCard.classList.remove('dragging');
+                draggedCard = null;
+
+                const currentTemplates = getSavedTemplates();
+                const cardElements = Array.from(savedTemplatesList.querySelectorAll('.template-card'));
+                
+                cardElements.forEach((el, newIndex) => {
+                    const id = parseInt(el.dataset.id, 10);
+                    const target = currentTemplates.find(t => t.id === id);
+                    if (target) {
+                        target.order = newIndex + 1;
+                    }
+                });
+
+                saveSavedTemplates(currentTemplates);
+                showToast('已更新模板順序');
+            }
+        });
+
         savedTemplatesList.appendChild(card);
     });
+
+    // 容器 dragover 事件，即時計算鼠標位置並推擠/移動元素
+    savedTemplatesList.ondragover = (e) => {
+        e.preventDefault();
+        if (!draggedCard) return;
+
+        const isDraggedStarred = draggedCard.dataset.starred === 'true';
+
+        const siblings = Array.from(savedTemplatesList.querySelectorAll('.template-card:not(.dragging)'))
+            .filter(sibling => (sibling.dataset.starred === 'true') === isDraggedStarred);
+
+        const nextSibling = siblings.find(sibling => {
+            const box = sibling.getBoundingClientRect();
+            return e.clientY < box.top + box.height / 2;
+        });
+
+        if (nextSibling) {
+            savedTemplatesList.insertBefore(draggedCard, nextSibling);
+        } else {
+            const lastSibling = siblings[siblings.length - 1];
+            if (lastSibling) {
+                savedTemplatesList.insertBefore(draggedCard, lastSibling.nextSibling);
+            }
+        }
+    };
 }
 
 // ==================== Init ====================
