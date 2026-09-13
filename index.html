@@ -13,6 +13,7 @@
         <div class="header-actions">
             <button id="openDrawerBtn" class="primary">📁 模板庫</button>
             <button id="themeToggle" class="secondary">淺色模式</button>
+            <button id="updateLogBtn" class="secondary">更新記錄</button>
         </div>
     </div>
 
@@ -23,6 +24,27 @@
                 <button class="drawer-close-btn" id="closeFormModalBtn">✕</button>
             </div>
             <div class="forms-grid" id="formsGrid"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="updateLogOverlay">
+        <div class="log-modal">
+            <div class="form-modal-header">
+                <span>更新記錄</span>
+                <button class="drawer-close-btn" id="closeUpdateLogBtn">✕</button>
+            </div>
+            <div class="log-list">
+                <div class="log-item">
+                    <div class="log-date">2026/09/13</div>
+                    <div class="log-text">
+                        • 新增模板庫排序與置頂資料欄位，讓已儲存的隊形模板可穩定排列。<br>
+                        • 加入星號置頂功能，常用模板可直接置頂並優先顯示。<br>
+                        • 讓模板卡片支援拖曳排序，方便重新調整模板列表順序。<br>
+                        • 調整模板列表與卡片樣式，改善顯示與互動體驗。<br>
+                        • 優化說明文字輸出時的畫布高度計算，讓模板圖片更穩定。
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
