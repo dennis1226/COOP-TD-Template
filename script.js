@@ -174,6 +174,9 @@ const formModal = document.querySelector('.form-modal');
 const closeFormModalBtn = document.getElementById('closeFormModalBtn');
 const formsGrid = document.getElementById('formsGrid');
 const formModalTitle = document.getElementById('formModalTitle');
+const updateLogBtn = document.getElementById('updateLogBtn');
+const updateLogOverlay = document.getElementById('updateLogOverlay');
+const closeUpdateLogBtn = document.getElementById('closeUpdateLogBtn');
 
 const saveTemplateBtn = document.getElementById('saveTemplateBtn');
 const updateTemplateBtn = document.getElementById('updateTemplateBtn');
@@ -187,6 +190,28 @@ const templatesDrawer = document.getElementById('templatesDrawer');
 
 if (formModal) {
     formModal.addEventListener('click', (e) => e.stopPropagation());
+}
+
+function openUpdateLog() {
+    updateLogOverlay.classList.add('open');
+}
+
+function closeUpdateLog() {
+    updateLogOverlay.classList.remove('open');
+}
+
+if (updateLogBtn) {
+    updateLogBtn.addEventListener('click', openUpdateLog);
+}
+
+if (closeUpdateLogBtn) {
+    closeUpdateLogBtn.addEventListener('click', closeUpdateLog);
+}
+
+if (updateLogOverlay) {
+    updateLogOverlay.addEventListener('click', (e) => {
+        if (e.target === updateLogOverlay) closeUpdateLog();
+    });
 }
 
 // ==================== Helpers ====================

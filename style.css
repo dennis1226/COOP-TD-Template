@@ -329,6 +329,47 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     animation: modalIn 0.2s ease-out;
 }
 
+.log-modal {
+    background: var(--panel-bg);
+    border-radius: 12px;
+    padding: 20px;
+    width: min(420px, 90vw);
+    max-width: 90%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: modalIn 0.2s ease-out;
+}
+
+.log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.log-item {
+    background: var(--cell-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.log-date {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+}
+
+.log-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
 @keyframes modalIn {
     from { opacity: 0; transform: scale(0.9); }
     to { opacity: 1; transform: scale(1); }
