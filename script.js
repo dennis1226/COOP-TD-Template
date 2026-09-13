@@ -879,7 +879,7 @@ async function copyBoardTemplate() {
         ctx.font = `bold 22px sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText('【陣容說明與攻略技巧】', padding, startY + padding);
+        ctx.fillText('【陣容說明】', padding, startY + padding);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = `${fontSize}px sans-serif`;
