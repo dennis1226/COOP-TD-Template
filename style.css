@@ -63,10 +63,23 @@ body {
     gap: 10px;
 }
 
+.header-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .header-title {
     margin: 0;
     font-size: 1.4rem;
     font-weight: 700;
+}
+
+.header-title-group .secondary {
+    flex: 0 0 auto;
+    min-width: auto;
+    padding: 8px 10px;
 }
 
 .header-actions {
