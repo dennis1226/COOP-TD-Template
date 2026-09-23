@@ -1,5 +1,6 @@
 // ==================== Storage ====================
 const STORAGE_KEY = 'coop_saved_templates';
+const FOLDERS_KEY = 'coop_saved_folders';
 
 function getSavedTemplates() {
     try {
@@ -12,6 +13,20 @@ function getSavedTemplates() {
 function saveSavedTemplates(templates) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+    } catch (e) {}
+}
+
+function getSavedFolders() {
+    try {
+        const localData = localStorage.getItem(FOLDERS_KEY);
+        if (localData) return JSON.parse(localData);
+    } catch (e) {}
+    return [];
+}
+
+function saveSavedFolders(folders) {
+    try {
+        localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
     } catch (e) {}
 }
 
@@ -185,6 +200,7 @@ const templateDescInput = document.getElementById('templateDescInput');
 const savedTemplatesList = document.getElementById('savedTemplatesList');
 const openDrawerBtn = document.getElementById('openDrawerBtn');
 const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
@@ -344,6 +360,28 @@ openDrawerBtn.addEventListener('click', () => { templatesDrawer.classList.add('o
 function closeDrawer() { templatesDrawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
 closeDrawerBtn.addEventListener('click', closeDrawer);
 drawerOverlay.addEventListener('click', closeDrawer);
+
+if (addFolderBtn) {
+    addFolderBtn.addEventListener('click', createNewFolder);
+}
+
+function createNewFolder() {
+    const folderName = prompt('請輸入新資料夾名稱（最多12字）：', '新資料夾');
+    if (folderName !== null && folderName.trim() !== '') {
+        const name = folderName.trim().slice(0, 12);
+        const folders = getSavedFolders();
+        const newFolder = {
+            id: Date.now(),
+            name: name,
+            collapsed: false,
+            order: folders.length + 1
+        };
+        folders.push(newFolder);
+        saveSavedFolders(folders);
+        renderSavedTemplatesList();
+        showToast(`已建立資料夾：「${name}」`);
+    }
+}
 
 // ==================== Background & Board ====================
 function loadFixedBackground(bgPath = state.currentBg) {
@@ -949,6 +987,7 @@ saveTemplateBtn.addEventListener('click', () => {
         id: Date.now(),
         name: templateName,
         starred: false,
+        folderId: null,
         order: maxOrder + 1,
         description: templateDescInput.value.trim(),
         date: `${now.getMonth()+1}/${now.getDate()}`,
@@ -1012,6 +1051,39 @@ function renameTemplate(id) {
     }
 }
 
+function renameFolder(folderId) {
+    const folders = getSavedFolders();
+    const target = folders.find(f => f.id === folderId);
+    if (!target) return;
+
+    const newName = prompt('請輸入新的資料夾名稱（最多12字）：', target.name);
+    if (newName !== null && newName.trim() !== '') {
+        target.name = newName.trim().slice(0, 12);
+        saveSavedFolders(folders);
+        renderSavedTemplatesList();
+        showToast('資料夾名稱已更新！');
+    }
+}
+
+function deleteFolder(folderId, folderName) {
+    if (confirm(`確定要刪除資料夾「${folderName}」嗎？
+資料夾內的模板將會移至最外層。`)) {
+        let folders = getSavedFolders().filter(f => f.id !== folderId);
+        saveSavedFolders(folders);
+
+        let templates = getSavedTemplates();
+        templates.forEach(t => {
+            if (t.folderId === folderId) {
+                t.folderId = null;
+            }
+        });
+        saveSavedTemplates(templates);
+
+        renderSavedTemplatesList();
+        showToast('資料夾已刪除');
+    }
+}
+
 function toggleStarTemplate(id) {
     const templates = getSavedTemplates();
     const target = templates.find(t => t.id === id);
@@ -1041,147 +1113,281 @@ let draggedCard = null;
 
 function renderSavedTemplatesList() {
     let templates = getSavedTemplates();
+    let folders = getSavedFolders();
 
-    let maxOrder = 0;
-    templates.forEach((t, i) => {
-        if (t.starred === undefined) t.starred = false;
-        if (t.order === undefined) t.order = i + 1;
-        if (t.order > maxOrder) maxOrder = t.order;
-    });
+    savedTemplatesList.innerHTML = '';
 
-    templates.sort((a, b) => {
-        if (a.starred !== b.starred) {
-            return a.starred ? -1 : 1;
-        }
-        return (a.order || 0) - (b.order || 0);
-    });
+    if (templates.length === 0 && folders.length === 0) {
+        savedTemplatesList.innerHTML = '<div class="empty-units">尚無儲存的隊形模板</div>';
+        return;
+    }
 
-    savedTemplatesList.innerHTML = templates.length === 0 ? '<div class="empty-units">尚無儲存的隊形模板</div>' : '';
+    // 渲染資料夾
+    folders.forEach(folder => {
+        const folderEl = document.createElement('div');
+        folderEl.className = `folder-container ${folder.collapsed ? 'collapsed' : ''}`;
+        folderEl.dataset.folderId = folder.id;
 
-    templates.forEach((item, index) => {
-        const card = document.createElement('div');
-        card.className = `template-card ${item.starred ? 'starred' : ''}`;
-        card.draggable = true;
-        card.dataset.id = item.id;
-        card.dataset.starred = item.starred;
+        const folderTemplates = templates.filter(t => t.folderId === folder.id);
 
-        let totalMonsters = 0;
-        if (item.terrainData) {
-            for (const key in item.terrainData) {
-                totalMonsters += Object.keys(item.terrainData[key].units || {}).length;
-            }
-        } else {
-            totalMonsters = Object.keys(item.units || {}).length;
-        }
-
-        card.innerHTML = `
-            <button class="template-card-delete-icon" title="刪除模板">✕</button>
-            <div class="template-card-title">
-                <button class="star-btn ${item.starred ? 'active' : ''}" title="${item.starred ? '取消置頂' : '標示星號置頂'}">★</button>
-                <span class="title-text">${item.name}</span>
-                <button class="edit-name-btn" title="更改名稱">✏️</button>
+        folderEl.innerHTML = `
+            <div class="folder-header">
+                <div class="folder-title">
+                    <span class="folder-toggle-icon">${folder.collapsed ? '▶' : '▼'}</span>
+                    <span class="folder-icon">📁</span>
+                    <span class="folder-name">${folder.name}</span>
+                    <span class="folder-count">(${folderTemplates.length})</span>
+                    <button class="edit-folder-btn" title="重命名資料夾">✏️</button>
+                </div>
+                <button class="folder-delete-btn" title="刪除資料夾">✕</button>
             </div>
-            <div class="template-card-meta">時間：${item.date} | 魔物數：${totalMonsters}</div>
-            <div class="template-card-actions">
-                <button class="success load-btn">載入隊形</button>
-            </div>
+            <div class="folder-content" style="${folder.collapsed ? 'display: none;' : ''}"></div>
         `;
 
-        card.querySelector('.star-btn').addEventListener('click', (e) => {
+        // 開啟/折疊資料夾
+        const folderHeader = folderEl.querySelector('.folder-header');
+        folderHeader.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            folder.collapsed = !folder.collapsed;
+            saveSavedFolders(folders);
+            renderSavedTemplatesList();
+        });
+
+        folderEl.querySelector('.edit-folder-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            toggleStarTemplate(item.id);
+            renameFolder(folder.id);
         });
 
-        card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => {
+        folderEl.querySelector('.folder-delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            deleteTemplate(item.id, item.name);
+            deleteFolder(folder.id, folder.name);
         });
 
-        card.querySelector('.edit-name-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            renameTemplate(item.id);
+        // 支援將模板拖入資料夾外框
+        const folderContent = folderEl.querySelector('.folder-content');
+        
+        folderEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            folderEl.classList.add('drag-over-folder');
         });
 
-        card.querySelector('.load-btn').addEventListener('click', () => {
-            if (item.terrainData) {
-                state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
-            } else {
-                const savedBg = item.bg || 'background/board-bg-hedge.png';
-                state.terrainData = {
-                    'background/board-bg-hedge.png': { units: {}, orders: {} },
-                    'background/board-bg-guardwall.png': { units: {}, orders: {} }
-                };
-                state.terrainData[savedBg] = {
-                    units: JSON.parse(JSON.stringify(item.units || {})),
-                    orders: JSON.parse(JSON.stringify(item.orders || {}))
-                };
-            }
-
-            const savedBg = item.bg || 'background/board-bg-hedge.png';
-            loadFixedBackground(savedBg);
-
-            setLoadedTemplate(item);
-            createBoard();
-            closeDrawer();
-            showToast(`已成功載入隊形：「${item.name}」`);
+        folderEl.addEventListener('dragleave', () => {
+            folderEl.classList.remove('drag-over-folder');
         });
 
-        // 拖拽動畫與即時推擠事件處理
-        card.addEventListener('dragstart', (e) => {
-            draggedCard = card;
-            setTimeout(() => card.classList.add('dragging'), 0);
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', item.id);
-        });
-
-        card.addEventListener('dragend', () => {
+        folderEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            folderEl.classList.remove('drag-over-folder');
             if (draggedCard) {
-                draggedCard.classList.remove('dragging');
-                draggedCard = null;
-
+                const templateId = parseInt(draggedCard.dataset.id, 10);
                 const currentTemplates = getSavedTemplates();
-                const cardElements = Array.from(savedTemplatesList.querySelectorAll('.template-card'));
-                
-                cardElements.forEach((el, newIndex) => {
-                    const id = parseInt(el.dataset.id, 10);
-                    const target = currentTemplates.find(t => t.id === id);
-                    if (target) {
-                        target.order = newIndex + 1;
-                    }
-                });
+                const target = currentTemplates.find(t => t.id === templateId);
+                if (target && target.folderId !== folder.id) {
+                    target.folderId = folder.id;
 
-                saveSavedTemplates(currentTemplates);
-                showToast('已更新模板順序');
+                    // 重設移入資料夾後的順序
+                    const siblings = currentTemplates.filter(t => t.folderId === folder.id);
+                    target.order = siblings.length + 1;
+
+                    saveSavedTemplates(currentTemplates);
+                    renderSavedTemplatesList();
+                    showToast(`已移入資料夾「${folder.name}」`);
+                }
             }
         });
 
+        // 渲染資料夾內的模板卡片
+        folderTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
+        
+        if (folderTemplates.length === 0) {
+            folderContent.innerHTML = '<div class="empty-folder-hint">拖拽模板卡片至此可放入資料夾</div>';
+        } else {
+            folderTemplates.forEach(item => {
+                const card = createTemplateCardElement(item);
+                folderContent.appendChild(card);
+            });
+        }
+
+        savedTemplatesList.appendChild(folderEl);
+    });
+
+    // 渲染未歸類 (根目錄) 的模板卡片
+    const rootTemplates = templates.filter(t => !t.folderId);
+    rootTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
+
+    rootTemplates.forEach(item => {
+        const card = createTemplateCardElement(item);
         savedTemplatesList.appendChild(card);
     });
 
-    // 容器 dragover 事件，即時計算鼠標位置並推擠/移動元素
-    savedTemplatesList.ondragover = (e) => {
+    // 最外層支援拖放（移出資料夾）
+    savedTemplatesList.addEventListener('dragover', (e) => {
         e.preventDefault();
-        if (!draggedCard) return;
+    });
 
-        const isDraggedStarred = draggedCard.dataset.starred === 'true';
+    savedTemplatesList.addEventListener('drop', (e) => {
+        if (e.target === savedTemplatesList && draggedCard) {
+            const templateId = parseInt(draggedCard.dataset.id, 10);
+            const currentTemplates = getSavedTemplates();
+            const target = currentTemplates.find(t => t.id === templateId);
+            if (target && target.folderId) {
+                target.folderId = null;
 
-        const siblings = Array.from(savedTemplatesList.querySelectorAll('.template-card:not(.dragging)'))
-            .filter(sibling => (sibling.dataset.starred === 'true') === isDraggedStarred);
+                // 重設順序
+                const rootSiblings = currentTemplates.filter(t => !t.folderId);
+                target.order = rootSiblings.length + 1;
 
-        const nextSibling = siblings.find(sibling => {
-            const box = sibling.getBoundingClientRect();
-            return e.clientY < box.top + box.height / 2;
-        });
-
-        if (nextSibling) {
-            savedTemplatesList.insertBefore(draggedCard, nextSibling);
-        } else {
-            const lastSibling = siblings[siblings.length - 1];
-            if (lastSibling) {
-                savedTemplatesList.insertBefore(draggedCard, lastSibling.nextSibling);
+                saveSavedTemplates(currentTemplates);
+                renderSavedTemplatesList();
+                showToast('已將模板移至外層');
             }
         }
-    };
+    });
+}
+
+function createTemplateCardElement(item) {
+    const card = document.createElement('div');
+    card.className = `template-card ${item.starred ? 'starred' : ''}`;
+    card.draggable = true;
+    card.dataset.id = item.id;
+    card.dataset.starred = item.starred;
+
+    let totalMonsters = 0;
+    if (item.terrainData) {
+        for (const key in item.terrainData) {
+            totalMonsters += Object.keys(item.terrainData[key].units || {}).length;
+        }
+    } else {
+        totalMonsters = Object.keys(item.units || {}).length;
+    }
+
+    card.innerHTML = `
+        <button class="template-card-delete-icon" title="刪除模板">✕</button>
+        <div class="template-card-title">
+            <button class="star-btn ${item.starred ? 'active' : ''}" title="${item.starred ? '取消置頂' : '標示星號置頂'}">★</button>
+            <span class="title-text">${item.name}</span>
+            <button class="edit-name-btn" title="更改名稱">✏️</button>
+        </div>
+        <div class="template-card-meta">時間：${item.date} | 魔物數：${totalMonsters}</div>
+        <div class="template-card-actions">
+            <button class="success load-btn">載入隊形</button>
+        </div>
+    `;
+
+    card.querySelector('.star-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleStarTemplate(item.id);
+    });
+
+    card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTemplate(item.id, item.name);
+    });
+
+    card.querySelector('.edit-name-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        renameTemplate(item.id);
+    });
+
+    card.querySelector('.load-btn').addEventListener('click', () => {
+        if (item.terrainData) {
+            state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
+        } else {
+            const savedBg = item.bg || 'background/board-bg-hedge.png';
+            state.terrainData = {
+                'background/board-bg-hedge.png': { units: {}, orders: {} },
+                'background/board-bg-guardwall.png': { units: {}, orders: {} }
+            };
+            state.terrainData[savedBg] = {
+                units: JSON.parse(JSON.stringify(item.units || {})),
+                orders: JSON.parse(JSON.stringify(item.orders || {}))
+            };
+        }
+
+        const savedBg = item.bg || 'background/board-bg-hedge.png';
+        loadFixedBackground(savedBg);
+
+        setLoadedTemplate(item);
+        createBoard();
+        closeDrawer();
+        showToast(`已成功載入隊形：「${item.name}」`);
+    });
+
+    // 拖拽開始與結束
+    card.addEventListener('dragstart', (e) => {
+        draggedCard = card;
+        setTimeout(() => card.classList.add('dragging'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.id);
+    });
+
+    card.addEventListener('dragend', () => {
+        if (draggedCard) {
+            draggedCard.classList.remove('dragging');
+            draggedCard = null;
+        }
+        document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
+    });
+
+    // 卡片互換與拖曳排序核心邏輯
+    card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!draggedCard || draggedCard === card) return;
+
+        card.classList.add('drag-over-card');
+    });
+
+    card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over-card');
+    });
+
+    card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        card.classList.remove('drag-over-card');
+
+        if (!draggedCard || draggedCard === card) return;
+
+        const draggedId = parseInt(draggedCard.dataset.id, 10);
+        const targetId = item.id;
+
+        let templates = getSavedTemplates();
+        const draggedTemplate = templates.find(t => t.id === draggedId);
+        const targetTemplate = templates.find(t => t.id === targetId);
+
+        if (!draggedTemplate || !targetTemplate) return;
+
+        // 設為相同資料夾層級
+        const targetFolderId = targetTemplate.folderId;
+        draggedTemplate.folderId = targetFolderId;
+
+        // 取得同區塊與同置頂狀態的成員
+        const siblingTemplates = templates.filter(t => t.folderId === targetFolderId && !!t.starred === !!targetTemplate.starred);
+        
+        // 移除拖動卡片後計算插入位置
+        const filteredSiblings = siblingTemplates.filter(t => t.id !== draggedId);
+        const targetIndex = filteredSiblings.findIndex(t => t.id === targetId);
+
+        const rect = card.getBoundingClientRect();
+        const isAfter = (e.clientY - rect.top) > (rect.height / 2);
+
+        if (isAfter) {
+            filteredSiblings.splice(targetIndex + 1, 0, draggedTemplate);
+        } else {
+            filteredSiblings.splice(targetIndex, 0, draggedTemplate);
+        }
+
+        // 重置順序序號
+        filteredSiblings.forEach((t, idx) => {
+            t.order = idx + 1;
+        });
+
+        saveSavedTemplates(templates);
+        renderSavedTemplatesList();
+    });
+
+    return card;
 }
 
 // ==================== Init ====================
