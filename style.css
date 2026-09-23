@@ -445,6 +445,126 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     position: relative;
 }
 
+/* Folder Component */
+.folder-container {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    overflow: hidden;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.folder-container.drag-over-folder {
+    border-color: var(--accent);
+    background: rgba(91, 155, 213, 0.15);
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--header-bg);
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+}
+
+.folder-container:not(.collapsed) .folder-header {
+    border-bottom-color: var(--border-color);
+}
+
+.folder-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    color: var(--accent);
+}
+
+.folder-toggle-icon {
+    font-size: 10px;
+    width: 12px;
+    display: inline-block;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.folder-icon {
+    font-size: 16px;
+}
+
+.folder-name {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.folder-count {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    color: var(--text-color);
+}
+
+.edit-folder-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: all 0.2s;
+    line-height: 1;
+    flex: initial;
+    min-width: auto;
+}
+
+.edit-folder-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.folder-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    min-width: auto;
+    line-height: 1;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: all 0.2s;
+    flex: initial;
+}
+
+.folder-delete-btn:hover {
+    opacity: 1;
+    color: var(--button-danger);
+    background: rgba(231, 76, 60, 0.15);
+}
+
+.folder-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.empty-folder-hint {
+    text-align: center;
+    padding: 12px 6px;
+    font-size: 12px;
+    opacity: 0.5;
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+}
+
 .template-card { 
     background: var(--cell-bg); 
     border: 1px solid var(--border-color); 
@@ -467,6 +587,13 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 .template-card.dragging {
     opacity: 0.3;
     cursor: grabbing;
+}
+
+/* 卡片拖拽目標高亮 */
+.template-card.drag-over-card {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 8px rgba(91, 155, 213, 0.5);
+    transform: scale(1.02);
 }
 
 .template-card-title { 
