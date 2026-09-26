@@ -441,12 +441,33 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     flex-direction: column; 
     gap: 10px; 
     flex: 1; 
+    min-height: 0; /* 解開 flex 限制，讓內含物過多時能正常觸發區域內部滾動 */
     overflow-y: auto; 
-    position: relative;
+    padding-right: 6px;
+}
+
+/* 自訂滑鼠滾動條樣式 */
+.saved-templates-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.saved-templates-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.saved-templates-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.saved-templates-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
 }
 
 /* Folder Component */
 .folder-container {
+    flex-shrink: 0; /* 防止資料夾項目在高度不足時被壓縮擠壓 */
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.02);
@@ -575,6 +596,7 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 }
 
 .template-card { 
+    flex-shrink: 0; /* 防止隊形卡片在高度不足時被壓縮擠壓 */
     background: var(--cell-bg); 
     border: 1px solid var(--border-color); 
     border-radius: 8px; 
