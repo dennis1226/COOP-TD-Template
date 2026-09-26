@@ -451,12 +451,17 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.02);
     overflow: hidden;
-    transition: border-color 0.2s, background-color 0.2s;
+    transition: border-color 0.2s, background-color 0.2s, opacity 0.2s;
+}
+
+.folder-container.dragging {
+    opacity: 0.4;
 }
 
 .folder-container.drag-over-folder {
-    border-color: var(--accent);
-    background: rgba(91, 155, 213, 0.15);
+    border-color: var(--accent) !important;
+    background: rgba(91, 155, 213, 0.15) !important;
+    box-shadow: 0 0 8px rgba(91, 155, 213, 0.4);
 }
 
 .folder-header {
@@ -465,9 +470,13 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     justify-content: space-between;
     padding: 10px 12px;
     background: var(--header-bg);
-    cursor: pointer;
+    cursor: grab;
     user-select: none;
     border-bottom: 1px solid transparent;
+}
+
+.folder-header:active {
+    cursor: grabbing;
 }
 
 .folder-container:not(.collapsed) .folder-header {

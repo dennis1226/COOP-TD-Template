@@ -374,6 +374,7 @@ function createNewFolder() {
             id: Date.now(),
             name: name,
             collapsed: false,
+            parentId: null,
             order: folders.length + 1
         };
         folders.push(newFolder);
@@ -1067,8 +1068,14 @@ function renameFolder(folderId) {
 
 function deleteFolder(folderId, folderName) {
     if (confirm(`確定要刪除資料夾「${folderName}」嗎？
-資料夾內的模板將會移至最外層。`)) {
-        let folders = getSavedFolders().filter(f => f.id !== folderId);
+資料夾內的模板與子資料夾將會移至最外層。`)) {
+        let folders = getSavedFolders();
+        folders = folders.filter(f => f.id !== folderId);
+        
+        // 子資料夾重置根層級
+        folders.forEach(f => {
+            if (f.parentId === folderId) f.parentId = null;
+        });
         saveSavedFolders(folders);
 
         let templates = getSavedTemplates();
@@ -1109,7 +1116,7 @@ function deleteTemplate(id, name) {
 }
 
 // 拖拽排序全域變數
-let draggedCard = null;
+let draggedItem = null; // 可為 'card' 或 'folder'
 
 function renderSavedTemplatesList() {
     let templates = getSavedTemplates();
@@ -1122,8 +1129,50 @@ function renderSavedTemplatesList() {
         return;
     }
 
-    // 渲染資料夾
-    folders.forEach(folder => {
+    // 渲染資料夾樹狀圖與根節點
+    renderFolderTree(null, savedTemplatesList, folders, templates);
+
+    // 最外層支援拖放（移出資料夾至根目錄）
+    savedTemplatesList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    savedTemplatesList.addEventListener('drop', (e) => {
+        if (e.target === savedTemplatesList && draggedItem) {
+            if (draggedItem.type === 'card') {
+                const templateId = draggedItem.id;
+                const currentTemplates = getSavedTemplates();
+                const target = currentTemplates.find(t => t.id === templateId);
+                if (target && target.folderId) {
+                    target.folderId = null;
+
+                    const rootSiblings = currentTemplates.filter(t => !t.folderId);
+                    target.order = rootSiblings.length + 1;
+
+                    saveSavedTemplates(currentTemplates);
+                    renderSavedTemplatesList();
+                    showToast('已將模板移至外層');
+                }
+            } else if (draggedItem.type === 'folder') {
+                const folderId = draggedItem.id;
+                const currentFolders = getSavedFolders();
+                const target = currentFolders.find(f => f.id === folderId);
+                if (target && target.parentId) {
+                    target.parentId = null;
+                    saveSavedFolders(currentFolders);
+                    renderSavedTemplatesList();
+                    showToast('已將資料夾移至最外層');
+                }
+            }
+        }
+    });
+}
+
+function renderFolderTree(parentId, container, folders, templates) {
+    const currentFolders = folders.filter(f => (f.parentId || null) === parentId);
+    currentFolders.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    currentFolders.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-container ${folder.collapsed ? 'collapsed' : ''}`;
         folderEl.dataset.folderId = folder.id;
@@ -1131,7 +1180,7 @@ function renderSavedTemplatesList() {
         const folderTemplates = templates.filter(t => t.folderId === folder.id);
 
         folderEl.innerHTML = `
-            <div class="folder-header">
+            <div class="folder-header" draggable="true">
                 <div class="folder-title">
                     <span class="folder-toggle-icon">${folder.collapsed ? '▶' : '▼'}</span>
                     <span class="folder-icon">📁</span>
@@ -1144,8 +1193,25 @@ function renderSavedTemplatesList() {
             <div class="folder-content" style="${folder.collapsed ? 'display: none;' : ''}"></div>
         `;
 
-        // 開啟/折疊資料夾
         const folderHeader = folderEl.querySelector('.folder-header');
+        
+        // 資料夾拖曳事件綁定
+        folderHeader.addEventListener('dragstart', (e) => {
+            e.stopPropagation();
+            draggedItem = { type: 'folder', id: folder.id, el: folderEl };
+            setTimeout(() => folderEl.classList.add('dragging'), 0);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', `folder:${folder.id}`);
+        });
+
+        folderHeader.addEventListener('dragend', (e) => {
+            e.stopPropagation();
+            folderEl.classList.remove('dragging');
+            draggedItem = null;
+            document.querySelectorAll('.drag-over-folder').forEach(el => el.classList.remove('drag-over-folder'));
+        });
+
+        // 折疊/展開
         folderHeader.addEventListener('click', (e) => {
             if (e.target.closest('button')) return;
             folder.collapsed = !folder.collapsed;
@@ -1163,29 +1229,36 @@ function renderSavedTemplatesList() {
             deleteFolder(folder.id, folder.name);
         });
 
-        // 支援將模板拖入資料夾外框
         const folderContent = folderEl.querySelector('.folder-content');
         
+        // 支援卡片或資料夾拖入本資料夾
         folderEl.addEventListener('dragover', (e) => {
             e.preventDefault();
-            folderEl.classList.add('drag-over-folder');
+            e.stopPropagation();
+            if (draggedItem && (draggedItem.type === 'card' || (draggedItem.type === 'folder' && draggedItem.id !== folder.id))) {
+                folderEl.classList.add('drag-over-folder');
+            }
         });
 
-        folderEl.addEventListener('dragleave', () => {
+        folderEl.addEventListener('dragleave', (e) => {
+            e.stopPropagation();
             folderEl.classList.remove('drag-over-folder');
         });
 
         folderEl.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             folderEl.classList.remove('drag-over-folder');
-            if (draggedCard) {
-                const templateId = parseInt(draggedCard.dataset.id, 10);
+
+            if (!draggedItem) return;
+
+            if (draggedItem.type === 'card') {
+                const templateId = draggedItem.id;
                 const currentTemplates = getSavedTemplates();
                 const target = currentTemplates.find(t => t.id === templateId);
                 if (target && target.folderId !== folder.id) {
                     target.folderId = folder.id;
 
-                    // 重設移入資料夾後的順序
                     const siblings = currentTemplates.filter(t => t.folderId === folder.id);
                     target.order = siblings.length + 1;
 
@@ -1193,14 +1266,56 @@ function renderSavedTemplatesList() {
                     renderSavedTemplatesList();
                     showToast(`已移入資料夾「${folder.name}」`);
                 }
+            } else if (draggedItem.type === 'folder') {
+                const sourceFolderId = draggedItem.id;
+                if (sourceFolderId === folder.id) return;
+
+                let currentFolders = getSavedFolders();
+                
+                // 避免將資料夾放入自身子目錄中
+                let checkParent = folder;
+                while (checkParent) {
+                    if (checkParent.id === sourceFolderId) {
+                        showToast('無法將資料夾放至其子資料夾內！');
+                        return;
+                    }
+                    checkParent = currentFolders.find(f => f.id === checkParent.parentId);
+                }
+
+                const targetFolder = currentFolders.find(f => f.id === sourceFolderId);
+                if (targetFolder) {
+                    targetFolder.parentId = folder.id;
+
+                    // 同層排序調整
+                    const siblingFolders = currentFolders.filter(f => f.parentId === folder.id && f.id !== sourceFolderId);
+                    
+                    const rect = folderEl.getBoundingClientRect();
+                    const isAfter = (e.clientY - rect.top) > (rect.height / 2);
+                    
+                    if (isAfter) {
+                        const targetIndex = siblingFolders.findIndex(f => f.id === folder.id);
+                        siblingFolders.splice(targetIndex + 1, 0, targetFolder);
+                    } else {
+                        siblingFolders.splice(0, 0, targetFolder);
+                    }
+
+                    siblingFolders.forEach((f, idx) => f.order = idx + 1);
+
+                    saveSavedFolders(currentFolders);
+                    renderSavedTemplatesList();
+                    showToast(`已調整資料夾位置`);
+                }
             }
         });
+
+        // 遞迴渲染子資料夾
+        renderFolderTree(folder.id, folderContent, folders, templates);
 
         // 渲染資料夾內的模板卡片
         folderTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
         
-        if (folderTemplates.length === 0) {
-            folderContent.innerHTML = '<div class="empty-folder-hint">拖拽模板卡片至此可放入資料夾</div>';
+        if (folderTemplates.length === 0 && folders.filter(f => f.parentId === folder.id).length === 0) {
+            folderContent.innerHTML += '<div class="empty-folder-hint">拖拽模板卡片或資料夾至此</div>';
         } else {
             folderTemplates.forEach(item => {
                 const card = createTemplateCardElement(item);
@@ -1208,40 +1323,7 @@ function renderSavedTemplatesList() {
             });
         }
 
-        savedTemplatesList.appendChild(folderEl);
-    });
-
-    // 渲染未歸類 (根目錄) 的模板卡片
-    const rootTemplates = templates.filter(t => !t.folderId);
-    rootTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
-
-    rootTemplates.forEach(item => {
-        const card = createTemplateCardElement(item);
-        savedTemplatesList.appendChild(card);
-    });
-
-    // 最外層支援拖放（移出資料夾）
-    savedTemplatesList.addEventListener('dragover', (e) => {
-        e.preventDefault();
-    });
-
-    savedTemplatesList.addEventListener('drop', (e) => {
-        if (e.target === savedTemplatesList && draggedCard) {
-            const templateId = parseInt(draggedCard.dataset.id, 10);
-            const currentTemplates = getSavedTemplates();
-            const target = currentTemplates.find(t => t.id === templateId);
-            if (target && target.folderId) {
-                target.folderId = null;
-
-                // 重設順序
-                const rootSiblings = currentTemplates.filter(t => !t.folderId);
-                target.order = rootSiblings.length + 1;
-
-                saveSavedTemplates(currentTemplates);
-                renderSavedTemplatesList();
-                showToast('已將模板移至外層');
-            }
-        }
+        container.appendChild(folderEl);
     });
 }
 
@@ -1315,30 +1397,31 @@ function createTemplateCardElement(item) {
 
     // 拖拽開始與結束
     card.addEventListener('dragstart', (e) => {
-        draggedCard = card;
+        e.stopPropagation();
+        draggedItem = { type: 'card', id: item.id, el: card };
         setTimeout(() => card.classList.add('dragging'), 0);
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', item.id);
+        e.dataTransfer.setData('text/plain', `card:${item.id}`);
     });
 
-    card.addEventListener('dragend', () => {
-        if (draggedCard) {
-            draggedCard.classList.remove('dragging');
-            draggedCard = null;
-        }
+    card.addEventListener('dragend', (e) => {
+        e.stopPropagation();
+        card.classList.remove('dragging');
+        draggedItem = null;
         document.querySelectorAll('.drag-over-card').forEach(el => el.classList.remove('drag-over-card'));
     });
 
-    // 卡片互換與拖曳排序核心邏輯
+    // 卡片拖曳排序邏輯
     card.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!draggedCard || draggedCard === card) return;
+        if (!draggedItem || draggedItem.type !== 'card' || draggedItem.id === item.id) return;
 
         card.classList.add('drag-over-card');
     });
 
-    card.addEventListener('dragleave', () => {
+    card.addEventListener('dragleave', (e) => {
+        e.stopPropagation();
         card.classList.remove('drag-over-card');
     });
 
@@ -1347,9 +1430,9 @@ function createTemplateCardElement(item) {
         e.stopPropagation();
         card.classList.remove('drag-over-card');
 
-        if (!draggedCard || draggedCard === card) return;
+        if (!draggedItem || draggedItem.type !== 'card' || draggedItem.id === item.id) return;
 
-        const draggedId = parseInt(draggedCard.dataset.id, 10);
+        const draggedId = draggedItem.id;
         const targetId = item.id;
 
         let templates = getSavedTemplates();
@@ -1358,14 +1441,11 @@ function createTemplateCardElement(item) {
 
         if (!draggedTemplate || !targetTemplate) return;
 
-        // 設為相同資料夾層級
         const targetFolderId = targetTemplate.folderId;
         draggedTemplate.folderId = targetFolderId;
 
-        // 取得同區塊與同置頂狀態的成員
         const siblingTemplates = templates.filter(t => t.folderId === targetFolderId && !!t.starred === !!targetTemplate.starred);
         
-        // 移除拖動卡片後計算插入位置
         const filteredSiblings = siblingTemplates.filter(t => t.id !== draggedId);
         const targetIndex = filteredSiblings.findIndex(t => t.id === targetId);
 
@@ -1378,7 +1458,6 @@ function createTemplateCardElement(item) {
             filteredSiblings.splice(targetIndex, 0, draggedTemplate);
         }
 
-        // 重置順序序號
         filteredSiblings.forEach((t, idx) => {
             t.order = idx + 1;
         });
