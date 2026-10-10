@@ -731,3 +731,22 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 .bg-select:focus {
     border-color: var(--accent);
 }
+
+/* 魔物分類標題與分行樣式 */
+.unit-category-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 10px 0 4px 2px;
+    grid-column: 1 / -1;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 2px;
+}
+
+.unit-category-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 8px;
+    grid-column: 1 / -1;
+    margin-bottom: 4px;
+}

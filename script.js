@@ -30,13 +30,43 @@ function saveSavedFolders(folders) {
     } catch (e) {}
 }
 
+// ==================== 魔物分類 Array 定義 ====================
+const MONSTER_CATEGORIES = [
+    {
+        title: "攻擊型",
+        monsterIds: [2, 5, 7, 9, 10, 12, 13, 16, 17 ] 
+    },
+    {
+        title: "輔助型",
+        monsterIds: [3, 6, 8]
+    },
+    {
+        title: "控制型",
+        monsterIds: [1, 4, 11 ]
+    },
+    {
+        title: "附屬型",
+        monsterIds: [15]
+    },
+    {
+        title: "特殊型",
+        monsterIds: [14]
+    },
+    {
+        title: "一般魔神",
+        monsterIds: [18, 19, 20, 21, 22]
+    }
+];
+
 // ==================== 地形獨立配置檔 ====================
 const TERRAIN_CONFIGS = {
     'background/board-bg-hedge.png': {
         name: '綠籬地形',
         cols: 7,
         rows: 5,
-        colFracs: [93, 95, 95, 96, 95, 98, 100].map(v => v / 672),
+        defaultWidth: 750,
+        defaultHeight: 505,
+        colFracs: [93, 95, 95, 96, 95, 98, 100].map(v => v / 650),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
         paddingTopRatio: 0,
         paddingBottomRatio: 0,
@@ -53,6 +83,8 @@ const TERRAIN_CONFIGS = {
         name: '城牆地形',
         cols: 7,
         rows: 3,
+        defaultWidth: 900,
+        defaultHeight: 450,
         colFracs: Array(7).fill((1 - 0.03 * 2) / 7),
         rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
         paddingTopRatio: 0.19,
@@ -133,7 +165,7 @@ const state = {
     bgImage: null,
     currentBg: 'background/board-bg-hedge.png',
     currentLoadedTemplateId: null,
-    maxBoardWidth: 700,
+    maxBoardWidth: 1000,
 
     terrainData: {
         'background/board-bg-hedge.png': { units: {}, orders: {} },
@@ -182,7 +214,6 @@ const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
-const boardWidthSelect = document.getElementById('boardWidthSelect');
 
 const formModalOverlay = document.getElementById('formModalOverlay');
 const formModal = document.querySelector('.form-modal');
@@ -384,6 +415,27 @@ function createNewFolder() {
 }
 
 // ==================== Background & Board ====================
+function applyTerrainConfig(config, naturalWidth, naturalHeight) {
+    state.cols = config.cols;
+    state.rows = config.rows;
+    state.colFracs = config.colFracs;
+    state.rowFracs = config.rowFracs;
+    state.paddingTopRatio = config.paddingTopRatio || 0;
+    state.paddingBottomRatio = config.paddingBottomRatio || 0;
+    state.paddingLeftRatio = config.paddingLeftRatio || 0;
+
+    const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
+    const scale = Math.min(1, maxW / naturalWidth);
+    
+    const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
+    const playableH = naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
+    
+    state.cellW = Math.round((playableW / state.cols) * scale);
+    state.cellH = Math.round((playableH / state.rows) * scale);
+
+    createBoard();
+}
+
 function loadFixedBackground(bgPath = state.currentBg) {
     state.currentBg = bgPath;
     if (bgSelect) bgSelect.value = bgPath;
@@ -396,30 +448,12 @@ function loadFixedBackground(bgPath = state.currentBg) {
     img.crossOrigin = 'anonymous';
     img.onload = () => {
         state.bgImage = img;
-        
-        state.cols = config.cols;
-        state.rows = config.rows;
-        state.colFracs = config.colFracs;
-        state.rowFracs = config.rowFracs;
-        state.paddingTopRatio = config.paddingTopRatio || 0;
-        state.paddingBottomRatio = config.paddingBottomRatio || 0;
-        state.paddingLeftRatio = config.paddingLeftRatio || 0;
-
-        const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
-        const scale = Math.min(1, maxW / img.naturalWidth);
-        
-        const playableW = img.naturalWidth * (1 - state.paddingLeftRatio * 2);
-        const playableH = img.naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
-        
-        state.cellW = Math.round((playableW / state.cols) * scale);
-        state.cellH = Math.round((playableH / state.rows) * scale);
-
-        createBoard();
+        applyTerrainConfig(config, img.naturalWidth, img.naturalHeight);
     };
     img.onerror = () => {
-        if (bgPath !== 'board-bg-hedge.png' && bgPath !== 'background/board-bg-hedge.png') {
-            loadFixedBackground('background/board-bg-hedge.png');
-        }
+        // 如果底圖載入失敗，仍強行套用預設的格子配置，避免無法切換
+        state.bgImage = null;
+        applyTerrainConfig(config, config.defaultWidth || 700, config.defaultHeight || 500);
     };
     img.src = bgPath;
 }
@@ -430,19 +464,17 @@ if (bgSelect) {
     });
 }
 
-if (boardWidthSelect) {
-    boardWidthSelect.addEventListener('change', (e) => {
-        state.maxBoardWidth = parseInt(e.target.value, 10);
-        loadFixedBackground(state.currentBg);
-    });
-}
-
 function createBoard() {
     boardEl.innerHTML = '';
     
+    const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
-    const fullImgW = state.bgImage ? Math.min(maxW, state.bgImage.naturalWidth) : maxW;
-    const fullImgH = state.bgImage ? (fullImgW * (state.bgImage.naturalHeight / state.bgImage.naturalWidth)) : (maxW * 0.7);
+    
+    const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
+    const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
+
+    const fullImgW = Math.min(maxW, naturalW);
+    const fullImgH = fullImgW * (naturalH / naturalW);
 
     const topPaddingPx = fullImgH * state.paddingTopRatio;
     const bottomPaddingPx = fullImgH * state.paddingBottomRatio;
@@ -579,7 +611,7 @@ function onCellClick(x, y) {
     }
 }
 
-// ==================== Dynamic Icon Scanning ====================
+// ==================== Dynamic Icon Scanning & Categorization ====================
 async function autoLoadIcons() {
     unitsGrid.innerHTML = '<div class="empty-units">正在讀取 icon 資料夾…</div>';
     state.loadedMonsters = [];
@@ -631,7 +663,7 @@ async function autoLoadIcons() {
     const monsterPromises = Array.from({ length: 30 }, (_, i) => checkMonster(i + 1));
     const results = await Promise.all(monsterPromises);
 
-    state.loadedMonsters = results.filter(Boolean).sort((a, b) => a.monsterNum - b.monsterNum);
+    state.loadedMonsters = results.filter(Boolean);
 
     unitsGrid.innerHTML = '';
 
@@ -642,71 +674,87 @@ async function autoLoadIcons() {
         return;
     }
 
-    state.loadedMonsters.forEach(monster => {
-        const opt = document.createElement('div');
-        opt.className = 'unit-option';
-        opt.dataset.id = monster.id;
-        opt.draggable = true;
-        opt.title = `${monster.name}（包含 ${monster.forms.length} 種形態，點擊切換形態）`;
+    MONSTER_CATEGORIES.forEach(category => {
+        const categoryMonsters = state.loadedMonsters.filter(m => category.monsterIds.includes(m.monsterNum));
+        
+        if (categoryMonsters.length > 0) {
+            const categoryHeader = document.createElement('div');
+            categoryHeader.className = 'unit-category-header';
+            categoryHeader.textContent = category.title;
+            unitsGrid.appendChild(categoryHeader);
 
-        const img = document.createElement('img');
-        img.src = monster.forms[monster.selectedFormIndex || 0].src;
-        img.draggable = false;
-        opt.appendChild(img);
+            const categoryRow = document.createElement('div');
+            categoryRow.className = 'unit-category-row';
 
-        if (monster.forms.length > 1) {
-            const badge = document.createElement('span');
-            badge.className = 'forms-badge';
-            badge.textContent = `${monster.forms.length}形態`;
-            opt.appendChild(badge);
-        }
+            categoryMonsters.forEach(monster => {
+                const opt = document.createElement('div');
+                opt.className = 'unit-option';
+                opt.dataset.id = monster.id;
+                opt.draggable = true;
+                opt.title = `${monster.name}（包含 ${monster.forms.length} 種形態，點擊切換形態）`;
 
-        const handleOptionSelect = () => {
-            const isAlreadySelected = (state.selectedUnitId === monster.id);
-
-            if (isAlreadySelected) {
-                openFormModalForMenu(monster);
-            } else {
-                document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
-                opt.classList.add('selected');
-                state.selectedUnitId = monster.id;
-                state.selectedFormIndex = monster.selectedFormIndex || 0;
-                
-                if (state.deleteMode) {
-                    state.deleteMode = false;
-                    deleteModeBtn.classList.remove('danger');
-                    deleteModeBtn.classList.add('secondary');
-                    deleteModeBtn.textContent = '🗑️ 刪除模式';
-                }
-
-                if (state.markOrderMode) {
-                    state.markOrderMode = false;
-                    markOrderBtn.classList.remove('active');
-                }
-
-                createBoard();
+                const img = document.createElement('img');
+                img.src = monster.forms[monster.selectedFormIndex || 0].src;
+                img.draggable = false;
+                opt.appendChild(img);
 
                 if (monster.forms.length > 1) {
-                    showToast(`已選取 ${monster.name}，再次點擊可切換預設形態`);
+                    const badge = document.createElement('span');
+                    badge.className = 'forms-badge';
+                    badge.textContent = `${monster.forms.length}形態`;
+                    opt.appendChild(badge);
                 }
-            }
-        };
 
-        opt.addEventListener('click', handleOptionSelect);
-        opt.addEventListener('dblclick', (e) => {
-            e.preventDefault();
-            if (monster.forms.length > 1) openFormModalForMenu(monster);
-        });
+                const handleOptionSelect = () => {
+                    const isAlreadySelected = (state.selectedUnitId === monster.id);
 
-        opt.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', monster.id);
-            document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
-            opt.classList.add('selected');
-            state.selectedUnitId = monster.id;
-            state.selectedFormIndex = monster.selectedFormIndex || 0;
-        });
+                    if (isAlreadySelected) {
+                        openFormModalForMenu(monster);
+                    } else {
+                        document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+                        opt.classList.add('selected');
+                        state.selectedUnitId = monster.id;
+                        state.selectedFormIndex = monster.selectedFormIndex || 0;
+                        
+                        if (state.deleteMode) {
+                            state.deleteMode = false;
+                            deleteModeBtn.classList.remove('danger');
+                            deleteModeBtn.classList.add('secondary');
+                            deleteModeBtn.textContent = '🗑️ 刪除模式';
+                        }
 
-        unitsGrid.appendChild(opt);
+                        if (state.markOrderMode) {
+                            state.markOrderMode = false;
+                            markOrderBtn.classList.remove('active');
+                        }
+
+                        createBoard();
+
+                        if (monster.forms.length > 1) {
+                            showToast(`已選取 ${monster.name}，再次點擊可切換預設形態`);
+                        }
+                    }
+                };
+
+                opt.addEventListener('click', handleOptionSelect);
+                opt.addEventListener('dblclick', (e) => {
+                    e.preventDefault();
+                    if (monster.forms.length > 1) openFormModalForMenu(monster);
+                });
+
+                opt.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', monster.id);
+                    document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    state.selectedUnitId = monster.id;
+                    state.selectedFormIndex = monster.selectedFormIndex || 0;
+                });
+
+                categoryRow.appendChild(opt);
+            });
+
+            unitsGrid.appendChild(categoryRow);
+        }
     });
 
     createBoard();
@@ -785,9 +833,11 @@ async function copyBoardTemplate() {
     if (cells.length === 0) return showToast('棋盤尚無格子');
 
     const canvas = document.createElement('canvas');
+    const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const bgImg = state.bgImage;
     
-    if (!bgImg) return showToast('背景圖未載入');
+    const canvasWidth = bgImg ? bgImg.naturalWidth : (config.defaultWidth || 700);
+    const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
 
     const descText = templateDescInput ? templateDescInput.value.trim() : '';
 
@@ -800,7 +850,7 @@ async function copyBoardTemplate() {
     if (descText) {
         const dummyCtx = canvas.getContext('2d');
         dummyCtx.font = `${fontSize}px sans-serif`;
-        const maxWidth = bgImg.naturalWidth - (padding * 2);
+        const maxWidth = canvasWidth - (padding * 2);
         
         const paragraphs = descText.split('\n');
         paragraphs.forEach(para => {
@@ -820,17 +870,19 @@ async function copyBoardTemplate() {
         extraHeight = (lines.length * lineHeight) + (padding * 2) + 30;
     }
 
-    canvas.width = bgImg.naturalWidth;
-    canvas.height = bgImg.naturalHeight + extraHeight;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight + extraHeight;
     const ctx = canvas.getContext('2d');
 
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth, bgImg.naturalHeight);
+    if (bgImg) {
+        ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
+    }
 
-    const scaleX = bgImg.naturalWidth / boardRect.width;
-    const scaleY = bgImg.naturalHeight / boardRect.height;
+    const scaleX = canvasWidth / boardRect.width;
+    const scaleY = canvasHeight / boardRect.height;
 
     const drawPromises = [];
 
@@ -922,7 +974,7 @@ async function copyBoardTemplate() {
     });
 
     if (descText && lines.length > 0) {
-        const startY = bgImg.naturalHeight;
+        const startY = canvasHeight;
         
         ctx.fillStyle = '#2d2d2d';
         ctx.fillRect(0, startY, canvas.width, extraHeight);
@@ -1108,7 +1160,6 @@ function deleteTemplate(id, name) {
     }
 }
 
-// 拖拽排序全域變數 (支援 'card' 與 'folder')
 let draggedItem = null;
 
 function renderSavedTemplatesList() {
@@ -1122,10 +1173,8 @@ function renderSavedTemplatesList() {
         return;
     }
 
-    // 排序最外層資料夾
     folders.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // 1. 渲染最外層的所有資料夾
     folders.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = `folder-container ${folder.collapsed ? 'collapsed' : ''}`;
@@ -1167,7 +1216,6 @@ function renderSavedTemplatesList() {
             deleteFolder(folder.id, folder.name);
         });
 
-        // 資料夾拖放事件
         folderEl.addEventListener('dragstart', (e) => {
             e.stopPropagation();
             draggedItem = { type: 'folder', id: folder.id, el: folderEl };
@@ -1205,7 +1253,6 @@ function renderSavedTemplatesList() {
 
             if (!draggedItem) return;
 
-            // 拖拽卡片進資料夾
             if (draggedItem.type === 'card') {
                 const templateId = draggedItem.id;
                 const currentTemplates = getSavedTemplates();
@@ -1220,7 +1267,6 @@ function renderSavedTemplatesList() {
                     showToast(`已移入資料夾「${folder.name}」`);
                 }
             } 
-            // 拖拽資料夾重新排序（填充自動遞補）
             else if (draggedItem.type === 'folder' && draggedItem.id !== folder.id) {
                 const draggedFolderId = draggedItem.id;
                 const targetFolderId = folder.id;
@@ -1265,7 +1311,6 @@ function renderSavedTemplatesList() {
         savedTemplatesList.appendChild(folderEl);
     });
 
-    // 2. 渲染未歸類（最外層）的模板卡片
     const rootTemplates = templates.filter(t => !t.folderId);
     rootTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
 
@@ -1274,7 +1319,6 @@ function renderSavedTemplatesList() {
         savedTemplatesList.appendChild(card);
     });
 
-    // 最外層支援將模板卡片拖出資料夾
     savedTemplatesList.addEventListener('dragover', (e) => {
         e.preventDefault();
     });
@@ -1365,7 +1409,6 @@ function createTemplateCardElement(item) {
         showToast(`已成功載入隊形：「${item.name}」`);
     });
 
-    // 卡片拖拽
     card.addEventListener('dragstart', (e) => {
         e.stopPropagation();
         draggedItem = { type: 'card', id: item.id, el: card };
