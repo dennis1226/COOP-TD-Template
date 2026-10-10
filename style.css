@@ -177,6 +177,18 @@ body {
     z-index: 2;
 }
 
+/* 棋盤格左上角的附屬型魔物小圖（調整為適中的 35% 大小，並在最上層） */
+.attachment-img {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 35%;
+    height: 35%;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 5;
+}
+
 /* 格子左上角順序數字標籤 */
 .order-badge {
     position: absolute;
@@ -195,7 +207,7 @@ body {
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-    z-index: 5;
+    z-index: 6;
     pointer-events: none;
     border: 1.5px solid #ffffff;
 }
@@ -441,12 +453,11 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     flex-direction: column; 
     gap: 10px; 
     flex: 1; 
-    min-height: 0; /* 解開 flex 限制，讓內含物過多時能正常觸發區域內部滾動 */
+    min-height: 0; 
     overflow-y: auto; 
     padding-right: 6px;
 }
 
-/* 自訂滑鼠滾動條樣式 */
 .saved-templates-list::-webkit-scrollbar {
     width: 6px;
 }
@@ -467,7 +478,7 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 
 /* Folder Component */
 .folder-container {
-    flex-shrink: 0; /* 防止資料夾項目在高度不足時被壓縮擠壓 */
+    flex-shrink: 0;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.02);
@@ -596,7 +607,7 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 }
 
 .template-card { 
-    flex-shrink: 0; /* 防止隊形卡片在高度不足時被壓縮擠壓 */
+    flex-shrink: 0;
     background: var(--cell-bg); 
     border: 1px solid var(--border-color); 
     border-radius: 8px; 
@@ -620,7 +631,6 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     cursor: grabbing;
 }
 
-/* 卡片拖拽目標高亮 */
 .template-card.drag-over-card {
     border-color: var(--accent) !important;
     box-shadow: 0 0 8px rgba(91, 155, 213, 0.5);
@@ -636,7 +646,6 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
     padding-right: 20px;
 }
 
-/* 星號按鈕 */
 .star-btn {
     background: transparent;
     border: none;
@@ -730,4 +739,22 @@ button.active { outline: 2px solid #f1c40f; outline-offset: 2px; }
 
 .bg-select:focus {
     border-color: var(--accent);
+}
+
+.unit-category-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 10px 0 4px 2px;
+    grid-column: 1 / -1;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 2px;
+}
+
+.unit-category-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 8px;
+    grid-column: 1 / -1;
+    margin-bottom: 4px;
 }
