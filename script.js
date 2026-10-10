@@ -34,7 +34,7 @@ function saveSavedFolders(folders) {
 const MONSTER_CATEGORIES = [
     {
         title: "攻擊型",
-        monsterIds: [2, 5, 7, 9, 10, 12, 13, 16, 17 ] 
+        monsterIds: [2, 5, 7, 9, 10, 12, 13, 16, 17] 
     },
     {
         title: "輔助型",
@@ -42,7 +42,7 @@ const MONSTER_CATEGORIES = [
     },
     {
         title: "控制型",
-        monsterIds: [1, 4, 11 ]
+        monsterIds: [1, 4, 11]
     },
     {
         title: "附屬型",
@@ -94,12 +94,21 @@ const TERRAIN_CONFIGS = {
     }
 };
 
+// ==================== 判斷是否為附屬型魔物 ====================
+function isAttachmentMonster(monsterId) {
+    const attachCategory = MONSTER_CATEGORIES.find(c => c.title === "附屬型");
+    if (!attachCategory) return false;
+    const num = parseInt(String(monsterId).replace('monster_', ''), 10);
+    return attachCategory.monsterIds.includes(num);
+}
+
 // ==================== 舊格式容錯解析器 ====================
 function normalizePlacedUnit(placed) {
     if (!placed) return null;
 
     let baseId = null;
     let formIndex = 0;
+    let attachment = null;
 
     if (typeof placed === 'object' && placed !== null) {
         if (placed.baseId) baseId = String(placed.baseId);
@@ -110,8 +119,8 @@ function normalizePlacedUnit(placed) {
             formIndex = placed.formIndex;
         }
 
-        if (!baseId && (placed.src || placed.img || placed.image)) {
-            placed = placed.src || placed.img || placed.image;
+        if (placed.attachment) {
+            attachment = normalizePlacedUnit(placed.attachment);
         }
     }
 
@@ -146,7 +155,7 @@ function normalizePlacedUnit(placed) {
         if (num) baseId = `monster_${num}`;
     }
 
-    return { baseId, formIndex };
+    return { baseId, formIndex, attachment };
 }
 
 // ==================== State ====================
@@ -363,10 +372,8 @@ function openFormModalForCell(cellKey) {
         `;
         item.addEventListener('click', (e) => {
             e.stopPropagation();
-            state.units[cellKey] = {
-                baseId: placed.baseId,
-                formIndex: idx
-            };
+            placed.formIndex = idx;
+            state.units[cellKey] = placed;
             createBoard();
             closeFormModal();
             showToast(`格子形態已切換為：${form.name}`);
@@ -451,7 +458,6 @@ function loadFixedBackground(bgPath = state.currentBg) {
         applyTerrainConfig(config, img.naturalWidth, img.naturalHeight);
     };
     img.onerror = () => {
-        // 如果底圖載入失敗，仍強行套用預設的格子配置，避免無法切換
         state.bgImage = null;
         applyTerrainConfig(config, config.defaultWidth || 700, config.defaultHeight || 500);
     };
@@ -501,7 +507,6 @@ function createBoard() {
             cell.dataset.key = key;
 
             const isBlocked = state.blockedCells && state.blockedCells.has(key);
-
             if (isBlocked) cell.classList.add('disabled');
 
             const rawPlaced = state.units[key];
@@ -509,6 +514,8 @@ function createBoard() {
             
             if (placed) {
                 state.units[key] = placed;
+                
+                // 1. 先渲染主魔物
                 const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
                 if (monster) {
                     const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -517,6 +524,20 @@ function createBoard() {
                         img.className = 'unit-img';
                         img.src = targetForm.src;
                         cell.appendChild(img);
+                    }
+                }
+
+                // 2. 後渲染左上角附屬型魔物（確保在最上層）
+                if (placed.attachment) {
+                    const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
+                    if (attachMonster) {
+                        const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
+                        if (attachForm) {
+                            const attachImg = document.createElement('img');
+                            attachImg.className = 'attachment-img';
+                            attachImg.src = attachForm.src;
+                            cell.appendChild(attachImg);
+                        }
                     }
                 }
             }
@@ -557,10 +578,27 @@ function createBoard() {
 
 function placeUnit(x, y, monsterId, formIndex = 0) {
     const key = getCellKey(x, y);
-    state.units[key] = {
-        baseId: monsterId,
-        formIndex: formIndex
-    };
+    const isAttach = isAttachmentMonster(monsterId);
+
+    if (isAttach) {
+        const existing = normalizePlacedUnit(state.units[key]);
+        if (!existing) {
+            showToast('請先在此格子放置一般魔物，才能加入附屬型！');
+            return;
+        }
+        existing.attachment = { baseId: monsterId, formIndex: formIndex };
+        state.units[key] = existing;
+        showToast('已成功為該魔物加上附屬型！');
+    } else {
+        const existing = normalizePlacedUnit(state.units[key]);
+        const keepAttachment = existing ? existing.attachment : null;
+
+        state.units[key] = {
+            baseId: monsterId,
+            formIndex: formIndex,
+            attachment: keepAttachment
+        };
+    }
     createBoard();
 }
 
@@ -593,6 +631,15 @@ function onCellClick(x, y) {
 
     if (state.deleteMode) {
         if (state.units[key]) {
+            const placed = normalizePlacedUnit(state.units[key]);
+            if (placed && placed.attachment) {
+                placed.attachment = null;
+                state.units[key] = placed;
+                createBoard();
+                showToast('已移除格內的附屬型魔物');
+                return;
+            }
+
             delete state.units[key];
             delete state.orders[key];
             createBoard();
@@ -730,7 +777,10 @@ async function autoLoadIcons() {
 
                         createBoard();
 
-                        if (monster.forms.length > 1) {
+                        const isAttach = isAttachmentMonster(monster.id);
+                        if (isAttach) {
+                            showToast(`已選取附屬型 ${monster.name}，點擊已有魔物的格子即可附加`);
+                        } else if (monster.forms.length > 1) {
                             showToast(`已選取 ${monster.name}，再次點擊可切換預設形態`);
                         }
                     }
@@ -894,48 +944,72 @@ async function copyBoardTemplate() {
         const placed = normalizePlacedUnit(rawPlaced);
         if (!placed) return;
 
-        const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
-        if (!monster) return;
-
-        const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
-        if (!targetForm) return;
-
         const cellRect = cell.getBoundingClientRect();
         const cellX = (cellRect.left - boardRect.left) * scaleX;
         const cellY = (cellRect.top - boardRect.top) * scaleY;
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
-        drawPromises.push(new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                const padX = cellW * 0.05;
-                const padY = cellH * 0.05;
-                const boxW = cellW - padX * 2;
-                const boxH = cellH - padY * 2;
+        // 1. 先繪製主魔物
+        const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
+        if (monster) {
+            const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
+            if (targetForm) {
+                drawPromises.push(new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        const padX = cellW * 0.05;
+                        const padY = cellH * 0.05;
+                        const boxW = cellW - padX * 2;
+                        const boxH = cellH - padY * 2;
 
-                const imgAspect = img.naturalWidth / img.naturalHeight;
-                const boxAspect = boxW / boxH;
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const boxAspect = boxW / boxH;
 
-                let drawW = boxW, drawH = boxH;
-                let drawX = cellX + padX;
-                let drawY = cellY + padY;
+                        let drawW = boxW, drawH = boxH;
+                        let drawX = cellX + padX;
+                        let drawY = cellY + padY;
 
-                if (imgAspect > boxAspect) {
-                    drawH = boxW / imgAspect;
-                    drawY += (boxH - drawH) / 2;
-                } else {
-                    drawW = boxH * imgAspect;
-                    drawX += (boxW - drawW) / 2;
+                        if (imgAspect > boxAspect) {
+                            drawH = boxW / imgAspect;
+                            drawY += (boxH - drawH) / 2;
+                        } else {
+                            drawW = boxH * imgAspect;
+                            drawX += (boxW - drawW) / 2;
+                        }
+
+                        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+                        resolve();
+                    };
+                    img.onerror = resolve;
+                    img.src = targetForm.src;
+                }));
+            }
+        }
+
+        // 2. 後繪製左上角附屬型魔物（確保在圖片匯出時也在最上層）
+        if (placed.attachment) {
+            const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
+            if (attachMonster) {
+                const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
+                if (attachForm) {
+                    drawPromises.push(new Promise((resolve) => {
+                        const attachImg = new Image();
+                        attachImg.crossOrigin = 'anonymous';
+                        attachImg.onload = () => {
+                            const attachSize = cellW * 0.22; // 縮小至 22%
+                            const attachX = cellX + 2;
+                            const attachY = cellY + 2;
+                            ctx.drawImage(attachImg, attachX, attachY, attachSize, attachSize);
+                            resolve();
+                        };
+                        attachImg.onerror = resolve;
+                        attachImg.src = attachForm.src;
+                    }));
                 }
-
-                ctx.drawImage(img, drawX, drawY, drawW, drawH);
-                resolve();
-            };
-            img.onerror = resolve;
-            img.src = targetForm.src;
-        }));
+            }
+        }
     });
 
     await Promise.all(drawPromises);
