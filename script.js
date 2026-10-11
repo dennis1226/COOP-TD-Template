@@ -174,7 +174,7 @@ const state = {
     bgImage: null,
     currentBg: 'background/board-bg-hedge.png',
     currentLoadedTemplateId: null,
-    maxBoardWidth: 1000,
+    maxBoardWidth: 850,
 
     terrainData: {
         'background/board-bg-hedge.png': { units: {}, orders: {} },
