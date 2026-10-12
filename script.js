@@ -227,7 +227,7 @@ const historyStack = {
         if (this.undoList.length > this.maxSize) {
             this.undoList.shift();
         }
-        this.redoList = []; // 清空重做堆疊
+        this.redoList = [];
         updateUndoRedoButtons();
     },
 
@@ -244,7 +244,7 @@ const historyStack = {
         state.terrainData = JSON.parse(JSON.stringify(prevSnapshot.terrainData));
 
         if (bgSelect) bgSelect.value = state.currentBg;
-        loadFixedBackground(state.currentBg, false, true); // 不重複記錄歷史，並保留資料
+        loadFixedBackground(state.currentBg, false, true);
         updateUndoRedoButtons();
     },
 
@@ -529,7 +529,6 @@ function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, kee
         historyStack.clear();
     }
     
-    // 只有在明確要求不保留資料 (keepData = false) 且切換不同地形時，才清空新地形上的魔物與順序標示
     if (!keepData && state.currentBg !== bgPath) {
         state.terrainData[bgPath] = { units: {}, orders: {} };
         setLoadedTemplate(null);
@@ -1578,7 +1577,6 @@ function createTemplateCardElement(item) {
         }
 
         const savedBg = item.bg || 'background/board-bg-hedge.png';
-        // 傳入 keepData = true，確保切換地形載入時不會被清空
         loadFixedBackground(savedBg, false, true);
 
         setLoadedTemplate(item);
