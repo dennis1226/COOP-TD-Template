@@ -664,11 +664,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     margin-bottom: 4px;
 }
 
-/* ==================== 響應式手機排版 (RWD) ==================== */
+/* ==================== 手機直立式排版 (RWD) ==================== */
 @media (max-width: 900px) {
     .fixed-header {
         justify-content: center;
         padding: 10px;
+    }
+
+    .header-title-group {
+        width: 100%;
+        justify-content: center;
     }
 
     .header-save-group {
@@ -678,26 +683,44 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 
     .header-save-group input[type="text"] {
         flex: 1;
-        max-width: 200px;
+        max-width: 220px;
     }
 
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* 主容器改為直向單欄排列，並限制寬度防止溢出 */
     .container {
         flex-direction: column;
         align-items: center;
-        padding: 12px;
-        gap: 16px;
+        width: 100%;
+        max-width: 100%;
+        padding: 10px;
+        gap: 12px;
+        box-sizing: border-box;
     }
 
-    /* 重新調整手機上的顯示順序：左側面板(魔物) -> 中間棋盤 -> 右側面板(工具) */
-    .panel-left {
+    /* 調整順序：1. 中間的棋盤模板 -> 2. 左側的魔物區 -> 3. 右側的功能工具區 */
+    .board-wrapper {
         width: 100%;
         max-width: 100%;
         order: 1;
+        align-items: center;
     }
 
-    .board-wrapper {
+    .board-container {
         width: 100%;
-        align-items: center;
+        max-width: 100%;
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+    }
+
+    .panel-left {
+        width: 100%;
+        max-width: 100%;
         order: 2;
     }
 
@@ -708,12 +731,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     }
 
     .units-grid {
-        max-height: 200px; /* 手機上限制選單高度，方便滾動 */
+        max-height: 220px; /* 手機上魔物選單高度適中，方便上下滾動 */
     }
 
+    /* 工具按鈕在手機上改為左右雙排並列，節省垂直空間 */
     .button-column {
         display: grid;
-        grid-template-columns: repeat(2, 1fr); /* 工具按鈕在手機上改為雙排顯示 */
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
 
