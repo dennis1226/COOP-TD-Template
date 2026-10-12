@@ -14,8 +14,12 @@
             <button id="updateLogBtn" class="secondary">更新記錄</button>
         </div>
 
-        <!-- 移至頁面正上方的模板名稱與儲存/更新區塊 -->
+        <!-- 選擇地形與模板名稱與儲存/更新區塊 -->
         <div class="header-save-group">
+            <select id="bgSelect" class="bg-select header-bg-select">
+                <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
+                <option value="background/board-bg-guardwall.png">城牆地形</option>
+            </select>
             <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多20字)" maxlength="20">
             <button id="saveTemplateBtn" class="primary" style="display: none;">儲存</button>
             <button id="updateTemplateBtn" class="success" style="display: none;">更新</button>
@@ -47,7 +51,7 @@
                 <div class="log-item">
                     <div class="log-date">2026/10/12</div>
                     <div class="log-text">
-                        • 將模板名稱輸入框與儲存/更新按鈕移至頁面正上方（導覽列中央），並統一輸入框與按鈕尺寸[cite: 1, 3]。<br>
+                        • 將選擇地形下拉選單移至頂部導覽列（位於模板名稱左側），優化電腦版排版[cite: 1, 3]。<br>
                         • 調整三欄式面板佈局與右側面板工具按鈕垂直排列[cite: 1, 3]。<br>
                         • 新增復原 (Undo) 與重做 (Redo) 操作按鈕[cite: 1, 3]。
                     </div>
@@ -136,16 +140,8 @@
     </div>
 
     <div class="container">
-        <!-- 左側面板：選擇地形與魔物 -->
+        <!-- 左側面板：魔物 -->
         <div class="panel-left">
-            <div class="section">
-                <div class="section-title">選擇地形</div>
-                <select id="bgSelect" class="bg-select">
-                    <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
-                    <option value="background/board-bg-guardwall.png">城牆地形</option>
-                </select>
-            </div>
-
             <div class="section">
                 <div class="section-title">魔物</div>
                 <div class="units-grid" id="unitsGrid">
@@ -156,7 +152,7 @@
             </div>
         </div>
 
-        <!-- 中間面板：陣容與說明 -->
+        <!-- 中間面板：棋盤與說明 -->
         <div class="board-wrapper">
             <div class="board-container" id="boardContainer">
                 <div class="board-background" id="boardBackground"></div>
