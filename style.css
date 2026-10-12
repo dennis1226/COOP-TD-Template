@@ -60,16 +60,16 @@ body {
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
 }
 
-/* 左側群組 */
+/* 左側群組：固定大小、不換行 */
 .header-left-group {
     display: flex;
     align-items: center;
     gap: 10px;
-    flex: 1;
-    justify-content: flex-start;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .header-title {
@@ -134,14 +134,14 @@ body {
     margin: 0;
 }
 
-/* 右側按鈕區塊 */
+/* 右側按鈕區塊：固定大小、不換行 */
 .header-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
     align-items: center;
-    flex: 1;
+    flex: 0 0 auto;
     justify-content: flex-end;
+    white-space: nowrap;
 }
 
 /* 恢復模板庫與淺色模式按鈕為原本預設大小 */
