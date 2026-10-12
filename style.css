@@ -359,10 +359,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
     gap: 8px;
-    max-height: 280px;
-    overflow-y: auto;
+    height: 280px;               /* 預設高度 */
+    min-height: 120px;            /* 最小拉伸高度 */
+    max-height: 600px;            /* 最大拉伸高度 */
+    overflow-y: auto;            /* 內容超出時顯示上下滾動條 */
+    resize: vertical;            /* 允許使用者在右下角上下拖拉調整高度 */
     padding: 4px;
     width: 100%;
+    border: 1px solid var(--border-color); /* 加入邊框方便看到拖拉角 */
+    border-radius: 6px;
+    box-sizing: border-box;
 }
 
 .unit-option {
