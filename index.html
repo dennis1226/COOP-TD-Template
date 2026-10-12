@@ -37,6 +37,14 @@
             </div>
             <div class="log-list">
                 <div class="log-item">
+                    <div class="log-date">2026/10/12</div>
+                    <div class="log-text">
+                        • 新增復原 (Undo) 與重做 (Redo) 操作按鈕，支援誤按時退回上一步或重做。<br>
+                        • 將模板名稱與資料夾名稱長度上限擴展至 20 個字元。
+                    </div>
+                </div>
+
+                <div class="log-item">
                     <div class="log-date">2026/09/26</div>
                     <div class="log-text">
                         • 新增資料夾拖曳排序功能，支援按住資料夾進行位置調整。<br>
@@ -158,6 +166,10 @@
             <div class="section">
                 <div class="section-title">工具與操作</div>
                 <div class="button-group">
+                    <button id="undoBtn" class="secondary" disabled>↩️ 復原</button>
+                    <button id="redoBtn" class="secondary" disabled>↪️ 重做</button>
+                </div>
+                <div class="button-group" style="margin-top:8px;">
                     <button id="deleteModeBtn" class="secondary">🗑️ 刪除模式</button>
                     <button id="clearBtn" class="danger">清空當前地形</button>
                 </div>
@@ -169,7 +181,7 @@
 
             <div class="section">
                 <div class="section-title">儲存隊形模板</div>
-                <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多12字)" maxlength="12">
+                <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多20字)" maxlength="20">
                 <div class="button-group" style="margin-top: 8px;">
                     <button id="saveTemplateBtn" class="primary">儲存至模板庫</button>
                     <button id="updateTemplateBtn" class="success" style="display: none;">更新模板</button>
