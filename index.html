@@ -9,21 +9,24 @@
 </head>
 <body>
     <div class="fixed-header">
-        <div class="header-title-group">
+        <!-- 左側標題與更新記錄按鈕 -->
+        <div class="header-left-group">
             <h1 class="header-title">魔物模板編輯器</h1>
-            <!-- 選擇地形與模板名稱與儲存/更新區塊 -->
-            <div class="header-save-group">
-                <select id="bgSelect" class="bg-select header-bg-select">
-                    <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
-                    <option value="background/board-bg-guardwall.png">城牆地形</option>
-                </select>
-                <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多20字)" maxlength="20">
-                <button id="saveTemplateBtn" class="primary" style="display: none;">儲存</button>
-                <button id="updateTemplateBtn" class="success" style="display: none;">更新</button>
-            </div>
             <button id="updateLogBtn" class="secondary">更新記錄</button>
         </div>
 
+        <!-- 中間：選擇地形與模板名稱與儲存/更新區塊（完美置中） -->
+        <div class="header-save-group">
+            <select id="bgSelect" class="bg-select header-bg-select">
+                <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
+                <option value="background/board-bg-guardwall.png">城牆地形</option>
+            </select>
+            <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多20字)" maxlength="20">
+            <button id="saveTemplateBtn" class="primary" style="display: none;">儲存</button>
+            <button id="updateTemplateBtn" class="success" style="display: none;">更新</button>
+        </div>
+
+        <!-- 右側動作按鈕 -->
         <div class="header-actions">
             <button id="openDrawerBtn" class="primary">📁 模板庫</button>
             <button id="themeToggle" class="secondary">淺色模式</button>
