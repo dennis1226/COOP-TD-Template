@@ -244,7 +244,7 @@ const historyStack = {
         state.terrainData = JSON.parse(JSON.stringify(prevSnapshot.terrainData));
 
         if (bgSelect) bgSelect.value = state.currentBg;
-        loadFixedBackground(state.currentBg, false); // 不重複記錄歷史
+        loadFixedBackground(state.currentBg, false, true); // 不重複記錄歷史，並保留資料
         updateUndoRedoButtons();
     },
 
@@ -261,7 +261,7 @@ const historyStack = {
         state.terrainData = JSON.parse(JSON.stringify(nextSnapshot.terrainData));
 
         if (bgSelect) bgSelect.value = state.currentBg;
-        loadFixedBackground(state.currentBg, false);
+        loadFixedBackground(state.currentBg, false, true);
         updateUndoRedoButtons();
     },
 
@@ -524,10 +524,17 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     createBoard();
 }
 
-function loadFixedBackground(bgPath = state.currentBg, recordHistory = true) {
+function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, keepData = false) {
     if (recordHistory && state.currentBg !== bgPath) {
-        historyStack.pushState();
+        historyStack.clear();
     }
+    
+    // 只有在明確要求不保留資料 (keepData = false) 且切換不同地形時，才清空新地形上的魔物與順序標示
+    if (!keepData && state.currentBg !== bgPath) {
+        state.terrainData[bgPath] = { units: {}, orders: {} };
+        setLoadedTemplate(null);
+    }
+
     state.currentBg = bgPath;
     if (bgSelect) bgSelect.value = bgPath;
 
@@ -540,17 +547,19 @@ function loadFixedBackground(bgPath = state.currentBg, recordHistory = true) {
     img.onload = () => {
         state.bgImage = img;
         applyTerrainConfig(config, img.naturalWidth, img.naturalHeight);
+        createBoard(); 
     };
     img.onerror = () => {
         state.bgImage = null;
         applyTerrainConfig(config, config.defaultWidth || 700, config.defaultHeight || 500);
+        createBoard();
     };
     img.src = bgPath;
 }
 
 if (bgSelect) {
     bgSelect.addEventListener('change', (e) => {
-        loadFixedBackground(e.target.value);
+        loadFixedBackground(e.target.value, true, false);
     });
 }
 
@@ -856,7 +865,7 @@ async function autoLoadIcons() {
                             state.deleteMode = false;
                             deleteModeBtn.classList.remove('danger');
                             deleteModeBtn.classList.add('secondary');
-                            deleteModeBtn.textContent = '🗑️ 刪除模式';
+                            deleteModeBtn.textContent = '🗑️ 刪除';
                         }
 
                         if (state.markOrderMode) {
@@ -916,7 +925,7 @@ deleteModeBtn.addEventListener('click', () => {
     } else {
         deleteModeBtn.classList.remove('danger');
         deleteModeBtn.classList.add('secondary');
-        deleteModeBtn.textContent = '🗑️ 刪除模式';
+        deleteModeBtn.textContent = '🗑️ 刪除';
     }
     
     createBoard();
@@ -935,7 +944,7 @@ markOrderBtn.addEventListener('click', () => {
         state.deleteMode = false;
         deleteModeBtn.classList.remove('danger');
         deleteModeBtn.classList.add('secondary');
-        deleteModeBtn.textContent = '🗑️ 刪除模式';
+        deleteModeBtn.textContent = '🗑️ 刪除';
 
         createBoard();
         showToast('已重置順序，請依次點擊魔物格標示 (1-20)');
@@ -946,7 +955,7 @@ markOrderBtn.addEventListener('click', () => {
 
 clearBtn.addEventListener('click', () => {
     if (Object.keys(state.units).length === 0 && Object.keys(state.orders).length === 0) return;
-    if (confirm('確定要清空當前地形的畫布與順序標示嗎？')) {
+    if (confirm('確定要清空的畫布與順序標示嗎？')) {
         historyStack.pushState();
         state.units = {};
         state.orders = {};
@@ -1281,21 +1290,24 @@ function renameFolder(folderId) {
 }
 
 function deleteFolder(folderId, folderName) {
-    if (confirm(`確定要刪除資料夾「${folderName}」嗎？\n資料夾內的模板將會移至最外層。`)) {
+    if (confirm(`確定要刪除資料夾「${folderName}」嗎？\n注意：這將會連同資料夾內的模板一起刪除！`)) {
         let folders = getSavedFolders();
         folders = folders.filter(f => f.id !== folderId);
         saveSavedFolders(folders);
 
         let templates = getSavedTemplates();
-        templates.forEach(t => {
-            if (t.folderId === folderId) {
-                t.folderId = null;
-            }
-        });
+        templates = templates.filter(t => t.folderId !== folderId);
         saveSavedTemplates(templates);
 
+        if (state.currentLoadedTemplateId) {
+            const currentTemplateExists = templates.some(t => t.id === state.currentLoadedTemplateId);
+            if (!currentTemplateExists) {
+                setLoadedTemplate(null);
+            }
+        }
+
         renderSavedTemplatesList();
-        showToast('資料夾已刪除');
+        showToast('資料夾及其中的模板已刪除');
     }
 }
 
@@ -1549,7 +1561,8 @@ function createTemplateCardElement(item) {
     });
 
     card.querySelector('.load-btn').addEventListener('click', () => {
-        historyStack.pushState();
+        historyStack.clear();
+
         if (item.terrainData) {
             state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
         } else {
@@ -1565,7 +1578,8 @@ function createTemplateCardElement(item) {
         }
 
         const savedBg = item.bg || 'background/board-bg-hedge.png';
-        loadFixedBackground(savedBg, false);
+        // 傳入 keepData = true，確保切換地形載入時不會被清空
+        loadFixedBackground(savedBg, false, true);
 
         setLoadedTemplate(item);
         createBoard();
