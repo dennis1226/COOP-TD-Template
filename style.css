@@ -663,3 +663,61 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     grid-column: 1 / -1;
     margin-bottom: 4px;
 }
+
+/* ==================== 響應式手機排版 (RWD) ==================== */
+@media (max-width: 900px) {
+    .fixed-header {
+        justify-content: center;
+        padding: 10px;
+    }
+
+    .header-save-group {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .header-save-group input[type="text"] {
+        flex: 1;
+        max-width: 200px;
+    }
+
+    .container {
+        flex-direction: column;
+        align-items: center;
+        padding: 12px;
+        gap: 16px;
+    }
+
+    /* 重新調整手機上的顯示順序：左側面板(魔物) -> 中間棋盤 -> 右側面板(工具) */
+    .panel-left {
+        width: 100%;
+        max-width: 100%;
+        order: 1;
+    }
+
+    .board-wrapper {
+        width: 100%;
+        align-items: center;
+        order: 2;
+    }
+
+    .panel-right {
+        width: 100%;
+        max-width: 100%;
+        order: 3;
+    }
+
+    .units-grid {
+        max-height: 200px; /* 手機上限制選單高度，方便滾動 */
+    }
+
+    .button-column {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 工具按鈕在手機上改為雙排顯示 */
+        gap: 8px;
+    }
+
+    .button-column button {
+        width: 100%;
+    }
+}
