@@ -63,34 +63,27 @@ body {
     gap: 10px;
 }
 
-.header-title-group {
+/* 左側群組 */
+.header-left-group {
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
+    flex: 1;
+    justify-content: flex-start;
 }
 
 .header-title {
     margin: 0;
     font-size: 1.4rem;
     font-weight: 700;
+    white-space: nowrap;
 }
 
-.header-title-group .secondary {
+.header-left-group .secondary {
     flex: 0 0 auto;
     min-width: auto;
     padding: 8px 10px;
     height: auto;
-}
-
-/* 讓右側按鈕區塊恢復正常大小，不被撐開 */
-.header-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-    flex: 0 0 auto;
-    justify-content: flex-end;
 }
 
 /* 頂部導覽列正中央的地形選擇、模板名稱與儲存/更新群組 */
@@ -99,6 +92,7 @@ body {
     align-items: center;
     gap: 6px;
     flex: 0 0 auto;
+    justify-content: center;
 }
 
 .header-bg-select {
@@ -138,6 +132,16 @@ body {
     justify-content: center;
     box-sizing: border-box;
     margin: 0;
+}
+
+/* 右側按鈕區塊 */
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
 }
 
 /* 恢復模板庫與淺色模式按鈕為原本預設大小 */
@@ -675,14 +679,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
         padding: 10px;
     }
 
-    .header-title-group {
+    .header-left-group {
         width: 100%;
         justify-content: center;
+        flex: none;
     }
 
     .header-save-group {
         width: 100%;
         justify-content: center;
+        flex: none;
     }
 
     .header-bg-select {
@@ -697,6 +703,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     .header-actions {
         width: 100%;
         justify-content: center;
+        flex: none;
     }
 
     .container {
