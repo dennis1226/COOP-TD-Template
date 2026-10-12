@@ -400,13 +400,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     background: var(--panel-bg);
     border-radius: 12px;
     padding: 20px;
-    width: 320px;
-    max-width: 90%;
+    width: 360px; /* 稍微加大寬度 */
+    max-width: 90vw;
+    max-height: 85vh; /* 限制最大高度，避免超出螢幕 */
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     display: flex;
     flex-direction: column;
     gap: 16px;
     animation: modalIn 0.2s ease-out;
+    box-sizing: border-box; /* 確保 padding 不會撐大容器 */
 }
 
 .log-modal {
@@ -468,6 +470,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
+    max-height: 60vh; /* 超過高度時開啟內部捲軸 */
+    overflow-y: auto;
+    padding: 2px;
 }
 
 .form-item {
