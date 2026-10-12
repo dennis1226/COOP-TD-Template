@@ -212,6 +212,86 @@ const state = {
     }
 };
 
+// ==================== History Stack (Undo / Redo) ====================
+const historyStack = {
+    undoList: [],
+    redoList: [],
+    maxSize: 30,
+
+    pushState() {
+        const snapshot = {
+            currentBg: state.currentBg,
+            terrainData: JSON.parse(JSON.stringify(state.terrainData))
+        };
+        this.undoList.push(snapshot);
+        if (this.undoList.length > this.maxSize) {
+            this.undoList.shift();
+        }
+        this.redoList = []; // 清空重做堆疊
+        updateUndoRedoButtons();
+    },
+
+    undo() {
+        if (this.undoList.length === 0) return;
+        const currentSnapshot = {
+            currentBg: state.currentBg,
+            terrainData: JSON.parse(JSON.stringify(state.terrainData))
+        };
+        this.redoList.push(currentSnapshot);
+
+        const prevSnapshot = this.undoList.pop();
+        state.currentBg = prevSnapshot.currentBg;
+        state.terrainData = JSON.parse(JSON.stringify(prevSnapshot.terrainData));
+
+        if (bgSelect) bgSelect.value = state.currentBg;
+        loadFixedBackground(state.currentBg, false, true); // 不重複記錄歷史，並保留資料
+        updateUndoRedoButtons();
+    },
+
+    redo() {
+        if (this.redoList.length === 0) return;
+        const currentSnapshot = {
+            currentBg: state.currentBg,
+            terrainData: JSON.parse(JSON.stringify(state.terrainData))
+        };
+        this.undoList.push(currentSnapshot);
+
+        const nextSnapshot = this.redoList.pop();
+        state.currentBg = nextSnapshot.currentBg;
+        state.terrainData = JSON.parse(JSON.stringify(nextSnapshot.terrainData));
+
+        if (bgSelect) bgSelect.value = state.currentBg;
+        loadFixedBackground(state.currentBg, false, true);
+        updateUndoRedoButtons();
+    },
+
+    clear() {
+        this.undoList = [];
+        this.redoList = [];
+        updateUndoRedoButtons();
+    }
+};
+
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+function updateUndoRedoButtons() {
+    if (undoBtn) undoBtn.disabled = historyStack.undoList.length === 0;
+    if (redoBtn) redoBtn.disabled = historyStack.redoList.length === 0;
+}
+
+if (undoBtn) undoBtn.addEventListener('click', () => {
+    historyStack.undo();
+    createBoard();
+    showToast('已復原上一步操作');
+});
+
+if (redoBtn) redoBtn.addEventListener('click', () => {
+    historyStack.redo();
+    createBoard();
+    showToast('已重做操作');
+});
+
 // ==================== DOM Elements ====================
 const boardEl = document.getElementById('gameBoard');
 const boardBgEl = document.getElementById('boardBackground');
@@ -280,7 +360,7 @@ function showToast(msg, duration = 2200) {
 function getCellKey(x, y) { return `${x}-${y}`; }
 
 function updateSaveButtonsVisibility() {
-    const rawName = templateNameInput.value.trim().slice(0, 12);
+    const rawName = templateNameInput.value.trim().slice(0, 20);
     const templates = getSavedTemplates();
     
     const existingTemplate = templates.find(t => t.name === rawName);
@@ -372,6 +452,7 @@ function openFormModalForCell(cellKey) {
         `;
         item.addEventListener('click', (e) => {
             e.stopPropagation();
+            historyStack.pushState();
             placed.formIndex = idx;
             state.units[cellKey] = placed;
             createBoard();
@@ -404,9 +485,9 @@ if (addFolderBtn) {
 }
 
 function createNewFolder() {
-    const folderName = prompt('請輸入新資料夾名稱（最多12字）：', '新資料夾');
+    const folderName = prompt('請輸入新資料夾名稱（最多20字）：', '新資料夾');
     if (folderName !== null && folderName.trim() !== '') {
-        const name = folderName.trim().slice(0, 12);
+        const name = folderName.trim().slice(0, 20);
         const folders = getSavedFolders();
         const newFolder = {
             id: Date.now(),
@@ -443,7 +524,17 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     createBoard();
 }
 
-function loadFixedBackground(bgPath = state.currentBg) {
+function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, keepData = false) {
+    if (recordHistory && state.currentBg !== bgPath) {
+        historyStack.clear();
+    }
+    
+    // 只有在明確要求不保留資料 (keepData = false) 且切換不同地形時，才清空新地形上的魔物與順序標示
+    if (!keepData && state.currentBg !== bgPath) {
+        state.terrainData[bgPath] = { units: {}, orders: {} };
+        setLoadedTemplate(null);
+    }
+
     state.currentBg = bgPath;
     if (bgSelect) bgSelect.value = bgPath;
 
@@ -456,17 +547,19 @@ function loadFixedBackground(bgPath = state.currentBg) {
     img.onload = () => {
         state.bgImage = img;
         applyTerrainConfig(config, img.naturalWidth, img.naturalHeight);
+        createBoard(); 
     };
     img.onerror = () => {
         state.bgImage = null;
         applyTerrainConfig(config, config.defaultWidth || 700, config.defaultHeight || 500);
+        createBoard();
     };
     img.src = bgPath;
 }
 
 if (bgSelect) {
     bgSelect.addEventListener('change', (e) => {
-        loadFixedBackground(e.target.value);
+        loadFixedBackground(e.target.value, true, false);
     });
 }
 
@@ -515,7 +608,6 @@ function createBoard() {
             if (placed) {
                 state.units[key] = placed;
                 
-                // 1. 先渲染主魔物
                 const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
                 if (monster) {
                     const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -527,7 +619,6 @@ function createBoard() {
                     }
                 }
 
-                // 2. 後渲染左上角附屬型魔物（確保在最上層）
                 if (placed.attachment) {
                     const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
                     if (attachMonster) {
@@ -568,7 +659,10 @@ function createBoard() {
                 if (isBlocked) return showToast('該區域無法放置魔物！');
                 
                 const monsterId = e.dataTransfer.getData('text/plain');
-                if (monsterId) placeUnit(x, y, monsterId, state.selectedFormIndex);
+                if (monsterId) {
+                    historyStack.pushState();
+                    placeUnit(x, y, monsterId, state.selectedFormIndex);
+                }
             });
 
             boardEl.appendChild(cell);
@@ -611,6 +705,8 @@ function onCellClick(x, y) {
             return;
         }
 
+        historyStack.pushState();
+
         if (state.orders[key]) {
             delete state.orders[key];
             createBoard();
@@ -631,6 +727,7 @@ function onCellClick(x, y) {
 
     if (state.deleteMode) {
         if (state.units[key]) {
+            historyStack.pushState();
             const placed = normalizePlacedUnit(state.units[key]);
             if (placed && placed.attachment) {
                 placed.attachment = null;
@@ -654,6 +751,7 @@ function onCellClick(x, y) {
     }
 
     if (state.selectedUnitId) {
+        historyStack.pushState();
         placeUnit(x, y, state.selectedUnitId, state.selectedFormIndex);
     }
 }
@@ -767,7 +865,7 @@ async function autoLoadIcons() {
                             state.deleteMode = false;
                             deleteModeBtn.classList.remove('danger');
                             deleteModeBtn.classList.add('secondary');
-                            deleteModeBtn.textContent = '🗑️ 刪除模式';
+                            deleteModeBtn.textContent = '🗑️ 刪除';
                         }
 
                         if (state.markOrderMode) {
@@ -827,7 +925,7 @@ deleteModeBtn.addEventListener('click', () => {
     } else {
         deleteModeBtn.classList.remove('danger');
         deleteModeBtn.classList.add('secondary');
-        deleteModeBtn.textContent = '🗑️ 刪除模式';
+        deleteModeBtn.textContent = '🗑️ 刪除';
     }
     
     createBoard();
@@ -838,6 +936,7 @@ markOrderBtn.addEventListener('click', () => {
     markOrderBtn.classList.toggle('active', state.markOrderMode);
 
     if (state.markOrderMode) {
+        historyStack.pushState();
         state.orders = {};
 
         state.selectedUnitId = null;
@@ -845,7 +944,7 @@ markOrderBtn.addEventListener('click', () => {
         state.deleteMode = false;
         deleteModeBtn.classList.remove('danger');
         deleteModeBtn.classList.add('secondary');
-        deleteModeBtn.textContent = '🗑️ 刪除模式';
+        deleteModeBtn.textContent = '🗑️ 刪除';
 
         createBoard();
         showToast('已重置順序，請依次點擊魔物格標示 (1-20)');
@@ -856,7 +955,8 @@ markOrderBtn.addEventListener('click', () => {
 
 clearBtn.addEventListener('click', () => {
     if (Object.keys(state.units).length === 0 && Object.keys(state.orders).length === 0) return;
-    if (confirm('確定要清空當前地形的畫布與順序標示嗎？')) {
+    if (confirm('確定要清空的畫布與順序標示嗎？')) {
+        historyStack.pushState();
         state.units = {};
         state.orders = {};
         setLoadedTemplate(null);
@@ -950,7 +1050,6 @@ async function copyBoardTemplate() {
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
-        // 1. 先繪製主魔物
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -988,7 +1087,6 @@ async function copyBoardTemplate() {
             }
         }
 
-        // 2. 後繪製左上角附屬型魔物（確保在圖片匯出時也在最上層）
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
@@ -998,7 +1096,7 @@ async function copyBoardTemplate() {
                         const attachImg = new Image();
                         attachImg.crossOrigin = 'anonymous';
                         attachImg.onload = () => {
-                            const attachSize = cellW * 0.22; // 縮小至 22%
+                            const attachSize = cellW * 0.22;
                             const attachX = cellX + 2;
                             const attachY = cellY + 2;
                             ctx.drawImage(attachImg, attachX, attachY, attachSize, attachSize);
@@ -1101,9 +1199,9 @@ copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 
 // ==================== Save & Load & Update Templates ====================
 saveTemplateBtn.addEventListener('click', () => {
-    const rawName = templateNameInput.value.trim().slice(0, 12);
+    const rawName = templateNameInput.value.trim().slice(0, 20);
     const now = new Date();
-    const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 12);
+    const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 20);
     const templateName = rawName || defaultName;
 
     const templates = getSavedTemplates();
@@ -1142,7 +1240,7 @@ updateTemplateBtn.addEventListener('click', () => {
         return;
     }
 
-    const rawName = templateNameInput.value.trim().slice(0, 12);
+    const rawName = templateNameInput.value.trim().slice(0, 20);
     const updatedName = rawName || templates[index].name;
 
     templates[index].name = updatedName;
@@ -1162,9 +1260,9 @@ function renameTemplate(id) {
     const target = templates.find(t => t.id === id);
     if (!target) return;
 
-    const newName = prompt('請輸入新的模板名稱（最多12字）：', target.name);
+    const newName = prompt('請輸入新的模板名稱（最多20字）：', target.name);
     if (newName !== null && newName.trim() !== '') {
-        const trimmedName = newName.trim().slice(0, 12);
+        const trimmedName = newName.trim().slice(0, 20);
         target.name = trimmedName;
         saveSavedTemplates(templates);
         renderSavedTemplatesList();
@@ -1182,9 +1280,9 @@ function renameFolder(folderId) {
     const target = folders.find(f => f.id === folderId);
     if (!target) return;
 
-    const newName = prompt('請輸入新的資料夾名稱（最多12字）：', target.name);
+    const newName = prompt('請輸入新的資料夾名稱（最多20字）：', target.name);
     if (newName !== null && newName.trim() !== '') {
-        target.name = newName.trim().slice(0, 12);
+        target.name = newName.trim().slice(0, 20);
         saveSavedFolders(folders);
         renderSavedTemplatesList();
         showToast('資料夾名稱已更新！');
@@ -1192,21 +1290,24 @@ function renameFolder(folderId) {
 }
 
 function deleteFolder(folderId, folderName) {
-    if (confirm(`確定要刪除資料夾「${folderName}」嗎？\n資料夾內的模板將會移至最外層。`)) {
+    if (confirm(`確定要刪除資料夾「${folderName}」嗎？\n注意：這將會連同資料夾內的模板一起刪除！`)) {
         let folders = getSavedFolders();
         folders = folders.filter(f => f.id !== folderId);
         saveSavedFolders(folders);
 
         let templates = getSavedTemplates();
-        templates.forEach(t => {
-            if (t.folderId === folderId) {
-                t.folderId = null;
-            }
-        });
+        templates = templates.filter(t => t.folderId !== folderId);
         saveSavedTemplates(templates);
 
+        if (state.currentLoadedTemplateId) {
+            const currentTemplateExists = templates.some(t => t.id === state.currentLoadedTemplateId);
+            if (!currentTemplateExists) {
+                setLoadedTemplate(null);
+            }
+        }
+
         renderSavedTemplatesList();
-        showToast('資料夾已刪除');
+        showToast('資料夾及其中的模板已刪除');
     }
 }
 
@@ -1460,6 +1561,8 @@ function createTemplateCardElement(item) {
     });
 
     card.querySelector('.load-btn').addEventListener('click', () => {
+        historyStack.clear();
+
         if (item.terrainData) {
             state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
         } else {
@@ -1475,7 +1578,8 @@ function createTemplateCardElement(item) {
         }
 
         const savedBg = item.bg || 'background/board-bg-hedge.png';
-        loadFixedBackground(savedBg);
+        // 傳入 keepData = true，確保切換地形載入時不會被清空
+        loadFixedBackground(savedBg, false, true);
 
         setLoadedTemplate(item);
         createBoard();
