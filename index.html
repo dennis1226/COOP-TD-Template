@@ -4,8 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>魔物模板編輯器</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="script.js" defer></script>
+    
+    <!-- 1. 先載入基礎共用樣式（包含 CSS 變數） -->
+    <link rel="stylesheet" href="style_base.css">
+    
+    <!-- 2. 再依據螢幕寬度載入對應佈局 -->
+    <link rel="stylesheet" href="style_window.css">
+    <link rel="stylesheet" href="style_mobile.css">
+    
+    <!-- JS 依據裝置自動載入 -->
+    <script>
+        if (window.innerWidth <= 900) {
+            var script = document.createElement('script');
+            script.src = 'script_mobile.js';
+            script.defer = true;
+            document.head.appendChild(script);
+        } else {
+            var script = document.createElement('script');
+            script.src = 'script_window.js';
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    </script>
 </head>
 <body>
     <div class="fixed-header">
@@ -15,7 +35,7 @@
             <button id="updateLogBtn" class="secondary">更新記錄</button>
         </div>
 
-        <!-- 中間：選擇地形與模板名稱與儲存/更新區塊（完美置中） -->
+        <!-- 中間：選擇地形與模板名稱與儲存/更新區塊 -->
         <div class="header-save-group">
             <select id="bgSelect" class="bg-select header-bg-select">
                 <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
@@ -53,76 +73,16 @@
                 <div class="log-item">
                     <div class="log-date">2026/10/12</div>
                     <div class="log-text">
-                        • 將選擇地形下拉選單移至頂部導覽列（位於模板名稱左側），優化電腦版排版[cite: 1, 3]。<br>
-                        • 調整三欄式面板佈局與右側面板工具按鈕垂直排列[cite: 1, 3]。<br>
-                        • 新增復原 (Undo) 與重做 (Redo) 操作按鈕[cite: 1, 3]。
+                        • 將選擇地形下拉選單移至頂部導覽列（位於模板名稱左側），優化電腦版排版。<br>
+                        • 調整三欄式面板佈局與右側面板工具按鈕垂直排列。<br>
+                        • 新增復原 (Undo) 與重做 (Redo) 操作按鈕。
                     </div>
                 </div>
-
                 <div class="log-item">
                     <div class="log-date">2026/09/26</div>
                     <div class="log-text">
-                        • 新增資料夾拖曳排序功能，支援按住資料夾進行位置調整[cite: 1, 2]。<br>
-                        • 支援資料夾間的多層級嵌套[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/09/23</div>
-                    <div class="log-text">
-                        • 支援模板庫新增「資料夾」進行分類管理[cite: 1, 2]。<br>
-                        • 支援點擊資料夾展開/折疊顯示隊形卡片[cite: 1, 2]。<br>
-                        • 支援資料夾自訂與修改名稱[cite: 1, 2]。<br>
-                        • 支援拖拽隊形卡片移入/移出資料夾[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/09/13</div>
-                    <div class="log-text">
-                        • 新增模板庫排序與置頂資料欄位[cite: 1, 2]。<br>
-                        • 加入星號置頂功能[cite: 1, 2]。<br>
-                        • 讓模板卡片支援拖曳排序[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/09/07</div>
-                    <div class="log-text">
-                        • 新增背景地形選擇功能，支援不同地形切換[cite: 1, 2]。<br>
-                        • 優化 terrain 設定與 state 管理[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/08/23</div>
-                    <div class="log-text">
-                        • 新增順序標示功能，支援製作順序管理[cite: 1, 2]。<br>
-                        • 強化棋盤版面與互動細節[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/08/08</div>
-                    <div class="log-text">
-                        • 限制模板名稱輸入長度為 12 字元，提升資料整潔度[cite: 1, 2]。<br>
-                        • 強化模板卡片 UI，加入編輯與刪除操作[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/08/03</div>
-                    <div class="log-text">
-                        • 新增魔物形態選擇 modal，支援切換不同形態[cite: 1, 2]。<br>
-                        • 增加多張圖片資源與模板更新功能[cite: 1, 2]。
-                    </div>
-                </div>
-
-                <div class="log-item">
-                    <div class="log-date">2026/08/02</div>
-                    <div class="log-text">
-                        • 調整棋盤欄位正規化參數，提升排版與版面準確度[cite: 1, 2]。<br>
-                        • 新增阻擋格禁用狀態[cite: 1, 2]。
+                        • 新增資料夾拖曳排序功能，支援按住資料夾進行位置調整。<br>
+                        • 支援資料夾間的多層級嵌套。
                     </div>
                 </div>
             </div>
