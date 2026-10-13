@@ -51,9 +51,9 @@ const TERRAIN_CONFIGS = {
         name: '城牆地形', cols: 7, rows: 3, defaultWidth: 900, defaultHeight: 450,
         // 將左右邊距從 0.03 縮小到 0.010，讓整體網格向左右擴展
         colFracs: Array(7).fill((1 - 0.001 * 2) / 7),
-        rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
+        rowFracs: Array(3).fill((1 - 0.19 - 0.005) / 3),
         paddingTopRatio: 0.19, 
-        paddingBottomRatio: 0.03, 
+        paddingBottomRatio: 0.005, 
         paddingLeftRatio: 0.001, // 縮小左右留白
         blockedCells: new Set()
     }
