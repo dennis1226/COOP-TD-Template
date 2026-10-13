@@ -165,7 +165,6 @@ const clearBtn = document.getElementById('clearBtn');
 const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const saveImageBtn = document.getElementById('saveImageBtn');
-const downloadImageBtn = document.getElementById('downloadImageBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
@@ -476,7 +475,6 @@ async function autoLoadIcons() {
     state.loadedMonsters = [];
     const tryLoadImage = (src) => new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
         img.onload = () => resolve({ src, ok: true });
         img.onerror = () => resolve({ src, ok: false });
         img.src = src;
@@ -487,7 +485,7 @@ async function autoLoadIcons() {
         const singleSrc = `icon/image${m}.png`;
         const results = await Promise.all([...multiSrcs.map(src => tryLoadImage(src)), tryLoadImage(singleSrc)]);
         const multiResults = results.slice(0, 7);
-        const singleResult = results[7];
+        const singleResult = results[5];
         const forms = [];
         if (multiResults[0].ok) {
             for (let i = 0; i < 7; i++) {
@@ -605,6 +603,9 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
 });
 
+
+
+
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -662,8 +663,7 @@ async function generateBoardCanvas() {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
             if (targetForm) {
                 drawPromises.push(new Promise((resolve) => {
-                    const img = new Image(); 
-                    img.crossOrigin = 'anonymous';
+                    const img = new Image(); img.crossOrigin = 'anonymous';
                     img.onload = () => {
                         const padX = cellW * 0.05, padY = cellH * 0.05;
                         const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
@@ -674,8 +674,7 @@ async function generateBoardCanvas() {
                         ctx.drawImage(img, drawX, drawY, drawW, drawH);
                         resolve();
                     };
-                    img.onerror = () => resolve();
-                    img.src = targetForm.src;
+                    img.onerror = resolve; img.src = targetForm.src;
                 }));
             }
         }
@@ -739,7 +738,6 @@ async function copyBoardTemplate() {
     }, 'image/png');
 }
 
-// 儲存圖片：僅開啟預覽彈窗供長按/另存
 async function saveBoardImage() {
     showToast('正在產生高畫質圖片以供儲存…');
     const canvas = await generateBoardCanvas();
@@ -776,7 +774,6 @@ async function saveBoardImage() {
     }, 'image/png');
 }
 
-// 下載圖片：一鍵自動下載檔案
 async function downloadBoardImage() {
     showToast('正在產生高畫質圖片以供下載…');
     const canvas = await generateBoardCanvas();
@@ -797,10 +794,9 @@ async function downloadBoardImage() {
     }, 'image/png');
 }
 
+
 copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 saveImageBtn.addEventListener('click', saveBoardImage);
 downloadImageBtn.addEventListener('click', downloadBoardImage);
 
-if (typeof setupMobileTabSwitcher === 'function') {
-    setupMobileTabSwitcher();
-}
+setupMobileTabSwitcher();
