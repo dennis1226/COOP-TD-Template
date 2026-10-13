@@ -49,9 +49,12 @@ const TERRAIN_CONFIGS = {
     },
     'background/board-bg-guardwall.png': {
         name: '城牆地形', cols: 7, rows: 3, defaultWidth: 900, defaultHeight: 450,
-        colFracs: Array(7).fill((1 - 0.03 * 2) / 7),
+        // 將左右邊距從 0.03 縮小到 0.010，讓整體網格向左右擴展
+        colFracs: Array(7).fill((1 - 0.001 * 2) / 7),
         rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
-        paddingTopRatio: 0.19, paddingBottomRatio: 0.03, paddingLeftRatio: 0.03,
+        paddingTopRatio: 0.19, 
+        paddingBottomRatio: 0.03, 
+        paddingLeftRatio: 0.001, // 縮小左右留白
         blockedCells: new Set()
     }
 };
@@ -478,14 +481,14 @@ async function autoLoadIcons() {
     });
 
     const checkMonster = async (m) => {
-        const multiSrcs = Array.from({ length: 5 }, (_, i) => `icon/image${m}_${i + 1}.png`);
+        const multiSrcs = Array.from({ length: 7 }, (_, i) => `icon/image${m}_${i + 1}.png`);
         const singleSrc = `icon/image${m}.png`;
         const results = await Promise.all([...multiSrcs.map(src => tryLoadImage(src)), tryLoadImage(singleSrc)]);
-        const multiResults = results.slice(0, 5);
+        const multiResults = results.slice(0, 7);
         const singleResult = results[5];
         const forms = [];
         if (multiResults[0].ok) {
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 7; i++) {
                 if (multiResults[i].ok) forms.push({ formIndex: i, src: multiSrcs[i], name: `形態 ${i + 1}` });
                 else break;
             }
