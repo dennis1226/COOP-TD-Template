@@ -175,8 +175,8 @@ body { padding-top: 155px; }
 }
 .templates-drawer.open { right: 0; }
 
-.form-modal, .log-modal {
-    background: var(--panel-bg); border-radius: 12px; padding: 15px; width: 90vw; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;
+.form-modal, .log-modal { overflow: visible;
+    background: var(--panel-bg); border-radius: 12px; padding: 15px; width: 94vw; max-height: 85vh; padding: 20px; overflow: visible; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;
 }
 
 .folder-header { display: flex; align-items: center; justify-content: space-between; }

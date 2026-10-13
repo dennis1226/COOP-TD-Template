@@ -47,7 +47,7 @@
     .templates-drawer { position: fixed; top: 0; right: -360px; width: 350px; height: 100vh; background: var(--panel-bg); box-shadow: -4px 0 20px var(--shadow-color); z-index: 1003; transition: right 0.3s ease; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
     .templates-drawer.open { right: 0; }
 
-    .form-modal { width: 360px; }
+    .form-modal { overflow: visible; width: 440px; max-width: 95vw; }
     .log-modal { width: min(420px, 90vw); }
 
     .folder-header { display: flex; align-items: center; justify-content: space-between; }
@@ -220,7 +220,7 @@
 .hint { font-size: 12px; opacity: 0.7; margin-top: 6px; line-height: 1.4; }
 .empty-units { text-align: center; padding: 20px 10px; opacity: 0.6; font-size: 13px; grid-column: 1 / -1; }
 
-.form-modal {
+.form-modal { overflow: visible;
     background: var(--panel-bg);
     border-radius: 12px;
     padding: 20px;
@@ -244,13 +244,13 @@
     gap: 16px;
 }
 
-.log-list { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; }
+.log-list { display: flex; flex-direction: column; gap: 12px; max-height: 75vh; overflow-y: auto; }
 .log-item { background: var(--cell-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; }
 .log-date { font-size: 0.75rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
 .log-text { font-size: 0.9rem; line-height: 1.5; color: var(--text-color); }
 
 .form-modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 1.1rem; color: var(--accent); }
-.forms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 2px; }
+.forms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; overflow: visible; padding: 2px; }
 
 .form-item {
     aspect-ratio: 1;

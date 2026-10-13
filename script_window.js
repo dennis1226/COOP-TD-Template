@@ -478,14 +478,14 @@ async function autoLoadIcons() {
     });
 
     const checkMonster = async (m) => {
-        const multiSrcs = Array.from({ length: 5 }, (_, i) => `icon/image${m}_${i + 1}.png`);
+        const multiSrcs = Array.from({ length: 7 }, (_, i) => `icon/image${m}_${i + 1}.png`);
         const singleSrc = `icon/image${m}.png`;
         const results = await Promise.all([...multiSrcs.map(src => tryLoadImage(src)), tryLoadImage(singleSrc)]);
-        const multiResults = results.slice(0, 5);
+        const multiResults = results.slice(0, 7);
         const singleResult = results[5];
         const forms = [];
         if (multiResults[0].ok) {
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 7; i++) {
                 if (multiResults[i].ok) forms.push({ formIndex: i, src: multiSrcs[i], name: `形態 ${i + 1}` });
                 else break;
             }
