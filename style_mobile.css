@@ -1,149 +1,194 @@
 /* ==================== style_mobile.css (手機直立式排版) ==================== */
 @media screen and (max-width: 900px) {
-    body { padding-top: 130px; }
+body { padding-top: 155px; }
 
-    .fixed-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: var(--header-bg);
-        padding: 10px;
-        box-shadow: 0 2px 12px var(--shadow-color);
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--header-bg);
+    padding: 10px;
+    box-shadow: 0 2px 12px var(--shadow-color);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
 
-    .header-left-group { width: 100%; justify-content: center; flex: none; gap: 10px; display: flex; }
-    .header-title { font-size: 1.2rem; }
-    .header-left-group .secondary { font-size: 11px; padding: 6px 8px; }
+/* 1. 頂部標題與更新記錄按鈕（維持在第一排） */
+.header-left-group { 
+    width: 100%; 
+    justify-content: center; 
+    flex: none; 
+    gap: 10px; 
+    display: flex; 
+    order: 1; 
+}
+.header-title { font-size: 1.2rem; }
+.header-left-group .secondary { font-size: 11px; padding: 6px 8px; }
 
-    .header-save-group { width: 100%; justify-content: center; flex: none; gap: 4px; display: flex; }
-    .header-bg-select { width: 110px !important; height: 32px !important; font-size: 11px !important; padding: 0 6px !important; }
-    .header-save-group input[type="text"] { flex: 1; max-width: 150px; height: 32px; font-size: 11px; }
-    .header-save-group button { height: 32px; padding: 0 10px; font-size: 11px; }
+/* 2. 📁 模板庫與模式切換按鈕（調至第二排 / 上方） */
+.header-actions { 
+    width: 100%; 
+    justify-content: center; 
+    flex: none; 
+    gap: 6px; 
+    display: flex; 
+    order: 2; 
+}
+.header-actions .primary, 
+.header-actions .secondary { 
+    padding: 6px 10px; 
+    font-size: 11px; 
+}
 
-    .header-actions { width: 100%; justify-content: center; flex: none; gap: 6px; display: flex; }
-    .header-actions .primary, .header-actions .secondary { padding: 6px 10px; font-size: 11px; }
+/* 3. 地形下拉選單、輸入框與儲存按鈕（調至第三排 / 下方） */
+.header-save-group { 
+    width: 100%; 
+    justify-content: center; 
+    flex: none; 
+    gap: 4px; 
+    display: flex; 
+    order: 3; 
+}
+.header-bg-select { 
+    width: 110px !important; 
+    height: 32px !important; 
+    font-size: 11px !important; 
+    padding: 0 6px !important; 
+}
+.header-save-group input[type="text"] { 
+    flex: 1; 
+    max-width: 150px; 
+    height: 32px; 
+    font-size: 11px; 
+}
+.header-save-group button { 
+    height: 32px; 
+    padding: 0 10px; 
+    font-size: 11px; 
+}
 
-    .container {
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-        max-width: 100%;
-        padding: 10px;
-        gap: 12px;
-        box-sizing: border-box;
-    }
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    padding: 10px;
+    gap: 12px;
+    box-sizing: border-box;
+}
 
-    .board-wrapper { width: 100%; max-width: 100%; order: 1; align-items: center; }
-    .board-container { width: 100%; max-width: 100%; display: flex; justify-content: center; overflow-x: auto; }
+.board-wrapper { width: 100%; max-width: 100%; order: 1; align-items: center; }
+.board-container { width: 100%; max-width: 100%; display: flex; justify-content: center; overflow-x: auto; }
 
-    /* Mobile Tab Switcher Container & Styling */
-    .mobile-tab-nav {
-        display: flex;
-        width: 100%;
-        border: 2px solid var(--border-color);
-        border-radius: 8px 8px 0 0;
-        overflow: hidden;
-        margin-top: 12px;
-        background: var(--panel-bg);
-    }
+/* Mobile Tab Switcher Container & Styling */
+.mobile-tab-nav {
+    display: flex;
+    width: 100%;
+    border: 2px solid var(--border-color);
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    margin-top: 12px;
+    background: var(--panel-bg);
+}
 
-    .mobile-tab-btn {
-        flex: 1;
-        padding: 10px 4px;
-        font-size: 13px;
-        font-weight: bold;
-        background: transparent;
-        color: var(--text-color);
-        border: none;
-        border-radius: 0;
-        border-right: 1px solid var(--border-color);
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
+.mobile-tab-btn {
+    flex: 1;
+    padding: 10px 4px;
+    font-size: 13px;
+    font-weight: bold;
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    border-radius: 0;
+    border-right: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
 
-    .mobile-tab-btn:last-child {
-        border-right: none;
-    }
+.mobile-tab-btn:last-child {
+    border-right: none;
+}
 
-    .mobile-tab-btn.active {
-        background-color: var(--button-primary);
-        color: #ffffff;
-        outline: none;
-    }
+.mobile-tab-btn.active {
+    background-color: var(--button-primary);
+    color: #ffffff;
+    outline: none;
+}
 
-    .mobile-tab-content-wrapper {
-        width: 100%;
-        background: var(--panel-bg);
-        border: 2px solid var(--border-color);
-        border-top: none;
-        border-radius: 0 0 8px 8px;
-        padding: 12px;
-        box-sizing: border-box;
-    }
+.mobile-tab-content-wrapper {
+    width: 100%;
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 12px;
+    box-sizing: border-box;
+}
 
-    .mobile-tab-pane {
-        display: none;
-        width: 100%;
-    }
+.mobile-tab-pane {
+    display: none;
+    width: 100%;
+}
 
-    .mobile-tab-pane.active {
-        display: block;
-    }
+.mobile-tab-pane.active {
+    display: block;
+}
 
-    .mobile-tab-pane .panel-left,
-    .mobile-tab-pane .panel-right,
-    .mobile-tab-pane .section {
-        width: 100%;
-        max-width: 100%;
-        margin: 0;
-        padding: 0;
-        background: transparent;
-        border: none;
-        box-shadow: none;
-    }
+.mobile-tab-pane .panel-left,
+.mobile-tab-pane .panel-right,
+.mobile-tab-pane .section {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
 
-    .units-grid { max-height: 220px; }
+.units-grid { max-height: 220px; }
 
-    .button-column {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-    .button-column button { width: 100%; }
+.button-column {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+.button-column button { width: 100%; }
 
-    .modal-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
-    }
-    .modal-overlay.open { display: flex; }
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; }
 
-    .drawer-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1002; display: none; opacity: 0; transition: opacity 0.3s;
-    }
-    .drawer-overlay.open { display: block; opacity: 1; }
+.drawer-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1002; display: none; opacity: 0; transition: opacity 0.3s;
+}
+.drawer-overlay.open { display: block; opacity: 1; }
 
-    .templates-drawer {
-        position: fixed; top: 0; right: -100%; width: 85%; height: 100vh; background: var(--panel-bg); box-shadow: -4px 0 20px var(--shadow-color); z-index: 1003; transition: right 0.3s ease; padding: 15px; display: flex; flex-direction: column; gap: 12px;
-    }
-    .templates-drawer.open { right: 0; }
+.templates-drawer {
+    position: fixed; top: 0; right: -100%; width: 85%; height: 100vh; background: var(--panel-bg); box-shadow: -4px 0 20px var(--shadow-color); z-index: 1003; transition: right 0.3s ease; padding: 15px; display: flex; flex-direction: column; gap: 12px;
+}
+.templates-drawer.open { right: 0; }
 
-    .form-modal, .log-modal {
-        background: var(--panel-bg); border-radius: 12px; padding: 15px; width: 90vw; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;
-    }
+.form-modal, .log-modal {
+    background: var(--panel-bg); border-radius: 12px; padding: 15px; width: 90vw; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;
+}
 
-    .folder-header { display: flex; align-items: center; justify-content: space-between; }
-    
-    .template-card { 
-        background: var(--cell-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 4px; 
-    }
-    .template-card-title { display: flex; align-items: center; gap: 6px; width: 100%; }
-    .title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .template-card-meta { font-size: 11px; opacity: 0.7; }
-    .template-card-actions { display: flex; gap: 6px; margin-top: 4px; }
-    .template-card-actions button { width: 100%; }
+.folder-header { display: flex; align-items: center; justify-content: space-between; }
+
+.template-card { 
+    background: var(--cell-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 4px; 
+}
+.template-card-title { display: flex; align-items: center; gap: 6px; width: 100%; }
+.title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.template-card-meta { font-size: 11px; opacity: 0.7; }
+.template-card-actions { display: flex; gap: 6px; margin-top: 4px; }
+.template-card-actions button { width: 100%; }
+
+
 }
