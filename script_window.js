@@ -162,6 +162,7 @@ const deleteModeBtn = document.getElementById('deleteModeBtn');
 const clearBtn = document.getElementById('clearBtn');
 const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
+const saveImageBtn = document.getElementById('saveImageBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
@@ -600,14 +601,13 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
 });
 
-async function copyBoardTemplate() {
+async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
-    if (!board) return showToast('找不到棋盤元件');
-    showToast('正在產生高畫質圖片…');
+    if (!board) { showToast('找不到棋盤元件'); return null; }
 
     const boardRect = board.getBoundingClientRect();
     const cells = board.querySelectorAll('.cell');
-    if (cells.length === 0) return showToast('棋盤尚無格子');
+    if (cells.length === 0) { showToast('棋盤尚無格子'); return null; }
 
     const canvas = document.createElement('canvas');
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
@@ -705,17 +705,84 @@ async function copyBoardTemplate() {
         lines.forEach(line => { ctx.fillText(line, padding, textY); textY += lineHeight; });
     }
 
+    return canvas;
+}
+
+async function copyBoardTemplate() {
+    showToast('正在產生高畫質圖片…');
+    const canvas = await generateBoardCanvas();
+    if (!canvas) return;
+
     canvas.toBlob(async (blob) => {
         if (!blob) { showToast('匯出失敗，請重試'); return; }
         if (navigator.clipboard && window.ClipboardItem) {
-            try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('已複製高畫質模板圖片至剪貼簿！'); return; } catch (e) {}
+            try {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                showToast('已複製高畫質模板圖片至剪貼簿！');
+                return;
+            } catch (e) {}
         }
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `coop_board_${Date.now()}.png`; a.click();
+        // Fallback to download if clipboard write fails
+        const imageUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = imageUrl;
+        a.download = `coop_board_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         showToast('已為您下載隊形模板圖片！');
-    });
+    }, 'image/png');
 }
 
+async function saveBoardImage() {
+    showToast('正在產生高畫質圖片以供儲存…');
+    const canvas = await generateBoardCanvas();
+    if (!canvas) return;
+
+    canvas.toBlob((blob) => {
+        if (!blob) { showToast('匯出失敗，請重試'); return; }
+        const imageUrl = URL.createObjectURL(blob);
+        
+        // 觸發自動下載
+        const a = document.createElement('a');
+        a.href = imageUrl;
+        a.download = `coop_board_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        showToast('已觸發下載，或請長按下方圖片儲存！');
+
+        // 彈出預覽視窗供 Android 手機長按儲存相簿
+        let modal = document.getElementById('imagePreviewModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'imagePreviewModal';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div style="background:var(--panel-bg);padding:15px;border-radius:12px;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                <div style="color:var(--accent);font-weight:bold;font-size:1rem;">📱 請長按下方圖片儲存至手機相簿</div>
+                <img src="${imageUrl}" style="max-width:100%;max-height:65vh;object-fit:contain;border-radius:6px;border:1px solid var(--border-color);">
+                <button id="closePreviewBtn" class="secondary" style="width:100%;padding:10px;">關閉視窗</button>
+            </div>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('closePreviewBtn').onclick = () => {
+            modal.style.display = 'none';
+        };
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        };
+    }, 'image/png');
+}
+
+
 copyTemplateBtn.addEventListener('click', copyBoardTemplate);
+saveImageBtn.addEventListener('click', saveBoardImage);
 
 saveTemplateBtn.addEventListener('click', () => {
     const rawName = templateNameInput.value.trim().slice(0, 20);
@@ -872,7 +939,7 @@ function renderSavedTemplatesList() {
                     t.folderId = folder.id;
                     saveSavedTemplates(getSavedTemplates());
                     renderSavedTemplatesList();
-                    showToast(`已移入資料夾「${folder.name}」`);
+                    showToast(`已移入資料夾：「${folder.name}」`);
                 }
             }
         });
@@ -927,6 +994,8 @@ function createTemplateCardElement(item) {
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
     return card;
 }
+
+
 
 createBoard();
 loadFixedBackground();
