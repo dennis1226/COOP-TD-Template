@@ -163,7 +163,6 @@ const clearBtn = document.getElementById('clearBtn');
 const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const saveImageBtn = document.getElementById('saveImageBtn');
-const downloadImageBtn = document.getElementById('downloadImageBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
@@ -474,7 +473,6 @@ async function autoLoadIcons() {
     state.loadedMonsters = [];
     const tryLoadImage = (src) => new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
         img.onload = () => resolve({ src, ok: true });
         img.onerror = () => resolve({ src, ok: false });
         img.src = src;
@@ -485,7 +483,7 @@ async function autoLoadIcons() {
         const singleSrc = `icon/image${m}.png`;
         const results = await Promise.all([...multiSrcs.map(src => tryLoadImage(src)), tryLoadImage(singleSrc)]);
         const multiResults = results.slice(0, 7);
-        const singleResult = results[7];
+        const singleResult = results[5];
         const forms = [];
         if (multiResults[0].ok) {
             for (let i = 0; i < 7; i++) {
@@ -621,7 +619,7 @@ async function generateBoardCanvas() {
     let extraHeight = 0, padding = 20, fontSize = 20, lineHeight = 28, lines = [];
     if (descText) {
         const dummyCtx = canvas.getContext('2d');
-        dummyCtx.font = fontSize + 'px sans-serif';
+        dummyCtx.font = `${fontSize}px sans-serif`;
         const maxWidth = canvasWidth - (padding * 2);
         descText.split('\n').forEach(para => {
             let currentLine = '';
@@ -660,8 +658,7 @@ async function generateBoardCanvas() {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
             if (targetForm) {
                 drawPromises.push(new Promise((resolve) => {
-                    const img = new Image(); 
-                    img.crossOrigin = 'anonymous';
+                    const img = new Image(); img.crossOrigin = 'anonymous';
                     img.onload = () => {
                         const padX = cellW * 0.05, padY = cellH * 0.05;
                         const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
@@ -672,8 +669,7 @@ async function generateBoardCanvas() {
                         ctx.drawImage(img, drawX, drawY, drawW, drawH);
                         resolve();
                     };
-                    img.onerror = () => resolve();
-                    img.src = targetForm.src;
+                    img.onerror = resolve; img.src = targetForm.src;
                 }));
             }
         }
@@ -694,7 +690,7 @@ async function generateBoardCanvas() {
         ctx.save();
         ctx.beginPath(); ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
         ctx.fillStyle = '#f1c40f'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-        ctx.fillStyle = '#111111'; ctx.font = 'bold ' + Math.round(radius * 1.3) + 'px sans-serif';
+        ctx.fillStyle = '#111111'; ctx.font = `bold ${Math.round(radius * 1.3)}px sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(orderNum), badgeX, badgeY);
         ctx.restore();
     });
@@ -703,8 +699,8 @@ async function generateBoardCanvas() {
         const startY = canvasHeight;
         ctx.fillStyle = '#2d2d2d'; ctx.fillRect(0, startY, canvas.width, extraHeight);
         ctx.strokeStyle = '#444444'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, startY); ctx.lineTo(canvas.width, startY); ctx.stroke();
-        ctx.fillStyle = '#5b9bd5'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('【陣容說明】', padding, startY + padding);
-        ctx.fillStyle = '#ffffff'; ctx.font = fontSize + 'px sans-serif';
+        ctx.fillStyle = '#5b9bd5'; ctx.font = `bold 22px sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('【陣容說明】', padding, startY + padding);
+        ctx.fillStyle = '#ffffff'; ctx.font = `${fontSize}px sans-serif`;
         let textY = startY + padding + 35;
         lines.forEach(line => { ctx.fillText(line, padding, textY); textY += lineHeight; });
     }
@@ -726,10 +722,11 @@ async function copyBoardTemplate() {
                 return;
             } catch (e) {}
         }
+        // Fallback to download if clipboard write fails
         const imageUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = imageUrl;
-        a.download = 'coop_board_' + Date.now() + '.png';
+        a.download = `coop_board_${Date.now()}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -737,7 +734,6 @@ async function copyBoardTemplate() {
     }, 'image/png');
 }
 
-// 儲存圖片：僅開啟預覽彈窗供長按/另存
 async function saveBoardImage() {
     showToast('正在產生高畫質圖片以供儲存…');
     const canvas = await generateBoardCanvas();
@@ -746,7 +742,18 @@ async function saveBoardImage() {
     canvas.toBlob((blob) => {
         if (!blob) { showToast('匯出失敗，請重試'); return; }
         const imageUrl = URL.createObjectURL(blob);
+        
+        // 觸發自動下載
+        const a = document.createElement('a');
+        a.href = imageUrl;
+        a.download = `coop_board_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
 
+        showToast('已觸發下載，或請長按下方圖片儲存！');
+
+        // 彈出預覽視窗供 Android 手機長按儲存相簿
         let modal = document.getElementById('imagePreviewModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -770,31 +777,227 @@ async function saveBoardImage() {
         modal.onclick = (e) => {
             if (e.target === modal) modal.style.display = 'none';
         };
-        showToast('請長按圖片儲存至相簿！');
     }, 'image/png');
 }
 
-// 下載圖片：一鍵自動下載檔案
-async function downloadBoardImage() {
-    showToast('正在產生高畫質圖片以供下載…');
-    const canvas = await generateBoardCanvas();
-    if (!canvas) return;
-
-    canvas.toBlob((blob) => {
-        if (!blob) { showToast('匯出失敗，請重試'); return; }
-        const imageUrl = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = imageUrl;
-        a.download = 'coop_board_' + Date.now() + '.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        showToast('已為您下載隊形模板圖片！');
-    }, 'image/png');
-}
 
 copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 saveImageBtn.addEventListener('click', saveBoardImage);
-downloadImageBtn.addEventListener('click', downloadBoardImage);
+
+saveTemplateBtn.addEventListener('click', () => {
+    const rawName = templateNameInput.value.trim().slice(0, 20);
+    const now = new Date();
+    const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 20);
+    const templateName = rawName || defaultName;
+    const templates = getSavedTemplates();
+    const maxOrder = templates.reduce((max, t) => Math.max(max, t.order || 0), 0);
+
+    const newTemplate = {
+        id: Date.now(), name: templateName, starred: false, folderId: null, order: maxOrder + 1,
+        description: templateDescInput.value.trim(), date: `${now.getMonth()+1}/${now.getDate()}`,
+        bg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData))
+    };
+    templates.unshift(newTemplate);
+    saveSavedTemplates(templates);
+    setLoadedTemplate(newTemplate);
+    showToast(`已儲存隊形：「${templateName}」！`);
+    renderSavedTemplatesList();
+});
+
+updateTemplateBtn.addEventListener('click', () => {
+    if (!state.currentLoadedTemplateId) return;
+    const templates = getSavedTemplates();
+    const index = templates.findIndex(t => t.id === state.currentLoadedTemplateId);
+    if (index === -1) { showToast('找不到原模板'); setLoadedTemplate(null); return; }
+    const rawName = templateNameInput.value.trim().slice(0, 20);
+    templates[index].name = rawName || templates[index].name;
+    templates[index].description = templateDescInput.value.trim();
+    templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
+    templates[index].bg = state.currentBg;
+    templates[index].terrainData = JSON.parse(JSON.stringify(state.terrainData));
+    saveSavedTemplates(templates);
+    showToast(`已更新隊形：「${templates[index].name}」！`);
+    renderSavedTemplatesList();
+    updateSaveButtonsVisibility();
+});
+
+function renameTemplate(id) {
+    const templates = getSavedTemplates();
+    const target = templates.find(t => t.id === id);
+    if (!target) return;
+    const newName = prompt('請輸入新的模板名稱（最多20字）：', target.name);
+    if (newName !== null && newName.trim() !== '') {
+        target.name = newName.trim().slice(0, 20);
+        saveSavedTemplates(templates);
+        renderSavedTemplatesList();
+        if (state.currentLoadedTemplateId === id) { templateNameInput.value = target.name; updateSaveButtonsVisibility(); }
+        showToast('模板名稱已更新！');
+    }
+}
+
+function renameFolder(folderId) {
+    const folders = getSavedFolders();
+    const target = folders.find(f => f.id === folderId);
+    if (!target) return;
+    const newName = prompt('請輸入新的資料夾名稱（最多20字）：', target.name);
+    if (newName !== null && newName.trim() !== '') {
+        target.name = newName.trim().slice(0, 20);
+        saveSavedFolders(folders);
+        renderSavedTemplatesList();
+        showToast('資料夾名稱已更新！');
+    }
+}
+
+function deleteFolder(folderId, folderName) {
+    if (confirm(`確定要刪除資料夾「${folderName}」嗎？這會連同其中模板刪除！`)) {
+        saveSavedFolders(getSavedFolders().filter(f => f.id !== folderId));
+        saveSavedTemplates(getSavedTemplates().filter(t => t.folderId !== folderId));
+        setLoadedTemplate(null);
+        renderSavedTemplatesList();
+        showToast('資料夾已刪除');
+    }
+}
+
+function toggleStarTemplate(id) {
+    const templates = getSavedTemplates();
+    const target = templates.find(t => t.id === id);
+    if (!target) return;
+    target.starred = !target.starred;
+    saveSavedTemplates(templates);
+    renderSavedTemplatesList();
+    showToast(target.starred ? '已置頂' : '已取消置頂');
+}
+
+function deleteTemplate(id, name) {
+    if (confirm(`確定要刪除隊形模板「${name}」嗎？`)) {
+        saveSavedTemplates(getSavedTemplates().filter(t => t.id !== id));
+        if (state.currentLoadedTemplateId === id) setLoadedTemplate(null);
+        else updateSaveButtonsVisibility();
+        renderSavedTemplatesList();
+        showToast('模板已刪除');
+    }
+}
+
+let draggedItem = null;
+
+function renderSavedTemplatesList() {
+    let templates = getSavedTemplates();
+    let folders = getSavedFolders();
+    savedTemplatesList.innerHTML = '';
+
+    if (templates.length === 0 && folders.length === 0) {
+        savedTemplatesList.innerHTML = '<div class="empty-units">尚無儲存的隊形模板</div>';
+        return;
+    }
+
+    folders.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    folders.forEach(folder => {
+        const folderEl = document.createElement('div');
+        folderEl.className = `folder-container ${folder.collapsed ? 'collapsed' : ''}`;
+        folderEl.draggable = true;
+        const folderTemplates = templates.filter(t => t.folderId === folder.id);
+
+        folderEl.innerHTML = `
+            <div class="folder-header">
+                <div class="folder-title">
+                    <span class="folder-toggle-icon">${folder.collapsed ? '▶' : '▼'}</span>
+                    <span class="folder-icon">📁</span>
+                    <span class="folder-name">${folder.name}</span>
+                    <span class="folder-count">(${folderTemplates.length})</span>
+                    <button class="edit-folder-btn" title="重命名資料夾">✏️</button>
+                </div>
+                <button class="folder-delete-btn" title="刪除資料夾">✕</button>
+            </div>
+            <div class="folder-content" style="${folder.collapsed ? 'display: none;' : ''}"></div>
+        `;
+
+        const header = folderEl.querySelector('.folder-header');
+        header.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            folder.collapsed = !folder.collapsed;
+            saveSavedFolders(folders);
+            renderSavedTemplatesList();
+        });
+        folderEl.querySelector('.edit-folder-btn').addEventListener('click', (e) => { e.stopPropagation(); renameFolder(folder.id); });
+        folderEl.querySelector('.folder-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteFolder(folder.id, folder.name); });
+
+        folderEl.addEventListener('dragstart', (e) => {
+            e.stopPropagation(); draggedItem = { type: 'folder', id: folder.id };
+            setTimeout(() => folderEl.classList.add('dragging'), 0);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        folderEl.addEventListener('dragend', () => { folderEl.classList.remove('dragging'); draggedItem = null; });
+        folderEl.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); if (draggedItem) folderEl.classList.add('drag-over-folder'); });
+        folderEl.addEventListener('dragleave', () => folderEl.classList.remove('drag-over-folder'));
+        folderEl.addEventListener('drop', (e) => {
+            e.preventDefault(); e.stopPropagation(); folderEl.classList.remove('drag-over-folder');
+            if (!draggedItem) return;
+            if (draggedItem.type === 'card') {
+                const t = getSavedTemplates().find(x => x.id === draggedItem.id);
+                if (t && t.folderId !== folder.id) {
+                    t.folderId = folder.id;
+                    saveSavedTemplates(getSavedTemplates());
+                    renderSavedTemplatesList();
+                    showToast(`已移入資料夾：「${folder.name}」`);
+                }
+            }
+        });
+
+        const content = folderEl.querySelector('.folder-content');
+        folderTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
+        if (folderTemplates.length === 0) content.innerHTML = '<div class="empty-folder-hint">拖曳模板卡片至此</div>';
+        else folderTemplates.forEach(item => content.appendChild(createTemplateCardElement(item)));
+
+        savedTemplatesList.appendChild(folderEl);
+    });
+
+    templates.filter(t => !t.folderId).sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1))).forEach(item => {
+        savedTemplatesList.appendChild(createTemplateCardElement(item));
+    });
+}
+
+function createTemplateCardElement(item) {
+    const card = document.createElement('div');
+    card.className = `template-card ${item.starred ? 'starred' : ''}`;
+    card.draggable = true;
+
+    let totalMonsters = 0;
+    if (item.terrainData) {
+        for (const k in item.terrainData) totalMonsters += Object.keys(item.terrainData[k].units || {}).length;
+    }
+
+    card.innerHTML = `
+        <button class="template-card-delete-icon" title="刪除模板">✕</button>
+        <div class="template-card-title">
+            <button class="star-btn ${item.starred ? 'active' : ''}">★</button>
+            <span class="title-text">${item.name}</span>
+            <button class="edit-name-btn" title="更改名稱">✏️</button>
+        </div>
+        <div class="template-card-meta">時間：${item.date} | 魔物數：${totalMonsters}</div>
+        <div class="template-card-actions">
+            <button class="success load-btn">載入隊形</button>
+        </div>
+    `;
+
+    card.querySelector('.star-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleStarTemplate(item.id); });
+    card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => { e.stopPropagation(); deleteTemplate(item.id, item.name); });
+    card.querySelector('.edit-name-btn').addEventListener('click', (e) => { e.stopPropagation(); renameTemplate(item.id); });
+    card.querySelector('.load-btn').addEventListener('click', () => {
+        historyStack.clear();
+        if (item.terrainData) state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
+        loadFixedBackground(item.bg || 'background/board-bg-hedge.png', false, true);
+        setLoadedTemplate(item); createBoard(); closeDrawer(); showToast(`已載入隊形：「${item.name}」`);
+    });
+
+    card.addEventListener('dragstart', (e) => { e.stopPropagation(); draggedItem = { type: 'card', id: item.id }; card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    return card;
+}
+
+
+
+createBoard();
+loadFixedBackground();
+autoLoadIcons();
+updateSaveButtonsVisibility();
