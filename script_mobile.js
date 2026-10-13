@@ -872,7 +872,7 @@ function renderSavedTemplatesList() {
                     t.folderId = folder.id;
                     saveSavedTemplates(getSavedTemplates());
                     renderSavedTemplatesList();
-                    showToast(`已移入資料夾「${folder.name}」`);
+                    showToast(`已移入資料夾：「${folder.name}」`);
                 }
             }
         });
@@ -928,7 +928,71 @@ function createTemplateCardElement(item) {
     return card;
 }
 
+// Mobile Tab Switcher Setup
+function setupMobileTabSwitcher() {
+    const panelLeft = document.querySelector('.panel-left');
+    const boardWrapper = document.querySelector('.board-wrapper');
+    const descSection = boardWrapper ? boardWrapper.querySelector('.section') : null;
+    const panelRight = document.querySelector('.panel-right');
+
+    if (!panelLeft || !descSection || !panelRight) return;
+
+    // Create Mobile Tabs Bar Container
+    const tabsContainer = document.createElement('div');
+    tabsContainer.className = 'mobile-tab-nav';
+    tabsContainer.innerHTML = `
+        <button class="mobile-tab-btn active" data-tab="desc">陣容說明</button>
+        <button class="mobile-tab-btn" data-tab="monsters">魔物</button>
+        <button class="mobile-tab-btn" data-tab="tools">工具與操作</button>
+    `;
+
+    // Create Sub-content Wrapper Container for Mobile Tabs
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'mobile-tab-content-wrapper';
+
+    // Wrap elements into content panels
+    const tabDesc = document.createElement('div');
+    tabDesc.className = 'mobile-tab-pane active';
+    tabDesc.id = 'tab-pane-desc';
+
+    const tabMonsters = document.createElement('div');
+    tabMonsters.className = 'mobile-tab-pane';
+    tabMonsters.id = 'tab-pane-monsters';
+
+    const tabTools = document.createElement('div');
+    tabTools.className = 'mobile-tab-pane';
+    tabTools.id = 'tab-pane-tools';
+
+    // Move nodes
+    descSection.parentNode.insertBefore(tabsContainer, descSection.nextSibling);
+    tabsContainer.parentNode.insertBefore(contentWrapper, tabsContainer.nextSibling);
+
+    tabDesc.appendChild(descSection);
+    tabMonsters.appendChild(panelLeft);
+    tabTools.appendChild(panelRight);
+
+    contentWrapper.appendChild(tabDesc);
+    contentWrapper.appendChild(tabMonsters);
+    contentWrapper.appendChild(tabTools);
+
+    // Add Tab Click Event Listeners
+    const tabBtns = tabsContainer.querySelectorAll('.mobile-tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const targetTab = btn.dataset.tab;
+            document.querySelectorAll('.mobile-tab-pane').forEach(pane => pane.classList.remove('active'));
+            if (targetTab === 'desc') tabDesc.classList.add('active');
+            if (targetTab === 'monsters') tabMonsters.classList.add('active');
+            if (targetTab === 'tools') tabTools.classList.add('active');
+        });
+    });
+}
+
 createBoard();
 loadFixedBackground();
 autoLoadIcons();
 updateSaveButtonsVisibility();
+setupMobileTabSwitcher();

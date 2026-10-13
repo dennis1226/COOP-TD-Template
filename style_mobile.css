@@ -41,8 +41,72 @@
 
     .board-wrapper { width: 100%; max-width: 100%; order: 1; align-items: center; }
     .board-container { width: 100%; max-width: 100%; display: flex; justify-content: center; overflow-x: auto; }
-    .panel-left { width: 100%; max-width: 100%; order: 2; }
-    .panel-right { width: 100%; max-width: 100%; order: 3; }
+
+    /* Mobile Tab Switcher Container & Styling */
+    .mobile-tab-nav {
+        display: flex;
+        width: 100%;
+        border: 2px solid var(--border-color);
+        border-radius: 8px 8px 0 0;
+        overflow: hidden;
+        margin-top: 12px;
+        background: var(--panel-bg);
+    }
+
+    .mobile-tab-btn {
+        flex: 1;
+        padding: 10px 4px;
+        font-size: 13px;
+        font-weight: bold;
+        background: transparent;
+        color: var(--text-color);
+        border: none;
+        border-radius: 0;
+        border-right: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .mobile-tab-btn:last-child {
+        border-right: none;
+    }
+
+    .mobile-tab-btn.active {
+        background-color: var(--button-primary);
+        color: #ffffff;
+        outline: none;
+    }
+
+    .mobile-tab-content-wrapper {
+        width: 100%;
+        background: var(--panel-bg);
+        border: 2px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 12px;
+        box-sizing: border-box;
+    }
+
+    .mobile-tab-pane {
+        display: none;
+        width: 100%;
+    }
+
+    .mobile-tab-pane.active {
+        display: block;
+    }
+
+    .mobile-tab-pane .panel-left,
+    .mobile-tab-pane .panel-right,
+    .mobile-tab-pane .section {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
 
     .units-grid { max-height: 220px; }
 
