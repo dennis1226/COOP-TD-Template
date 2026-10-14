@@ -165,6 +165,7 @@ const clearBtn = document.getElementById('clearBtn');
 const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const saveImageBtn = document.getElementById('saveImageBtn');
+const downloadImageBtn = document.getElementById('downloadImageBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
@@ -724,7 +725,6 @@ async function copyBoardTemplate() {
                 return;
             } catch (e) {}
         }
-        // Fallback to download if clipboard write fails
         const imageUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = imageUrl;
@@ -736,26 +736,16 @@ async function copyBoardTemplate() {
     }, 'image/png');
 }
 
+// 儲存圖片按鈕：只彈出預覽，用戶可自行長按儲存相簿
 async function saveBoardImage() {
-    showToast('正在產生高畫質圖片以供儲存…');
+    showToast('正在產生高畫質預覽圖片…');
     const canvas = await generateBoardCanvas();
     if (!canvas) return;
 
     canvas.toBlob((blob) => {
         if (!blob) { showToast('匯出失敗，請重試'); return; }
         const imageUrl = URL.createObjectURL(blob);
-        
-        // 觸發自動下載
-        const a = document.createElement('a');
-        a.href = imageUrl;
-        a.download = `coop_board_${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
 
-        showToast('已觸發下載，或請長按下方圖片儲存！');
-
-        // 彈出預覽視窗供 Android 手機長按儲存相簿
         let modal = document.getElementById('imagePreviewModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -782,9 +772,30 @@ async function saveBoardImage() {
     }, 'image/png');
 }
 
+// 下載圖片按鈕：直接彈出下載畫面，沒有 preview
+async function downloadBoardImage() {
+    showToast('正在產生高畫質圖片以供下載…');
+    const canvas = await generateBoardCanvas();
+    if (!canvas) return;
+
+    canvas.toBlob((blob) => {
+        if (!blob) { showToast('匯出失敗，請重試'); return; }
+        const imageUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = imageUrl;
+        a.download = `coop_board_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        showToast('已直接為您下載隊形模板圖片！');
+    }, 'image/png');
+}
 
 copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 saveImageBtn.addEventListener('click', saveBoardImage);
+downloadImageBtn.addEventListener('click', downloadBoardImage);
 
 saveTemplateBtn.addEventListener('click', () => {
     const rawName = templateNameInput.value.trim().slice(0, 20);
@@ -1054,7 +1065,6 @@ function setupMobileTabSwitcher() {
         });
     });
 }
-
 
 createBoard();
 loadFixedBackground();
