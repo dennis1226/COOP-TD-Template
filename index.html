@@ -4,38 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>魔物模板編輯器</title>
-    
-    <!-- 1. 先載入基礎共用樣式（包含 CSS 變數） -->
-    <link rel="stylesheet" href="style_base.css">
-    
-    <!-- 2. 再依據螢幕寬度載入對應佈局 -->
-    <link rel="stylesheet" href="style_window.css">
-    <link rel="stylesheet" href="style_mobile.css">
-    
-    <!-- JS 依據裝置自動載入 -->
-    <script>
-        if (window.innerWidth <= 900) {
-            var script = document.createElement('script');
-            script.src = 'script_mobile.js';
-            script.defer = true;
-            document.head.appendChild(script);
-        } else {
-            var script = document.createElement('script');
-            script.src = 'script_window.js';
-            script.defer = true;
-            document.head.appendChild(script);
-        }
-    </script>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
 </head>
 <body>
     <div class="fixed-header">
-        <!-- 左側標題與更新記錄按鈕 -->
         <div class="header-left-group">
             <h1 class="header-title">魔物模板編輯器</h1>
             <button id="updateLogBtn" class="secondary">更新記錄</button>
         </div>
 
-        <!-- 中間：選擇地形與模板名稱與儲存/更新區塊 -->
         <div class="header-save-group">
             <select id="bgSelect" class="bg-select header-bg-select">
                 <option value="background/board-bg-hedge.png">綠籬地形 (預設)</option>
@@ -46,7 +24,6 @@
             <button id="updateTemplateBtn" class="success" style="display: none;">更新</button>
         </div>
 
-        <!-- 右側動作按鈕 -->
         <div class="header-actions">
             <button id="openDrawerBtn" class="primary">📁 模板庫</button>
             <button id="themeToggle" class="secondary">淺色模式</button>
@@ -71,18 +48,10 @@
             </div>
             <div class="log-list">
                 <div class="log-item">
-                    <div class="log-date">2026/10/12</div>
+                    <div class="log-date">2026/10/19</div>
                     <div class="log-text">
-                        • 將選擇地形下拉選單移至頂部導覽列（位於模板名稱左側），優化電腦版排版。<br>
-                        • 調整三欄式面板佈局與右側面板工具按鈕垂直排列。<br>
-                        • 新增復原 (Undo) 與重做 (Redo) 操作按鈕。
-                    </div>
-                </div>
-                <div class="log-item">
-                    <div class="log-date">2026/09/26</div>
-                    <div class="log-text">
-                        • 新增資料夾拖曳排序功能，支援按住資料夾進行位置調整。<br>
-                        • 支援資料夾間的多層級嵌套。
+                        • 整合並統一為 index.html + script.js + style.css。<br>
+                        • 改為手機相似的直立排版：上方 Header、中間場地、下方透過 Tab 切換「魔物」、「陣容說明」、「工具與操作」。
                     </div>
                 </div>
             </div>
@@ -102,47 +71,58 @@
     </div>
 
     <div class="container">
-        <!-- 左側面板：魔物 -->
-        <div class="panel-left">
-            <div class="section">
-                <div class="section-title">魔物</div>
-                <div class="units-grid" id="unitsGrid">
-                    <div class="empty-units">正在讀取 icon 資料夾…</div>
-                </div>
-                <div class="hint">💡 點擊選取魔物，再次點擊模板即可放下</div>
-                <div class="hint">💡 點擊已選取魔物或雙擊棋盤魔物可切換形態</div>
-            </div>
-        </div>
-
-        <!-- 中間面板：棋盤與說明 -->
+        <!-- 中間：場地與說明（直接展示於畫面上方/中間） -->
         <div class="board-wrapper">
             <div class="board-container" id="boardContainer">
                 <div class="board-background" id="boardBackground"></div>
                 <div class="board" id="gameBoard"></div>
             </div>
-            <div class="section" style="margin-top: 16px;">
-                <div class="section-title">陣容說明</div>
-                <textarea id="templateDescInput" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="5" style="width: 100%; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-size: 14px; outline: none; resize: vertical; box-sizing: border-box;"></textarea>
-            </div>
         </div>
 
-        <!-- 右側面板：工具與操作 -->
-        <div class="panel-right">
-            <div class="section">
-                <div class="section-title">工具與操作</div>
-                <!-- 在 index.html 的右側面板工具區塊找到這段並替換 -->
-                <div class="button-column">
-                    <button id="undoBtn" class="secondary" disabled>↩️ 復原</button>
-                    <button id="redoBtn" class="secondary" disabled>↪️ 重做</button>
-                    <button id="deleteModeBtn" class="secondary">🗑️ 刪除</button>
-                    <button id="markOrderBtn" class="secondary">🔢 標示製作順序</button>
-                    <button id="clearBtn" class="danger">清空</button>
-                    <button id="copyTemplateBtn" class="success">複製模板圖片</button>
-                    <button id="saveImageBtn" class="success">儲存圖片</button>
-                    <button id="downloadImageBtn" class="success">下載圖片</button>
-                    <button id="exportJsonBtn" class="secondary">📤 匯出模板</button>
-                    <button id="importJsonBtn" class="secondary">📥 匯入模板</button>
-                    <input type="file" id="importFileinput" accept=".json" style="display: none;">
+        <!-- 下方：3個類型合併的操作視窗，用 Tab 分開 -->
+        <div class="mobile-tab-container">
+            <div class="mobile-tab-nav">
+                <button class="mobile-tab-btn active" data-tab="tab-monsters">👹 魔物</button>
+                <button class="mobile-tab-btn" data-tab="tab-desc">📝 說明</button>
+                <button class="mobile-tab-btn" data-tab="tab-tools">🛠️ 操作</button>
+            </div>
+            
+            <div class="mobile-tab-content-wrapper">
+                <!-- Tab 1: 魔物 -->
+                <div class="mobile-tab-pane active" id="tab-monsters">
+                    <div class="section" style="border:none; box-shadow:none; padding:0;">
+                        <div class="units-grid" id="unitsGrid">
+                            <div class="empty-units">正在讀取 icon 資料夾…</div>
+                        </div>
+                        <div class="hint">💡 點擊選取魔物，再次點擊模板即可放下</div>
+                        <div class="hint">💡 點擊已選取魔物或雙擊棋盤魔物可切換形態</div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: 陣容說明 -->
+                <div class="mobile-tab-pane" id="tab-desc">
+                    <div class="section" style="border:none; box-shadow:none; padding:0;">
+                        <textarea id="templateDescInput" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="5" style="width: 100%; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-size: 14px; outline: none; resize: vertical; box-sizing: border-box;"></textarea>
+                    </div>
+                </div>
+
+                <!-- Tab 3: 工具與操作 -->
+                <div class="mobile-tab-pane" id="tab-tools">
+                    <div class="section" style="border:none; box-shadow:none; padding:0;">
+                        <div class="button-column">
+                            <button id="undoBtn" class="secondary" disabled>↩️ 復原</button>
+                            <button id="redoBtn" class="secondary" disabled>↪️ 重做</button>
+                            <button id="deleteModeBtn" class="secondary">🗑️ 刪除</button>
+                            <button id="markOrderBtn" class="secondary">🔢 標示製作順序</button>
+                            <button id="clearBtn" class="danger">清空</button>
+                            <button id="copyTemplateBtn" class="success">複製模板圖片</button>
+                            <button id="saveImageBtn" class="success">儲存圖片</button>
+                            <button id="downloadImageBtn" class="success">下載圖片</button>
+                            <button id="exportJsonBtn" class="secondary">📤 匯出模板</button>
+                            <button id="importJsonBtn" class="secondary">📥 匯入模板</button>
+                            <input type="file" id="importFileinput" accept=".json" style="display: none;">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

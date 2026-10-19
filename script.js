@@ -200,6 +200,17 @@ const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
+// Tab 切換功能
+document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.mobile-tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const targetPane = document.getElementById(btn.dataset.tab);
+        if (targetPane) targetPane.classList.add('active');
+    });
+});
+
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
 
 function openUpdateLog() { updateLogOverlay.classList.add('open'); }
@@ -322,7 +333,7 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingTopRatio = config.paddingTopRatio || 0;
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
-    const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
+    const maxW = Math.min(360, window.innerWidth - 30);
     const scale = Math.min(1, maxW / naturalWidth);
     const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
     const playableH = naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
@@ -353,7 +364,7 @@ if (bgSelect) bgSelect.addEventListener('change', (e) => loadFixedBackground(e.t
 function createBoard() {
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
-    const maxW = window.innerWidth < 768 ? Math.min(340, window.innerWidth - 40) : state.maxBoardWidth;
+    const maxW = Math.min(360, window.innerWidth - 30);
     const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
     const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
     const fullImgW = Math.min(maxW, naturalW);
@@ -666,7 +677,6 @@ async function generateBoardCanvas() {
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
-        // 1. 繪製主魔物
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -688,7 +698,6 @@ async function generateBoardCanvas() {
             }
         }
 
-        // 2. 繪製附屬型魔物 (Attachment)
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
@@ -701,12 +710,10 @@ async function generateBoardCanvas() {
                             const attachH = cellH * 0.35;
                             const attachX = cellX + (cellW * 0.02);
                             const attachY = cellY + (cellH * 0.02);
-
                             const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = attachW / attachH;
                             let drawW = attachW, drawH = attachH, drawX = attachX, drawY = attachY;
                             if (imgAspect > boxAspect) { drawH = attachW / imgAspect; drawY += (attachH - drawH) / 2; }
                             else { drawW = attachH * imgAspect; drawX += (attachH - drawW) / 2; }
-
                             ctx.drawImage(img, drawX, drawY, drawW, drawH);
                             resolve();
                         };
@@ -801,12 +808,8 @@ async function saveBoardImage() {
         `;
         modal.style.display = 'flex';
 
-        document.getElementById('closePreviewBtn').onclick = () => {
-            modal.style.display = 'none';
-        };
-        modal.onclick = (e) => {
-            if (e.target === modal) modal.style.display = 'none';
-        };
+        document.getElementById('closePreviewBtn').onclick = () => { modal.style.display = 'none'; };
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
     }, 'image/png');
 }
 
@@ -818,14 +821,12 @@ async function downloadBoardImage() {
     canvas.toBlob((blob) => {
         if (!blob) { showToast('匯出失敗，請重試'); return; }
         const imageUrl = URL.createObjectURL(blob);
-        
         const a = document.createElement('a');
         a.href = imageUrl;
         a.download = `coop_board_${Date.now()}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
         showToast('已直接為您下載隊形模板圖片！');
     }, 'image/png');
 }
@@ -1095,7 +1096,6 @@ loadFixedBackground();
 autoLoadIcons();
 updateSaveButtonsVisibility();
 
-// ==================== 匯出與匯入功能（全域事件委派，確保絕不失效） ====================
 document.addEventListener('click', function(e) {
     const exportBtn = e.target.closest('#exportJsonBtn');
     const importBtn = e.target.closest('#importJsonBtn');
@@ -1122,11 +1122,8 @@ document.addEventListener('click', function(e) {
     }
 
     if (importBtn) {
-        if (fileInput) {
-            fileInput.click();
-        } else {
-            showToast('找不到匯入檔案元件');
-        }
+        if (fileInput) fileInput.click();
+        else showToast('找不到匯入檔案元件');
     }
 });
 
@@ -1140,9 +1137,7 @@ document.addEventListener('change', function(e) {
         reader.onload = function(event) {
             try {
                 const imported = JSON.parse(event.target.result);
-                if (!imported.terrainData || !imported.bg) {
-                    throw new Error('格式錯誤');
-                }
+                if (!imported.terrainData || !imported.bg) throw new Error('格式錯誤');
 
                 historyStack.clear();
                 state.currentBg = imported.bg;
@@ -1151,7 +1146,6 @@ document.addEventListener('change', function(e) {
                 if (typeof bgSelect !== 'undefined' && bgSelect) bgSelect.value = imported.bg;
                 loadFixedBackground(imported.bg, false, true);
 
-                // 建立/整理載入的模板資料物件（確保說明文字包含進來）
                 const importedTemplate = {
                     id: Date.now(),
                     name: imported.name || '匯入模板',
@@ -1160,9 +1154,7 @@ document.addEventListener('change', function(e) {
                     terrainData: imported.terrainData
                 };
 
-                // 使用 setLoadedTemplate 同步更新輸入框與 state 狀態
                 setLoadedTemplate(importedTemplate);
-                
                 createBoard();
                 showToast('已成功匯入模板！');
             } catch (err) {
