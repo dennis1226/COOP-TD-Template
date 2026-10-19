@@ -60,7 +60,7 @@ const TERRAIN_CONFIGS = {
         rows: 5,
         defaultWidth: 750,
         defaultHeight: 505,
-        colFracs: [98, 105, 105, 108, 107, 112, 108].map(v => v / 743),
+        colFracs: [105, 105, 105, 103, 107, 108, 112].map(v => v / 743),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
         paddingTopRatio: 0,
         paddingBottomRatio: 0,
