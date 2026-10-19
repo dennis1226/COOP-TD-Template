@@ -6,28 +6,37 @@ function getSavedTemplates() {
     try {
         const localData = localStorage.getItem(STORAGE_KEY);
         if (localData) return JSON.parse(localData);
-    } catch (e) {}
+    } catch (e) {
+        console.error("無法讀取模板資料", e);
+    }
     return [];
 }
 
 function saveSavedTemplates(templates) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-    } catch (e) {}
+    } catch (e) {
+        console.error("無法儲存模板資料，可能是儲存空間已滿", e);
+        showToast('儲存失敗：本機儲存空間異常');
+    }
 }
 
 function getSavedFolders() {
     try {
         const localData = localStorage.getItem(FOLDERS_KEY);
         if (localData) return JSON.parse(localData);
-    } catch (e) {}
+    } catch (e) {
+        console.error("無法讀取資料夾資料", e);
+    }
     return [];
 }
 
 function saveSavedFolders(folders) {
     try {
         localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
-    } catch (e) {}
+    } catch (e) {
+        console.error("無法儲存資料夾資料", e);
+    }
 }
 
 const MONSTER_CATEGORIES = [
@@ -42,16 +51,19 @@ const MONSTER_CATEGORIES = [
 const TERRAIN_CONFIGS = {
     'background/board-bg-hedge.png': {
         name: '綠籬地形', cols: 7, rows: 5, defaultWidth: 750, defaultHeight: 505,
-        colFracs: [98, 105, 105, 108, 107, 112, 108].map(v => v / 750),
-        rowFracs: [110, 115, 116, 116, 115].map(v => v / 505),
+        // 修正：將原數值除以它們的「總和」(743 與 572)，確保比例加總精準等於 1 (100%)
+        colFracs: [98, 105, 105, 108, 107, 112, 108].map(v => v / 743),
+        rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
         paddingTopRatio: 0, paddingBottomRatio: 0, paddingLeftRatio: 0,
         blockedCells: new Set(['0-0', '6-0', '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', '2-2', '4-2', '2-3', '4-3', '2-4', '3-4', '4-4'])
     },
     'background/board-bg-guardwall.png': {
         name: '城牆地形', cols: 7, rows: 3, defaultWidth: 900, defaultHeight: 450,
-        colFracs: Array(7).fill((1 - 0.05 * 2) / 7),
-        rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
-        paddingTopRatio: 0.19, paddingBottomRatio: 0.03, paddingLeftRatio: 0.03,
+        // 修正：可放置區域(Playable)應被均等劃分，直接使用 1/7 與 1/3
+        colFracs: Array(7).fill(1 / 7),
+        rowFracs: Array(3).fill(1 / 3),
+        // 修正：左右邊界留白比例改為正確的 0.05
+        paddingTopRatio: 0.19, paddingBottomRatio: 0.03, paddingLeftRatio: 0.05,
         blockedCells: new Set()
     }
 };
@@ -128,27 +140,27 @@ const state = {
 const historyStack = {
     undoList: [], redoList: [], maxSize: 30,
     pushState() {
-        this.undoList.push({ currentBg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData)) });
+        this.undoList.push({ currentBg: state.currentBg, terrainData: structuredClone(state.terrainData) });
         if (this.undoList.length > this.maxSize) this.undoList.shift();
         this.redoList = [];
         updateUndoRedoButtons();
     },
     undo() {
         if (this.undoList.length === 0) return;
-        this.redoList.push({ currentBg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData)) });
+        this.redoList.push({ currentBg: state.currentBg, terrainData: structuredClone(state.terrainData) });
         const prev = this.undoList.pop();
         state.currentBg = prev.currentBg;
-        state.terrainData = JSON.parse(JSON.stringify(prev.terrainData));
+        state.terrainData = structuredClone(prev.terrainData);
         if (bgSelect) bgSelect.value = state.currentBg;
         loadFixedBackground(state.currentBg, false, true);
         updateUndoRedoButtons();
     },
     redo() {
         if (this.redoList.length === 0) return;
-        this.undoList.push({ currentBg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData)) });
+        this.undoList.push({ currentBg: state.currentBg, terrainData: structuredClone(state.terrainData) });
         const next = this.redoList.pop();
         state.currentBg = next.currentBg;
-        state.terrainData = JSON.parse(JSON.stringify(next.terrainData));
+        state.terrainData = structuredClone(next.terrainData);
         if (bgSelect) bgSelect.value = state.currentBg;
         loadFixedBackground(state.currentBg, false, true);
         updateUndoRedoButtons();
@@ -808,7 +820,7 @@ if (saveTemplateBtn) {
         const newTemplate = {
             id: Date.now(), name: templateName, starred: false, folderId: null, order: maxOrder + 1,
             description: templateDescInput ? templateDescInput.value.trim() : '', date: `${now.getMonth()+1}/${now.getDate()}`,
-            bg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData))
+            bg: state.currentBg, terrainData: structuredClone(state.terrainData)
         };
         templates.unshift(newTemplate);
         saveSavedTemplates(templates);
@@ -829,7 +841,7 @@ if (updateTemplateBtn) {
         templates[index].description = templateDescInput ? templateDescInput.value.trim() : '';
         templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
         templates[index].bg = state.currentBg;
-        templates[index].terrainData = JSON.parse(JSON.stringify(state.terrainData));
+        templates[index].terrainData = structuredClone(state.terrainData);
         saveSavedTemplates(templates);
         showToast(`已更新隊形：「${templates[index].name}」！`);
         renderSavedTemplatesList();
@@ -894,14 +906,12 @@ function deleteTemplate(id, name) {
     }
 }
 
-// 💡 處理資料夾指派與移出邏輯（改為彈出精美選單 Modal）
 function handleTemplateFolderAction(id) {
     const templates = getSavedTemplates();
     const target = templates.find(t => t.id === id);
     if (!target) return;
 
     if (target.folderId) {
-        // 如果目前在資料夾內 -> 詢問是否要將該隊形移離資料夾
         if (confirm(`確定要將隊形「${target.name}」移離目前資料夾嗎？`)) {
             target.folderId = null;
             saveSavedTemplates(templates);
@@ -909,7 +919,6 @@ function handleTemplateFolderAction(id) {
             showToast('已將隊形移出資料夾');
         }
     } else {
-        // 如果目前在資料夾外 -> 彈出選單讓使用者點擊選擇資料夾
         const folders = getSavedFolders();
         if (folders.length === 0) {
             showToast('目前尚無任何資料夾，請先建立資料夾！');
@@ -1100,7 +1109,6 @@ function createTemplateCardElement(item) {
     const folderActionIcon = item.folderId ? '📂' : '📁';
     const folderActionTitle = item.folderId ? '將隊形移離資料夾' : '將隊形加入資料夾';
 
-    // 💡 將資料夾按鈕移至編輯筆的左邊
     card.innerHTML = `
         <div class="template-card-title">
             <button class="star-btn ${item.starred ? 'active' : ''}" title="置頂隊形">★</button>
@@ -1121,7 +1129,7 @@ function createTemplateCardElement(item) {
     card.querySelector('.edit-name-btn').addEventListener('click', (e) => { e.stopPropagation(); renameTemplate(item.id); });
     card.querySelector('.load-btn').addEventListener('click', () => {
         historyStack.clear();
-        if (item.terrainData) state.terrainData = JSON.parse(JSON.stringify(item.terrainData));
+        if (item.terrainData) state.terrainData = structuredClone(item.terrainData);
         loadFixedBackground(item.bg || 'background/board-bg-hedge.png', false, true);
         setLoadedTemplate(item); createBoard(); closeDrawer(); showToast(`已載入隊形：「${item.name}」`);
     });
@@ -1139,15 +1147,15 @@ updateSaveButtonsVisibility();
 document.addEventListener('click', function(e) {
     const exportBtn = e.target.closest('#exportJsonBtn');
     const importBtn = e.target.closest('#importJsonBtn');
-    const fileInput = document.getElementById('importFileInput') || document.getElementById('importFileinput');
+    const fileInput = document.getElementById('importFileInput');
 
     if (exportBtn) {
-        const templateName = typeof templateNameInput !== 'undefined' && templateNameInput ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
+        const templateName = (typeof templateNameInput !== 'undefined' && templateNameInput) ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
         const exportData = {
             name: templateName,
-            description: typeof templateDescInput !== 'undefined' && templateDescInput ? templateDescInput.value.trim() : '',
+            description: (typeof templateDescInput !== 'undefined' && templateDescInput) ? templateDescInput.value.trim() : '',
             bg: state.currentBg,
-            terrainData: JSON.parse(JSON.stringify(state.terrainData)),
+            terrainData: structuredClone(state.terrainData),
             date: `${new Date().getMonth()+1}/${new Date().getDate()}`
         };
 
@@ -1168,7 +1176,7 @@ document.addEventListener('click', function(e) {
 });
 
 document.addEventListener('change', function(e) {
-    const fileInput = document.getElementById('importFileInput') || document.getElementById('importFileinput');
+    const fileInput = document.getElementById('importFileInput');
     if (e.target === fileInput) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1181,7 +1189,7 @@ document.addEventListener('change', function(e) {
 
                 historyStack.clear();
                 state.currentBg = imported.bg;
-                state.terrainData = JSON.parse(JSON.stringify(imported.terrainData));
+                state.terrainData = structuredClone(imported.terrainData);
                 
                 if (typeof bgSelect !== 'undefined' && bgSelect) bgSelect.value = imported.bg;
                 loadFixedBackground(imported.bg, false, true);
