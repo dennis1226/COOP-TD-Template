@@ -151,7 +151,14 @@ body {
     
     .board-container {
         width: 100% !important;
-        max-width: 950px !important;
+        max-width: 360px !important;
+        aspect-ratio: 650 / 572; /* 請代入你綠籬背景圖實際的寬高比例 (例如 650x572) */
+        height: auto !important;
+    }
+
+    .board-background {
+        width: 100%;
+        height: 100%;
     }
 
     .mobile-tab-container {
