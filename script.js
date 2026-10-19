@@ -111,7 +111,7 @@ function normalizePlacedUnit(placed) {
 const state = {
     cols: 7, rows: 5, cellW: 105, cellH: 112, colFracs: null, rowFracs: null,
     paddingTopRatio: 0, paddingBottomRatio: 0, paddingLeftRatio: 0,
-    selectedUnitId: null, selectedFormIndex: 0, deleteMode: false, markOrderMode: false,
+    selectedUnitId: null, selectedFormIndex: 0, deleteMode: false,
     loadedMonsters: [], bgImage: null, currentBg: 'background/board-bg-hedge.png',
     currentLoadedTemplateId: null, maxBoardWidth: 760,
     terrainData: {
@@ -219,6 +219,7 @@ if (closeUpdateLogBtn) closeUpdateLogBtn.addEventListener('click', closeUpdateLo
 if (updateLogOverlay) updateLogOverlay.addEventListener('click', (e) => { if (e.target === updateLogOverlay) closeUpdateLog(); });
 
 function showToast(msg, duration = 2200) {
+    if (!toastEl) return;
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     setTimeout(() => toastEl.classList.remove('show'), duration);
@@ -227,30 +228,31 @@ function showToast(msg, duration = 2200) {
 function getCellKey(x, y) { return `${x}-${y}`; }
 
 function updateSaveButtonsVisibility() {
+    if (!templateNameInput) return;
     const rawName = templateNameInput.value.trim().slice(0, 20);
     const templates = getSavedTemplates();
     const existing = templates.find(t => t.name === rawName);
     if (existing && rawName !== '') {
-        saveTemplateBtn.style.display = 'none';
-        updateTemplateBtn.style.display = 'block';
+        if (saveTemplateBtn) saveTemplateBtn.style.display = 'none';
+        if (updateTemplateBtn) updateTemplateBtn.style.display = 'block';
         state.currentLoadedTemplateId = existing.id;
     } else {
-        saveTemplateBtn.style.display = 'block';
-        updateTemplateBtn.style.display = 'none';
+        if (saveTemplateBtn) saveTemplateBtn.style.display = 'block';
+        if (updateTemplateBtn) updateTemplateBtn.style.display = 'none';
         state.currentLoadedTemplateId = null;
     }
 }
-templateNameInput.addEventListener('input', updateSaveButtonsVisibility);
+if (templateNameInput) templateNameInput.addEventListener('input', updateSaveButtonsVisibility);
 
 function setLoadedTemplate(template) {
     if (template) {
         state.currentLoadedTemplateId = template.id;
-        templateNameInput.value = template.name;
-        templateDescInput.value = template.description || '';
+        if (templateNameInput) templateNameInput.value = template.name;
+        if (templateDescInput) templateDescInput.value = template.description || '';
     } else {
         state.currentLoadedTemplateId = null;
-        templateNameInput.value = '';
-        templateDescInput.value = '';
+        if (templateNameInput) templateNameInput.value = '';
+        if (templateDescInput) templateDescInput.value = '';
     }
     updateSaveButtonsVisibility();
 }
@@ -303,14 +305,14 @@ function openFormModalForCell(cellKey) {
     formModalOverlay.classList.add('open');
 }
 
-function closeFormModal() { formModalOverlay.classList.remove('open'); }
-closeFormModalBtn.addEventListener('click', closeFormModal);
-formModalOverlay.addEventListener('click', (e) => { if (e.target === formModalOverlay) closeFormModal(); });
+function closeFormModal() { if (formModalOverlay) formModalOverlay.classList.remove('open'); }
+if (closeFormModalBtn) closeFormModalBtn.addEventListener('click', closeFormModal);
+if (formModalOverlay) formModalOverlay.addEventListener('click', (e) => { if (e.target === formModalOverlay) closeFormModal(); });
 
-openDrawerBtn.addEventListener('click', () => { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); });
-function closeDrawer() { templatesDrawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
-closeDrawerBtn.addEventListener('click', closeDrawer);
-drawerOverlay.addEventListener('click', closeDrawer);
+if (openDrawerBtn) openDrawerBtn.addEventListener('click', () => { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); });
+function closeDrawer() { if (templatesDrawer) templatesDrawer.classList.remove('open'); if (drawerOverlay) drawerOverlay.classList.remove('open'); }
+if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
+if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
 
 if (addFolderBtn) addFolderBtn.addEventListener('click', createNewFolder);
 
@@ -349,7 +351,7 @@ function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, kee
     }
     state.currentBg = bgPath;
     if (bgSelect) bgSelect.value = bgPath;
-    boardBgEl.style.backgroundImage = `url('${bgPath}')`;
+    if (boardBgEl) boardBgEl.style.backgroundImage = `url('${bgPath}')`;
     const config = TERRAIN_CONFIGS[bgPath] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -361,6 +363,7 @@ function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, kee
 if (bgSelect) bgSelect.addEventListener('change', (e) => loadFixedBackground(e.target.value, true, false));
 
 function createBoard() {
+    if (!boardEl) return;
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const maxW = Math.min(360, window.innerWidth - 30);
@@ -418,17 +421,10 @@ function createBoard() {
                 }
             }
 
-            if (state.orders[key]) {
-                const badge = document.createElement('div');
-                badge.className = 'order-badge';
-                badge.textContent = state.orders[key];
-                cell.appendChild(badge);
-            }
-
             cell.addEventListener('click', () => onCellClick(x, y));
             cell.addEventListener('dblclick', (e) => {
                 e.preventDefault();
-                if (state.units[key] && !state.markOrderMode && !state.deleteMode) openFormModalForCell(key);
+                if (state.units[key] && !state.deleteMode) openFormModalForCell(key);
             });
             cell.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -467,15 +463,6 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
 
 function onCellClick(x, y) {
     const key = getCellKey(x, y);
-    if (state.markOrderMode) {
-        if (!state.units[key]) { showToast('該位置沒有魔物，無法設定順序！'); return; }
-        historyStack.pushState();
-        if (state.orders[key]) { delete state.orders[key]; createBoard(); showToast('已移除該格子的順序標示'); return; }
-        if (Object.keys(state.orders).length >= 20) { showToast('已達到最大標示數量（20個）！'); return; }
-        state.orders[key] = Object.keys(state.orders).length + 1;
-        createBoard();
-        return;
-    }
     if (state.deleteMode) {
         if (state.units[key]) {
             historyStack.pushState();
@@ -483,7 +470,7 @@ function onCellClick(x, y) {
             if (placed && placed.attachment) {
                 placed.attachment = null; state.units[key] = placed; createBoard(); showToast('已移除格內的附屬型魔物'); return;
             }
-            delete state.units[key]; delete state.orders[key]; createBoard(); showToast('已刪除格內魔物');
+            delete state.units[key]; createBoard(); showToast('已刪除格內魔物');
         }
         return;
     }
@@ -492,6 +479,7 @@ function onCellClick(x, y) {
 }
 
 async function autoLoadIcons() {
+    if (!unitsGrid) return;
     unitsGrid.innerHTML = '<div class="empty-units">正在讀取 icon 資料夾…</div>';
     state.loadedMonsters = [];
     const tryLoadImage = (src) => new Promise((resolve) => {
@@ -506,14 +494,14 @@ async function autoLoadIcons() {
         const singleSrc = `icon/image${m}.png`;
         const results = await Promise.all([...multiSrcs.map(src => tryLoadImage(src)), tryLoadImage(singleSrc)]);
         const multiResults = results.slice(0, 7);
-        const singleResult = results[5];
+        const singleResult = results[7];
         const forms = [];
         if (multiResults[0].ok) {
             for (let i = 0; i < 7; i++) {
                 if (multiResults[i].ok) forms.push({ formIndex: i, src: multiSrcs[i], name: `形態 ${i + 1}` });
                 else break;
             }
-        } else if (singleResult.ok) {
+        } else if (singleResult && singleResult.ok) {
             forms.push({ formIndex: 0, src: singleSrc, name: `預設形態` });
         }
         if (forms.length > 0) return { id: `monster_${m}`, monsterNum: m, name: `魔物 ${m}`, forms, selectedFormIndex: 0 };
@@ -567,8 +555,7 @@ async function autoLoadIcons() {
                         opt.classList.add('selected');
                         state.selectedUnitId = monster.id;
                         state.selectedFormIndex = monster.selectedFormIndex || 0;
-                        if (state.deleteMode) { state.deleteMode = false; deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除'; }
-                        if (state.markOrderMode) { state.markOrderMode = false; markOrderBtn.classList.remove('active'); }
+                        if (state.deleteMode && deleteModeBtn) { state.deleteMode = false; deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除'; }
                         createBoard();
                     }
                 });
@@ -587,30 +574,34 @@ async function autoLoadIcons() {
     createBoard(); renderSavedTemplatesList();
 }
 
-markOrderBtn.addEventListener('click', () => {
-    state.markOrderMode = !state.markOrderMode;
-    markOrderBtn.classList.toggle('active', state.markOrderMode);
-    if (state.markOrderMode) {
-        historyStack.pushState(); state.orders = {};
-        state.selectedUnitId = null; document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
-        state.deleteMode = false; deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除';
-        createBoard(); showToast('已重置順序，請依次點擊魔物格標示 (1-20)');
-    } else {
-        showToast('已停止標示順序');
-    }
-});
+if (deleteModeBtn) {
+    deleteModeBtn.addEventListener('click', () => {
+        state.deleteMode = !state.deleteMode;
+        if (state.deleteMode) {
+            deleteModeBtn.className = 'danger'; deleteModeBtn.textContent = '✕ 退出刪除';
+            state.selectedUnitId = null; document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+        } else {
+            deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除';
+        }
+        createBoard();
+    });
+}
 
-clearBtn.addEventListener('click', () => {
-    if (Object.keys(state.units).length === 0 && Object.keys(state.orders).length === 0) return;
-    if (confirm('確定要清空的畫布與順序標示嗎？')) {
-        historyStack.pushState(); state.units = {}; state.orders = {}; setLoadedTemplate(null); createBoard(); showToast('當前地形模板與順序已清空');
-    }
-});
+if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+        if (Object.keys(state.units).length === 0) return;
+        if (confirm('確定要清空畫布嗎？')) {
+            historyStack.pushState(); state.units = {}; setLoadedTemplate(null); createBoard(); showToast('當前地形模板已清空');
+        }
+    });
+}
 
-themeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('light-mode');
-    themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
-});
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        themeToggle.textContent = document.body.classList.contains('light-mode') ? '深色模式' : '淺色模式';
+    });
+}
 
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
@@ -713,24 +704,6 @@ async function generateBoardCanvas() {
 
     await Promise.all(drawPromises);
 
-    cells.forEach((cell) => {
-        const key = cell.dataset.key;
-        if (!key || !state.orders[key] || !state.units[key]) return;
-        const orderNum = state.orders[key];
-        const cellRect = cell.getBoundingClientRect();
-        const cellX = (cellRect.left - boardRect.left) * scaleX;
-        const cellY = (cellRect.top - boardRect.top) * scaleY;
-        const cellW = cellRect.width * scaleX, cellH = cellRect.height * scaleY;
-        const badgeX = cellX + cellW * 0.2, badgeY = cellY + cellH * 0.22, radius = Math.max(14, cellW * 0.15);
-
-        ctx.save();
-        ctx.beginPath(); ctx.arc(badgeX, badgeY, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#f1c40f'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-        ctx.fillStyle = '#111111'; ctx.font = `bold ${Math.round(radius * 1.3)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(orderNum), badgeX, badgeY);
-        ctx.restore();
-    });
-
     if (descText && lines.length > 0) {
         const startY = canvasHeight;
         ctx.fillStyle = '#2d2d2d'; ctx.fillRect(0, startY, canvas.width, extraHeight);
@@ -818,46 +791,50 @@ async function downloadBoardImage() {
     }, 'image/png');
 }
 
-copyTemplateBtn.addEventListener('click', copyBoardTemplate);
-saveImageBtn.addEventListener('click', saveBoardImage);
-downloadImageBtn.addEventListener('click', downloadBoardImage);
+if (copyTemplateBtn) copyTemplateBtn.addEventListener('click', copyBoardTemplate);
+if (saveImageBtn) saveImageBtn.addEventListener('click', saveBoardImage);
+if (downloadImageBtn) downloadImageBtn.addEventListener('click', downloadBoardImage);
 
-saveTemplateBtn.addEventListener('click', () => {
-    const rawName = templateNameInput.value.trim().slice(0, 20);
-    const now = new Date();
-    const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 20);
-    const templateName = rawName || defaultName;
-    const templates = getSavedTemplates();
-    const maxOrder = templates.reduce((max, t) => Math.max(max, t.order || 0), 0);
+if (saveTemplateBtn) {
+    saveTemplateBtn.addEventListener('click', () => {
+        const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
+        const now = new Date();
+        const defaultName = `隊形 ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`.slice(0, 20);
+        const templateName = rawName || defaultName;
+        const templates = getSavedTemplates();
+        const maxOrder = templates.reduce((max, t) => Math.max(max, t.order || 0), 0);
 
-    const newTemplate = {
-        id: Date.now(), name: templateName, starred: false, folderId: null, order: maxOrder + 1,
-        description: templateDescInput.value.trim(), date: `${now.getMonth()+1}/${now.getDate()}`,
-        bg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData))
-    };
-    templates.unshift(newTemplate);
-    saveSavedTemplates(templates);
-    setLoadedTemplate(newTemplate);
-    showToast(`已儲存隊形：「${templateName}」！`);
-    renderSavedTemplatesList();
-});
+        const newTemplate = {
+            id: Date.now(), name: templateName, starred: false, folderId: null, order: maxOrder + 1,
+            description: templateDescInput ? templateDescInput.value.trim() : '', date: `${now.getMonth()+1}/${now.getDate()}`,
+            bg: state.currentBg, terrainData: JSON.parse(JSON.stringify(state.terrainData))
+        };
+        templates.unshift(newTemplate);
+        saveSavedTemplates(templates);
+        setLoadedTemplate(newTemplate);
+        showToast(`已儲存隊形：「${templateName}」！`);
+        renderSavedTemplatesList();
+    });
+}
 
-updateTemplateBtn.addEventListener('click', () => {
-    if (!state.currentLoadedTemplateId) return;
-    const templates = getSavedTemplates();
-    const index = templates.findIndex(t => t.id === state.currentLoadedTemplateId);
-    if (index === -1) { showToast('找不到原模板'); setLoadedTemplate(null); return; }
-    const rawName = templateNameInput.value.trim().slice(0, 20);
-    templates[index].name = rawName || templates[index].name;
-    templates[index].description = templateDescInput.value.trim();
-    templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
-    templates[index].bg = state.currentBg;
-    templates[index].terrainData = JSON.parse(JSON.stringify(state.terrainData));
-    saveSavedTemplates(templates);
-    showToast(`已更新隊形：「${templates[index].name}」！`);
-    renderSavedTemplatesList();
-    updateSaveButtonsVisibility();
-});
+if (updateTemplateBtn) {
+    updateTemplateBtn.addEventListener('click', () => {
+        if (!state.currentLoadedTemplateId) return;
+        const templates = getSavedTemplates();
+        const index = templates.findIndex(t => t.id === state.currentLoadedTemplateId);
+        if (index === -1) { showToast('找不到原模板'); setLoadedTemplate(null); return; }
+        const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
+        templates[index].name = rawName || templates[index].name;
+        templates[index].description = templateDescInput ? templateDescInput.value.trim() : '';
+        templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
+        templates[index].bg = state.currentBg;
+        templates[index].terrainData = JSON.parse(JSON.stringify(state.terrainData));
+        saveSavedTemplates(templates);
+        showToast(`已更新隊形：「${templates[index].name}」！`);
+        renderSavedTemplatesList();
+        updateSaveButtonsVisibility();
+    });
+}
 
 function renameTemplate(id) {
     const templates = getSavedTemplates();
@@ -868,7 +845,7 @@ function renameTemplate(id) {
         target.name = newName.trim().slice(0, 20);
         saveSavedTemplates(templates);
         renderSavedTemplatesList();
-        if (state.currentLoadedTemplateId === id) { templateNameInput.value = target.name; updateSaveButtonsVisibility(); }
+        if (state.currentLoadedTemplateId === id && templateNameInput) { templateNameInput.value = target.name; updateSaveButtonsVisibility(); }
         showToast('模板名稱已更新！');
     }
 }
@@ -919,6 +896,7 @@ function deleteTemplate(id, name) {
 let draggedItem = null;
 
 function renderSavedTemplatesList() {
+    if (!savedTemplatesList) return;
     let templates = getSavedTemplates();
     let folders = getSavedFolders();
     savedTemplatesList.innerHTML = '';

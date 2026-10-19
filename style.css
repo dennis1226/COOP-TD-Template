@@ -106,6 +106,71 @@ body {
     .button-column { grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
 }
 
+/* ==================== 電腦版專屬樣式 (> 901px) ==================== */
+@media screen and (min-width: 901px) {
+    body { padding-top: 80px; }
+
+    .fixed-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: var(--header-bg);
+        padding: 12px 24px;
+        box-shadow: 0 2px 12px var(--shadow-color);
+        z-index: 1000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .header-left-group { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; order: 1; }
+    .header-title { margin: 0; font-size: 1.4rem; font-weight: 700; }
+    
+    .header-save-group { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; justify-content: center; order: 2; }
+    .header-bg-select { width: 160px !important; height: 38px !important; font-size: 13px !important; }
+    .header-save-group input[type="text"] { width: 220px; height: 38px; font-size: 13px; }
+    .header-save-group button { height: 38px; padding: 0 16px; font-size: 13px; }
+
+    .header-actions { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; justify-content: flex-end; order: 3; }
+    .header-actions .primary, .header-actions .secondary { padding: 9px 16px; font-size: 13px; }
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+        gap: 20px;
+    }
+
+    .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
+    
+    .board-container {
+        width: 100% !important;
+        max-width: 950px !important;
+    }
+
+    .mobile-tab-container {
+        width: 100%;
+        max-width: 950px;
+    }
+
+    /* 💻 電腦版：讓魔物列表完整展開，不需要強制小框滾動 */
+    .units-grid-scroll-area {
+        max-height: none !important;
+        overflow-y: visible !important;
+        border: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
+    .button-column { grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
+}
+
 /* ==================== 手機版專屬樣式 (<= 900px) ==================== */
 @media screen and (max-width: 900px) {
     body { padding-top: 155px; }
@@ -150,20 +215,18 @@ body {
 
     .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
     
-    /* 讓棋盤在手機上一目了然，稍微限制最大寬度避免過大 */
     .board-container {
         max-width: 340px !important;
     }
 
     .mobile-tab-container { width: 100%; max-width: 480px; }
     
-    /* 調整手機版按鈕垂直間距與寬度 */
     .button-column { display: flex; flex-direction: column; gap: 8px; }
     .button-column button { width: 100%; padding: 10px; font-size: 13px; }
     
-    /* 🎯 關鍵：限制手機版魔物清單的高度，並加入內部滾輪 */
+    /* 📱 手機版：限制高度並加入內部滾輪，實現一畫面操作 */
     .units-grid-scroll-area {
-        max-height: 180px; /* 您可依手機畫面自行微調此高度 (例如 160px ~ 200px) */
+        max-height: 180px;
         overflow-y: auto;
         padding-right: 4px;
         border: 1px solid var(--border-color);
