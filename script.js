@@ -894,6 +894,73 @@ function deleteTemplate(id, name) {
     }
 }
 
+// 💡 處理資料夾指派與移出邏輯（改為彈出精美選單 Modal）
+function handleTemplateFolderAction(id) {
+    const templates = getSavedTemplates();
+    const target = templates.find(t => t.id === id);
+    if (!target) return;
+
+    if (target.folderId) {
+        // 如果目前在資料夾內 -> 詢問是否要將該隊形移離資料夾
+        if (confirm(`確定要將隊形「${target.name}」移離目前資料夾嗎？`)) {
+            target.folderId = null;
+            saveSavedTemplates(templates);
+            renderSavedTemplatesList();
+            showToast('已將隊形移出資料夾');
+        }
+    } else {
+        // 如果目前在資料夾外 -> 彈出選單讓使用者點擊選擇資料夾
+        const folders = getSavedFolders();
+        if (folders.length === 0) {
+            showToast('目前尚無任何資料夾，請先建立資料夾！');
+            return;
+        }
+
+        let selectModal = document.getElementById('folderSelectModal');
+        if (!selectModal) {
+            selectModal = document.createElement('div');
+            selectModal.id = 'folderSelectModal';
+            selectModal.className = 'modal-overlay';
+            document.body.appendChild(selectModal);
+        }
+
+        let foldersHtml = folders.map(f => `
+            <button class="secondary folder-select-option" data-folder-id="${f.id}" style="width:100%;justify-content:flex-start;gap:8px;padding:12px;">
+                📁 ${f.name}
+            </button>
+        `).join('');
+
+        selectModal.innerHTML = `
+            <div class="form-modal" style="max-width: 320px;">
+                <div class="form-modal-header">
+                    <span>選擇要加入的資料夾</span>
+                    <button class="drawer-close-btn" id="closeFolderSelectBtn">✕</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-top:4px;">
+                    ${foldersHtml}
+                </div>
+            </div>
+        `;
+        selectModal.classList.add('open');
+
+        const closeModal = () => selectModal.classList.remove('open');
+        document.getElementById('closeFolderSelectBtn').onclick = closeModal;
+        selectModal.onclick = (e) => { if (e.target === selectModal) closeModal(); };
+
+        selectModal.querySelectorAll('.folder-select-option').forEach(btn => {
+            btn.onclick = () => {
+                const folderId = Number(btn.dataset.folderId);
+                target.folderId = folderId;
+                saveSavedTemplates(templates);
+                renderSavedTemplatesList();
+                closeModal();
+                const matchedFolder = folders.find(f => f.id === folderId);
+                showToast(`已成功加入資料夾：「${matchedFolder ? matchedFolder.name : ''}」`);
+            };
+        });
+    }
+}
+
 let draggedItem = null;
 
 function renderSavedTemplatesList() {
@@ -985,8 +1052,7 @@ function renderSavedTemplatesList() {
         content.addEventListener('drop', handleDrop);
 
         folderTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
-        if (folderTemplates.length === 0) content.innerHTML = '<div class="empty-folder-hint" style="font-size:11px; opacity:0.6; text-align:center; padding:6px;">拖曳模板卡片至此</div>';
-        else folderTemplates.forEach(item => content.appendChild(createTemplateCardElement(item)));
+        folderTemplates.forEach(item => content.appendChild(createTemplateCardElement(item)));
 
         savedTemplatesList.appendChild(folderEl);
     });
@@ -1031,10 +1097,15 @@ function createTemplateCardElement(item) {
         for (const k in item.terrainData) totalMonsters += Object.keys(item.terrainData[k].units || {}).length;
     }
 
+    const folderActionIcon = item.folderId ? '📂' : '📁';
+    const folderActionTitle = item.folderId ? '將隊形移離資料夾' : '將隊形加入資料夾';
+
+    // 💡 將資料夾按鈕移至編輯筆的左邊
     card.innerHTML = `
         <div class="template-card-title">
             <button class="star-btn ${item.starred ? 'active' : ''}" title="置頂隊形">★</button>
             <span class="title-text">${item.name}</span>
+            <button class="folder-action-btn" title="${folderActionTitle}">${folderActionIcon}</button>
             <button class="edit-name-btn" title="更改名稱">✏️</button>
             <button class="template-card-delete-icon" title="刪除模板">✕</button>
         </div>
@@ -1045,6 +1116,7 @@ function createTemplateCardElement(item) {
     `;
 
     card.querySelector('.star-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleStarTemplate(item.id); });
+    card.querySelector('.folder-action-btn').addEventListener('click', (e) => { e.stopPropagation(); handleTemplateFolderAction(item.id); });
     card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => { e.stopPropagation(); deleteTemplate(item.id, item.name); });
     card.querySelector('.edit-name-btn').addEventListener('click', (e) => { e.stopPropagation(); renameTemplate(item.id); });
     card.querySelector('.load-btn').addEventListener('click', () => {
