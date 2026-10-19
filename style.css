@@ -49,6 +49,17 @@ body {
     transition: background-color 0.3s, color 0.3s;
 }
 
+/* ==================== Utility Classes ==================== */
+.hidden-input {
+    display: none;
+}
+
+.tab-section-borderless {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
 /* ==================== 電腦版專屬樣式 (> 901px) ==================== */
 @media screen and (min-width: 901px) {
     body { padding-top: 80px; }
@@ -92,9 +103,10 @@ body {
 
     .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
     
-    .board-container {
-        width: 100% !important;
-        max-width: 950px !important;
+    /* 移除 !important，透過提高權重覆蓋 */
+    .board-wrapper .board-container {
+        width: 100%;
+        max-width: 950px;
     }
 
     .mobile-tab-container {
@@ -158,9 +170,9 @@ body {
 
     .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
     
-    .board-container {
-        width: 100% !important;
-        max-width: 380px !important;
+    .board-wrapper .board-container {
+        width: 100%;
+        max-width: 380px;
     }
 
     .mobile-tab-container { width: 100%; max-width: 380px; }

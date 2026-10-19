@@ -51,7 +51,8 @@
                     <div class="log-date">2026/10/19</div>
                     <div class="log-text">
                         • 整合並統一為 index.html + script.js + style.css。<br>
-                        • 修正手機版城牆與綠籬地形大小，使其完美自適應並與下方操作框等寬對齊。
+                        • 修正手機版城牆與綠籬地形大小，使其完美自適應並與下方操作框等寬對齊。<br>
+                        • 程式碼效能與結構優化。
                     </div>
                 </div>
             </div>
@@ -90,7 +91,7 @@
             <div class="mobile-tab-content-wrapper">
                 <!-- Tab 1: 魔物 -->
                 <div class="mobile-tab-pane active" id="tab-monsters">
-                    <div class="section" style="border:none; box-shadow:none; padding:0;">
+                    <div class="section tab-section-borderless">
                         <div class="units-grid-scroll-area">
                             <div class="units-grid" id="unitsGrid">
                                 <div class="empty-units">正在讀取 icon 資料夾…</div>
@@ -103,14 +104,14 @@
 
                 <!-- Tab 2: 陣容說明 -->
                 <div class="mobile-tab-pane" id="tab-desc">
-                    <div class="section" style="border:none; box-shadow:none; padding:0;">
+                    <div class="section tab-section-borderless">
                         <textarea id="templateDescInput" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="14" style="width: 100%; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-size: 14px; outline: none; resize: vertical; box-sizing: border-box;"></textarea>
                     </div>
                 </div>
 
                 <!-- Tab 3: 工具與操作 -->
                 <div class="mobile-tab-pane" id="tab-tools">
-                    <div class="section" style="border:none; box-shadow:none; padding:0;">
+                    <div class="section tab-section-borderless">
                         <div class="button-column">
                             <button id="undoBtn" class="secondary" disabled>↩️ 復原</button>
                             <button id="redoBtn" class="secondary" disabled>↪️ 重做</button>
@@ -121,7 +122,7 @@
                             <button id="downloadImageBtn" class="success">下載圖片</button>
                             <button id="exportJsonBtn" class="secondary">📤 匯出模板</button>
                             <button id="importJsonBtn" class="secondary">📥 匯入模板</button>
-                            <input type="file" id="importFileinput" accept=".json" style="display: none;">
+                            <input type="file" id="importFileInput" accept=".json" class="hidden-input">
                         </div>
                     </div>
                 </div>
