@@ -645,7 +645,7 @@ async function generateBoardCanvas() {
     const scaleY = canvasHeight / boardRect.height;
     const drawPromises = [];
 
-    cells.forEach((cell) => {
+   cells.forEach((cell) => {
         const key = cell.dataset.key;
         if (!key) return;
         const placed = normalizePlacedUnit(state.units[key]);
@@ -656,6 +656,7 @@ async function generateBoardCanvas() {
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
+        // 1. 繪製主魔物
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -674,6 +675,30 @@ async function generateBoardCanvas() {
                     };
                     img.onerror = resolve; img.src = targetForm.src;
                 }));
+            }
+        }
+
+        // 2. 補上：繪製附屬型魔物 (Attachment)
+        if (placed.attachment) {
+            const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
+            if (attachMonster) {
+                const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
+                if (attachForm) {
+                    drawPromises.push(new Promise((resolve) => {
+                        const img = new Image(); img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            const padX = cellW * 0.05, padY = cellH * 0.05;
+                            const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
+                            const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = boxW / boxH;
+                            let drawW = boxW, drawH = boxH, drawX = cellX + padX, drawY = cellY + padY;
+                            if (imgAspect > boxAspect) { drawH = boxW / imgAspect; drawY += (boxH - drawH) / 2; }
+                            else { drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2; }
+                            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+                            resolve();
+                        };
+                        img.onerror = resolve; img.src = attachForm.src;
+                    }));
+                }
             }
         }
     });
