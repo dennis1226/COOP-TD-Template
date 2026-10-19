@@ -1,4 +1,4 @@
-/* ==================== style.css (修正背景、魔物滾動與按鈕間距) ==================== */
+/* ==================== style.css ==================== */
 :root {
     --bg-color: #1a1a1a;
     --text-color: #eee;
@@ -102,71 +102,6 @@ body {
         max-width: 950px;
     }
 
-    .units-grid-scroll-area { max-height: 400px; }
-    .button-column { grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
-}
-
-/* ==================== 電腦版專屬樣式 (> 901px) ==================== */
-@media screen and (min-width: 901px) {
-    body { padding-top: 80px; }
-
-    .fixed-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: var(--header-bg);
-        padding: 12px 24px;
-        box-shadow: 0 2px 12px var(--shadow-color);
-        z-index: 1000;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .header-left-group { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; order: 1; }
-    .header-title { margin: 0; font-size: 1.4rem; font-weight: 700; }
-    
-    .header-save-group { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; justify-content: center; order: 2; }
-    .header-bg-select { width: 160px !important; height: 38px !important; font-size: 13px !important; }
-    .header-save-group input[type="text"] { width: 220px; height: 38px; font-size: 13px; }
-    .header-save-group button { height: 38px; padding: 0 16px; font-size: 13px; }
-
-    .header-actions { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; justify-content: flex-end; order: 3; }
-    .header-actions .primary, .header-actions .secondary { padding: 9px 16px; font-size: 13px; }
-
-    .container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 24px;
-        gap: 20px;
-    }
-
-    .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
-    
-    .board-container {
-        width: 100% !important;
-        max-width: 360px !important;
-        aspect-ratio: 650 / 572; /* 請代入你綠籬背景圖實際的寬高比例 (例如 650x572) */
-        height: auto !important;
-    }
-
-    .board-background {
-        width: 100%;
-        height: 100%;
-    }
-
-    .mobile-tab-container {
-        width: 100%;
-        max-width: 950px;
-    }
-
-    /* 💻 電腦版：讓魔物列表完整展開，不需要強制小框滾動 */
     .units-grid-scroll-area {
         max-height: none !important;
         overflow-y: visible !important;
@@ -223,7 +158,7 @@ body {
     .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
     
     .board-container {
-        max-width: 340px !important;
+        max-width: 380px !important;
     }
 
     .mobile-tab-container { width: 100%; max-width: 480px; }
@@ -231,7 +166,6 @@ body {
     .button-column { display: flex; flex-direction: column; gap: 8px; }
     .button-column button { width: 100%; padding: 10px; font-size: 13px; }
     
-    /* 📱 手機版：限制高度並加入內部滾輪，實現一畫面操作 */
     .units-grid-scroll-area {
         max-height: 180px;
         overflow-y: auto;
@@ -358,28 +292,6 @@ body {
     z-index: 5;
 }
 
-.order-badge {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    background: rgba(241, 196, 15, 0.98);
-    color: #111;
-    font-weight: 800;
-    font-size: 13px;
-    line-height: 1;
-    min-width: 22px;
-    height: 22px;
-    padding: 2px 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-    z-index: 6;
-    pointer-events: none;
-    border: 1.5px solid #ffffff;
-}
-
 button {
     padding: 10px 14px;
     background-color: var(--button-primary);
@@ -459,7 +371,6 @@ input[type="text"], select, textarea {
 .hint { font-size: 12px; opacity: 0.7; margin-top: 8px; line-height: 1.4; }
 .empty-units { text-align: center; padding: 20px 10px; opacity: 0.6; font-size: 13px; grid-column: 1 / -1; }
 
-/* 彈跳視窗與抽屜 */
 .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
 }
