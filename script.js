@@ -199,7 +199,6 @@ const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
-// Tab 切換功能
 document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
@@ -335,9 +334,7 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
     
-    // 💡 配合 380px 寬度限制進行自適應縮放
     const maxW = Math.min(380, window.innerWidth - 20);
-    
     const scale = Math.min(1, maxW / naturalWidth);
     const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
     const playableH = naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
@@ -369,8 +366,6 @@ function createBoard() {
     if (!boardEl) return;
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
-    
-    // 💡 確保動態產生時也採用 380px 上限
     const maxW = Math.min(380, window.innerWidth - 20);
 
     const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
@@ -927,9 +922,11 @@ function renderSavedTemplatesList() {
                     <span class="folder-icon">📁</span>
                     <span class="folder-name">${folder.name}</span>
                     <span class="folder-count">(${folderTemplates.length})</span>
-                    <button class="edit-folder-btn" title="重命名資料夾">✏️</button>
                 </div>
-                <button class="folder-delete-btn" title="刪除資料夾">✕</button>
+                <div style="display: flex; align-items: center; gap: 2px;">
+                    <button class="edit-folder-btn" title="重命名資料夾">✏️</button>
+                    <button class="folder-delete-btn" title="刪除資料夾">✕</button>
+                </div>
             </div>
             <div class="folder-content" style="${folder.collapsed ? 'display: none;' : ''}"></div>
         `;
@@ -988,7 +985,7 @@ function renderSavedTemplatesList() {
         content.addEventListener('drop', handleDrop);
 
         folderTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
-        if (folderTemplates.length === 0) content.innerHTML = '<div class="empty-folder-hint">拖曳模板卡片至此</div>';
+        if (folderTemplates.length === 0) content.innerHTML = '<div class="empty-folder-hint" style="font-size:11px; opacity:0.6; text-align:center; padding:6px;">拖曳模板卡片至此</div>';
         else folderTemplates.forEach(item => content.appendChild(createTemplateCardElement(item)));
 
         savedTemplatesList.appendChild(folderEl);
@@ -1035,11 +1032,11 @@ function createTemplateCardElement(item) {
     }
 
     card.innerHTML = `
-        <button class="template-card-delete-icon" title="刪除模板">✕</button>
         <div class="template-card-title">
-            <button class="star-btn ${item.starred ? 'active' : ''}">★</button>
+            <button class="star-btn ${item.starred ? 'active' : ''}" title="置頂隊形">★</button>
             <span class="title-text">${item.name}</span>
             <button class="edit-name-btn" title="更改名稱">✏️</button>
+            <button class="template-card-delete-icon" title="刪除模板">✕</button>
         </div>
         <div class="template-card-meta">時間：${item.date} | 魔物數：${totalMonsters}</div>
         <div class="template-card-actions">
