@@ -200,10 +200,6 @@ const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
-const exportJsonBtn = document.getElementById('exportJsonBtn');
-const importJsonBtn = document.getElementById('importJsonBtn');
-const importFileInput = document.getElementById('importFileInput');
-
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
 
 function openUpdateLog() { updateLogOverlay.classList.add('open'); }
@@ -670,6 +666,7 @@ async function generateBoardCanvas() {
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
+        // 1. 繪製主魔物
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -691,6 +688,7 @@ async function generateBoardCanvas() {
             }
         }
 
+        // 2. 繪製附屬型魔物 (Attachment)
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
@@ -707,7 +705,7 @@ async function generateBoardCanvas() {
                             const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = attachW / attachH;
                             let drawW = attachW, drawH = attachH, drawX = attachX, drawY = attachY;
                             if (imgAspect > boxAspect) { drawH = attachW / imgAspect; drawY += (attachH - drawH) / 2; }
-                            else { drawW = attachH * imgAspect; drawX += (attachW - drawW) / 2; }
+                            else { drawW = attachH * imgAspect; drawX += (attachH - drawW) / 2; }
 
                             ctx.drawImage(img, drawX, drawY, drawW, drawH);
                             resolve();
@@ -1092,128 +1090,7 @@ function createTemplateCardElement(item) {
     return card;
 }
 
-// 匯出與匯入功能綁定
-if (exportJsonBtn) {
-    exportJsonBtn.addEventListener('click', () => {
-        const templateName = templateNameInput.value.trim() || '未命名隊形';
-        const exportData = {
-            name: templateName,
-            description: templateDescInput ? templateDescInput.value.trim() : '',
-            bg: state.currentBg,
-            terrainData: JSON.parse(JSON.stringify(state.terrainData)),
-            date: `${new Date().getMonth()+1}/${new Date().getDate()}`
-        };
-
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `${templateName}_export.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-        showToast('已成功匯出模板檔案！');
-    });
-}
-
-if (importJsonBtn && importFileInput) {
-    importJsonBtn.addEventListener('click', () => {
-        importFileInput.click();
-    });
-
-    importFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                const imported = JSON.parse(event.target.result);
-                if (!imported.terrainData || !imported.bg) {
-                    throw new Error('格式錯誤');
-                }
-
-                historyStack.clear();
-                state.currentBg = imported.bg;
-                state.terrainData = JSON.parse(JSON.stringify(imported.terrainData));
-                
-                if (bgSelect) bgSelect.value = imported.bg;
-                loadFixedBackground(imported.bg, false, true);
-
-                if (templateNameInput) templateNameInput.value = imported.name || '';
-                if (templateDescInput) templateDescInput.value = imported.description || '';
-                
-                setLoadedTemplate(null);
-                createBoard();
-                showToast('已成功匯入模板！');
-            } catch (err) {
-                showToast('匯入失敗：檔案格式不正確');
-            } finally {
-                importFileInput.value = '';
-            }
-        };
-        reader.readAsText(file);
-    });
-}
-
-function setupMobileTabSwitcher() {
-    const panelLeft = document.querySelector('.panel-left');
-    const boardWrapper = document.querySelector('.board-wrapper');
-    const descSection = boardWrapper ? boardWrapper.querySelector('.section') : null;
-    const panelRight = document.querySelector('.panel-right');
-
-    if (!panelLeft || !descSection || !panelRight) return;
-
-    const tabsContainer = document.createElement('div');
-    tabsContainer.className = 'mobile-tab-nav';
-    tabsContainer.innerHTML = `
-        <button class="mobile-tab-btn active" data-tab="desc">陣容說明</button>
-        <button class="mobile-tab-btn" data-tab="monsters">魔物</button>
-        <button class="mobile-tab-btn" data-tab="tools">工具與操作</button>
-    `;
-
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = 'mobile-tab-content-wrapper';
-
-    const tabDesc = document.createElement('div');
-    tabDesc.className = 'mobile-tab-pane active';
-    tabDesc.id = 'tab-pane-desc';
-
-    const tabMonsters = document.createElement('div');
-    tabMonsters.className = 'mobile-tab-pane';
-    tabMonsters.id = 'tab-pane-monsters';
-
-    const tabTools = document.createElement('div');
-    tabTools.className = 'mobile-tab-pane';
-    tabTools.id = 'tab-pane-tools';
-
-    descSection.parentNode.insertBefore(tabsContainer, descSection.nextSibling);
-    tabsContainer.parentNode.insertBefore(contentWrapper, tabsContainer.nextSibling);
-
-    tabDesc.appendChild(descSection);
-    tabMonsters.appendChild(panelLeft);
-    tabTools.appendChild(panelRight);
-
-    contentWrapper.appendChild(tabDesc);
-    contentWrapper.appendChild(tabMonsters);
-    contentWrapper.appendChild(tabTools);
-
-    const tabBtns = tabsContainer.querySelectorAll('.mobile-tab-btn');
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const targetTab = btn.dataset.tab;
-            document.querySelectorAll('.mobile-tab-pane').forEach(pane => pane.classList.remove('active'));
-            if (targetTab === 'desc') tabDesc.classList.add('active');
-            if (targetTab === 'monsters') tabMonsters.classList.add('active');
-            if (targetTab === 'tools') tabTools.classList.add('active');
-        });
-    });
-}
-
 createBoard();
 loadFixedBackground();
 autoLoadIcons();
 updateSaveButtonsVisibility();
-setupMobileTabSwitcher();
