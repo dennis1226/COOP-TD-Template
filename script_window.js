@@ -200,6 +200,10 @@ const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
+const exportJsonBtn = document.getElementById('exportJsonBtn');
+const importJsonBtn = document.getElementById('importJsonBtn');
+const importFileInput = document.getElementById('importFileInput');
+
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
 
 function openUpdateLog() { updateLogOverlay.classList.add('open'); }
@@ -666,7 +670,6 @@ async function generateBoardCanvas() {
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
-        // 1. 繪製主魔物
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -688,7 +691,6 @@ async function generateBoardCanvas() {
             }
         }
 
-        // 2. 繪製附屬型魔物 (Attachment)
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
@@ -705,7 +707,7 @@ async function generateBoardCanvas() {
                             const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = attachW / attachH;
                             let drawW = attachW, drawH = attachH, drawX = attachX, drawY = attachY;
                             if (imgAspect > boxAspect) { drawH = attachW / imgAspect; drawY += (attachH - drawH) / 2; }
-                            else { drawW = attachH * imgAspect; drawX += (attachH - drawW) / 2; }
+                            else { drawW = attachH * imgAspect; drawX += (attachW - drawW) / 2; }
 
                             ctx.drawImage(img, drawX, drawY, drawW, drawH);
                             resolve();
@@ -1088,6 +1090,69 @@ function createTemplateCardElement(item) {
     card.addEventListener('dragstart', (e) => { e.stopPropagation(); draggedItem = { type: 'card', id: item.id }; card.classList.add('dragging'); });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
     return card;
+}
+
+// 匯出與匯入功能綁定
+if (exportJsonBtn) {
+    exportJsonBtn.addEventListener('click', () => {
+        const templateName = templateNameInput.value.trim() || '未命名隊形';
+        const exportData = {
+            name: templateName,
+            description: templateDescInput ? templateDescInput.value.trim() : '',
+            bg: state.currentBg,
+            terrainData: JSON.parse(JSON.stringify(state.terrainData)),
+            date: `${new Date().getMonth()+1}/${new Date().getDate()}`
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${templateName}_export.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('已成功匯出模板檔案！');
+    });
+}
+
+if (importJsonBtn && importFileInput) {
+    importJsonBtn.addEventListener('click', () => {
+        importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (!imported.terrainData || !imported.bg) {
+                    throw new Error('格式錯誤');
+                }
+
+                historyStack.clear();
+                state.currentBg = imported.bg;
+                state.terrainData = JSON.parse(JSON.stringify(imported.terrainData));
+                
+                if (bgSelect) bgSelect.value = imported.bg;
+                loadFixedBackground(imported.bg, false, true);
+
+                if (templateNameInput) templateNameInput.value = imported.name || '';
+                if (templateDescInput) templateDescInput.value = imported.description || '';
+                
+                setLoadedTemplate(null);
+                createBoard();
+                showToast('已成功匯入模板！');
+            } catch (err) {
+                showToast('匯入失敗：檔案格式不正確');
+            } finally {
+                importFileInput.value = '';
+            }
+        };
+        reader.readAsText(file);
+    });
 }
 
 createBoard();
