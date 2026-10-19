@@ -61,7 +61,7 @@ const TERRAIN_CONFIGS = {
         defaultWidth: 750,
         defaultHeight: 505,
         colFracs: (() => {
-            const cols = [105, 105, 105, 103, 107, 108, 112];
+            const cols = [110, 100, 105, 103, 104, 105, 115];
             const sum = cols.reduce((acc, cur) => acc + cur, 0);
             return cols.map(v => v / sum);
         })(),
