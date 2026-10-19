@@ -439,6 +439,7 @@ input[type="text"], select, textarea {
 /* 統一資料夾與卡片內部按鈕設計 */
 .folder-header button,
 .template-card-title button,
+.folder-action-btn,
 .folder-delete-btn,
 .template-card-delete-icon {
     background: transparent;
