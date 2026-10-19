@@ -187,18 +187,16 @@ body {
         background: var(--bg-color);
     }
 
-    .button-column {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
+    .tool-grid {
         gap: 10px;
     }
-    .button-column button {
-        padding: 12px;
+    .tool-grid button {
+        padding: 12px 10px;
         font-size: 13px;
     }
 }
 
-/* ==================== 手機版配置 (<= 900px，保留原樣無更動) ==================== */
+/* ==================== 手機版配置 (<= 900px) ==================== */
 @media screen and (max-width: 900px) {
     body { padding-top: 120px; }
 
@@ -256,9 +254,14 @@ body {
 
     .mobile-tab-container { width: 100%; max-width: 380px; }
     
-    .button-column { display: flex; flex-direction: column; gap: 8px; }
-    .button-column button { width: 100%; padding: 10px; font-size: 13px; }
-    
+    .tool-grid {
+        gap: 8px;
+    }
+    .tool-grid button {
+        padding: 10px 4px;
+        font-size: 12.5px;
+    }
+
     .units-grid-scroll-area {
         max-height: 220px;
         overflow-y: auto;
@@ -423,7 +426,54 @@ input[type="text"], select, textarea {
     padding: 0 12px;
 }
 
-/* 魔物選取清單 */
+/* ==================== 工具操作分類與網格 ==================== */
+.tools-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tool-category-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 4px;
+    margin: 2px 0 0 2px;
+}
+
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.tool-grid button {
+    width: 100%;
+    padding: 10px 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* 相容舊版 class 結構 */
+.button-column {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+.button-column button {
+    width: 100%;
+    padding: 10px 6px;
+    font-size: 13px;
+}
+
+/* ==================== 魔物選取清單 ==================== */
 .units-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));

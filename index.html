@@ -110,17 +110,37 @@
                 <!-- Tab 3: 工具與操作 -->
                 <section class="mobile-tab-pane" id="tab-tools">
                     <div class="section tab-section-borderless">
-                        <div class="button-column">
-                            <button id="undoBtn" class="secondary" disabled type="button">↩️ 復原</button>
-                            <button id="redoBtn" class="secondary" disabled type="button">↪️ 重做</button>
-                            <button id="deleteModeBtn" class="secondary" type="button">🗑️ 刪除</button>
-                            <button id="clearBtn" class="danger" type="button">清空</button>
-                            <button id="copyTemplateBtn" class="success" type="button">複製模板圖片</button>
-                            <button id="saveImageBtn" class="success" type="button">儲存圖片</button>
-                            <button id="downloadImageBtn" class="success" type="button">下載圖片</button>
-                            <button id="exportJsonBtn" class="secondary" type="button">📤 匯出模板</button>
-                            <button id="importJsonBtn" class="secondary" type="button">📥 匯入模板</button>
-                            <input type="file" id="importFileInput" accept=".json" class="hidden-input">
+                        <div class="tools-container">
+                            <!-- 類別 1: 編輯操作 -->
+                            <div class="tool-group">
+                                <div class="tool-category-header">✏️ 編輯操作</div>
+                                <div class="tool-grid">
+                                    <button id="undoBtn" class="secondary" disabled type="button">↩️ 復原</button>
+                                    <button id="redoBtn" class="secondary" disabled type="button">↪️ 重做</button>
+                                    <button id="deleteModeBtn" class="secondary" type="button">🗑️ 刪除模式(單格)</button>
+                                    <button id="clearBtn" class="danger" type="button">清除整版</button>
+                                </div>
+                            </div>
+
+                            <!-- 類別 2: 圖片產生 -->
+                            <div class="tool-group">
+                                <div class="tool-category-header">🖼️ 圖片產生</div>
+                                <div class="tool-grid">
+                                    <button id="copyTemplateBtn" class="success" type="button">複製模板圖片</button>
+                                    <button id="saveImageBtn" class="success" type="button">儲存圖片</button>
+                                    <button id="downloadImageBtn" class="success" type="button">下載圖片</button>
+                                </div>
+                            </div>
+
+                            <!-- 類別 3: 檔案管理 -->
+                            <div class="tool-group">
+                                <div class="tool-category-header">📁 檔案管理</div>
+                                <div class="tool-grid">
+                                    <button id="exportJsonBtn" class="secondary" type="button">📤 匯出模板</button>
+                                    <button id="importJsonBtn" class="secondary" type="button">📥 匯入模板</button>
+                                    <input type="file" id="importFileInput" accept=".json" class="hidden-input">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
