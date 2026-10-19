@@ -942,7 +942,6 @@ function renderSavedTemplatesList() {
 
         const content = folderEl.querySelector('.folder-content');
         
-        // 共用拖曳放置處理邏輯 (修復無法移入資料夾問題)
         const handleDragOver = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -987,6 +986,32 @@ function renderSavedTemplatesList() {
     templates.filter(t => !t.folderId).sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1))).forEach(item => {
         savedTemplatesList.appendChild(createTemplateCardElement(item));
     });
+
+    // 支援將模板從資料夾拖回根目錄（移出資料夾）
+    const listDragOverHandler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (draggedItem && draggedItem.type === 'card') e.dataTransfer.dropEffect = 'move';
+    };
+
+    const listDropHandler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!draggedItem || draggedItem.type !== 'card') return;
+        const currentTemplates = getSavedTemplates();
+        const t = currentTemplates.find(x => x.id === draggedItem.id);
+        if (t && t.folderId !== null) {
+            t.folderId = null;
+            saveSavedTemplates(currentTemplates);
+            renderSavedTemplatesList();
+            showToast('已將模板移出資料夾');
+        }
+    };
+
+    savedTemplatesList.removeEventListener('dragover', listDragOverHandler);
+    savedTemplatesList.removeEventListener('drop', listDropHandler);
+    savedTemplatesList.addEventListener('dragover', listDragOverHandler);
+    savedTemplatesList.addEventListener('drop', listDropHandler);
 }
 
 function createTemplateCardElement(item) {
