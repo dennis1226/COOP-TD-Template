@@ -747,7 +747,7 @@ async function autoLoadIcons() {
                         if (state.deleteMode && deleteModeBtn) {
                             state.deleteMode = false;
                             deleteModeBtn.className = 'secondary';
-                            deleteModeBtn.textContent = '🗑️ 刪除';
+                            deleteModeBtn.textContent = '🗑️ 刪除模式(單格)';
                         }
                         createBoard();
                     }
@@ -774,12 +774,12 @@ if (deleteModeBtn) {
         state.deleteMode = !state.deleteMode;
         if (state.deleteMode) {
             deleteModeBtn.className = 'danger';
-            deleteModeBtn.textContent = '✕ 退出刪除';
+            deleteModeBtn.textContent = '✕ 退出刪除模式';
             state.selectedUnitId = null;
             document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
         } else {
             deleteModeBtn.className = 'secondary';
-            deleteModeBtn.textContent = '🗑️ 刪除';
+            deleteModeBtn.textContent = '🗑️ 刪除模式(單格)';
         }
         createBoard();
     });
