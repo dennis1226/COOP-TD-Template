@@ -71,11 +71,17 @@ function normalizePlacedUnit(placed) {
         else if (placed.id) baseId = String(placed.id);
         else if (placed.unitId) baseId = String(placed.unitId);
         if (typeof placed.formIndex === 'number') formIndex = placed.formIndex;
+        
         if (placed.attachment) {
-            if (typeof placed.attachment === 'object') {
-                const attachBaseId = placed.attachment.baseId || placed.attachment.id || '';
+            if (typeof placed.attachment === 'object' && placed.attachment !== null) {
+                let attachBaseId = placed.attachment.baseId || placed.attachment.id || '';
+                attachBaseId = String(attachBaseId);
+                if (!attachBaseId.startsWith('monster_')) {
+                    const num = attachBaseId.replace(/\D/g, '');
+                    if (num) attachBaseId = `monster_${num}`;
+                }
                 const attachFormIndex = typeof placed.attachment.formIndex === 'number' ? placed.attachment.formIndex : 0;
-                attachment = { baseId: String(attachBaseId), formIndex: attachFormIndex };
+                attachment = { baseId: attachBaseId, formIndex: attachFormIndex };
             }
         }
     }
@@ -682,7 +688,7 @@ async function generateBoardCanvas() {
             }
         }
 
-        // 2. 補上：繪製附屬型魔物 (Attachment)
+        // 2. 繪製附屬型魔物 (Attachment)
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
@@ -691,12 +697,16 @@ async function generateBoardCanvas() {
                     drawPromises.push(new Promise((resolve) => {
                         const img = new Image(); img.crossOrigin = 'anonymous';
                         img.onload = () => {
-                            const padX = cellW * 0.05, padY = cellH * 0.05;
-                            const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
-                            const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = boxW / boxH;
-                            let drawW = boxW, drawH = boxH, drawX = cellX + padX, drawY = cellY + padY;
-                            if (imgAspect > boxAspect) { drawH = boxW / imgAspect; drawY += (boxH - drawH) / 2; }
-                            else { drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2; }
+                            const attachW = cellW * 0.35;
+                            const attachH = cellH * 0.35;
+                            const attachX = cellX + (cellW * 0.02);
+                            const attachY = cellY + (cellH * 0.02);
+
+                            const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = attachW / attachH;
+                            let drawW = attachW, drawH = attachH, drawX = attachX, drawY = attachY;
+                            if (imgAspect > boxAspect) { drawH = attachW / imgAspect; drawY += (attachH - drawH) / 2; }
+                            else { drawW = attachH * imgAspect; drawX += (attachH - drawW) / 2; }
+
                             ctx.drawImage(img, drawX, drawY, drawW, drawH);
                             resolve();
                         };
@@ -1016,7 +1026,6 @@ function renderSavedTemplatesList() {
         savedTemplatesList.appendChild(createTemplateCardElement(item));
     });
 
-    // 支援將模板從資料夾拖回根目錄（移出資料夾）
     const listDragOverHandler = (e) => {
         e.preventDefault();
         e.stopPropagation();
