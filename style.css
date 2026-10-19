@@ -149,7 +149,7 @@ body {
         flex-direction: column;
         align-items: center;
         width: 100%;
-        max-width: 380px; /* 💡 統一限制最大寬度為 380px，使地圖與下方 Tab 完美等寬 */
+        max-width: 380px;
         margin: 0 auto;
         padding: 8px 10px;
         gap: 8px;
@@ -435,9 +435,49 @@ input[type="text"], select, textarea {
 
 .saved-templates-list { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
 .folder-container { flex-shrink: 0; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255, 255, 255, 0.02); overflow: hidden; }
+
+/* 統一資料夾與卡片內部按鈕設計 */
+.folder-header button,
+.template-card-title button,
+.folder-delete-btn,
+.template-card-delete-icon {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    margin: 0;
+    min-width: unset;
+    height: 28px;
+    width: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-color);
+    transition: background-color 0.2s, color 0.2s;
+}
+
 .folder-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--header-bg); cursor: grab; user-select: none; }
-.folder-title { display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 0.95rem; color: var(--accent); }
+.folder-title { display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 0.95rem; color: var(--accent); flex: 1; }
 .folder-content { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: rgba(0, 0, 0, 0.1); }
+
+/* 置頂星星按鈕 */
+.star-btn { color: #888; }
+.star-btn:hover { background: rgba(255, 255, 255, 0.1); color: #f1c40f; transform: none; }
+.star-btn.active { color: #f1c40f; background: rgba(241, 196, 15, 0.15); }
+
+/* 鉛筆編輯按鈕 */
+.edit-folder-btn,
+.edit-name-btn { opacity: 0.7; }
+.edit-folder-btn:hover,
+.edit-name-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.1); transform: none; }
+
+/* 刪除按鈕 */
+.folder-delete-btn,
+.template-card-delete-icon { opacity: 0.6; }
+.folder-delete-btn:hover,
+.template-card-delete-icon:hover { opacity: 1; color: var(--button-danger); background: rgba(231, 76, 60, 0.15); transform: none; }
 
 .template-card { 
     background: var(--cell-bg); 
@@ -456,32 +496,12 @@ input[type="text"], select, textarea {
     align-items: center; 
     gap: 6px; 
     width: 100%; 
-    padding-right: 28px; 
 }
-.title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 
 .template-card-meta { font-size: 11px; opacity: 0.7; }
 .template-card-actions { display: flex; gap: 6px; margin-top: 4px; }
 .template-card-actions button { width: 100%; }
-
-.template-card-delete-icon { 
-    position: absolute; 
-    top: 8px; 
-    right: 8px; 
-    font-size: 14px; 
-    opacity: 0.6; 
-    background: transparent; 
-    border: none; 
-    cursor: pointer; 
-    padding: 4px; 
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.template-card-delete-icon:hover { opacity: 1; color: var(--button-danger); background: rgba(231, 76, 60, 0.15); }
 
 .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
