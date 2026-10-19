@@ -66,7 +66,7 @@ const TERRAIN_CONFIGS = {
             return cols.map(v => v / sum);
         })(),
         rowFracs: (() => {
-            const rows = [110, 115, 116, 116, 115];
+            const rows = [114, 111, 116, 116, 115];
             const sum = rows.reduce((acc, cur) => acc + cur, 0);
             return rows.map(v => v / sum);
         })(),
