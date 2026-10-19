@@ -200,10 +200,6 @@ const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
-const exportJsonBtn = document.getElementById('exportJsonBtn');
-const importJsonBtn = document.getElementById('importJsonBtn');
-const importFileInput = document.getElementById('importFileInput');
-
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
 
 function openUpdateLog() { updateLogOverlay.classList.add('open'); }
@@ -670,6 +666,7 @@ async function generateBoardCanvas() {
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
+        // 1. 繪製主魔物
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
@@ -691,6 +688,7 @@ async function generateBoardCanvas() {
             }
         }
 
+        // 2. 繪製附屬型魔物 (Attachment)
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
@@ -707,7 +705,7 @@ async function generateBoardCanvas() {
                             const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = attachW / attachH;
                             let drawW = attachW, drawH = attachH, drawX = attachX, drawY = attachY;
                             if (imgAspect > boxAspect) { drawH = attachW / imgAspect; drawY += (attachH - drawH) / 2; }
-                            else { drawW = attachH * imgAspect; drawX += (attachW - drawW) / 2; }
+                            else { drawW = attachH * imgAspect; drawX += (attachH - drawW) / 2; }
 
                             ctx.drawImage(img, drawX, drawY, drawW, drawH);
                             resolve();
@@ -1092,13 +1090,22 @@ function createTemplateCardElement(item) {
     return card;
 }
 
-// 匯出與匯入功能綁定
-if (exportJsonBtn) {
-    exportJsonBtn.addEventListener('click', () => {
-        const templateName = templateNameInput.value.trim() || '未命名隊形';
+createBoard();
+loadFixedBackground();
+autoLoadIcons();
+updateSaveButtonsVisibility();
+
+// ==================== 匯出與匯入功能（全域事件委派，確保絕不失效） ====================
+document.addEventListener('click', function(e) {
+    const exportBtn = e.target.closest('#exportJsonBtn');
+    const importBtn = e.target.closest('#importJsonBtn');
+    const fileInput = document.getElementById('importFileInput') || document.getElementById('importFileinput');
+
+    if (exportBtn) {
+        const templateName = typeof templateNameInput !== 'undefined' && templateNameInput ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
         const exportData = {
             name: templateName,
-            description: templateDescInput ? templateDescInput.value.trim() : '',
+            description: typeof templateDescInput !== 'undefined' && templateDescInput ? templateDescInput.value.trim() : '',
             bg: state.currentBg,
             terrainData: JSON.parse(JSON.stringify(state.terrainData)),
             date: `${new Date().getMonth()+1}/${new Date().getDate()}`
@@ -1112,15 +1119,20 @@ if (exportJsonBtn) {
         downloadAnchor.click();
         downloadAnchor.remove();
         showToast('已成功匯出模板檔案！');
-    });
-}
+    }
 
-if (importJsonBtn && importFileInput) {
-    importJsonBtn.addEventListener('click', () => {
-        importFileInput.click();
-    });
+    if (importBtn) {
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            showToast('找不到匯入檔案元件');
+        }
+    }
+});
 
-    importFileInput.addEventListener('change', (e) => {
+document.addEventListener('change', function(e) {
+    const fileInput = document.getElementById('importFileInput') || document.getElementById('importFileinput');
+    if (e.target === fileInput) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -1136,26 +1148,29 @@ if (importJsonBtn && importFileInput) {
                 state.currentBg = imported.bg;
                 state.terrainData = JSON.parse(JSON.stringify(imported.terrainData));
                 
-                if (bgSelect) bgSelect.value = imported.bg;
+                if (typeof bgSelect !== 'undefined' && bgSelect) bgSelect.value = imported.bg;
                 loadFixedBackground(imported.bg, false, true);
 
-                if (templateNameInput) templateNameInput.value = imported.name || '';
-                if (templateDescInput) templateDescInput.value = imported.description || '';
+                // 建立/整理載入的模板資料物件（確保說明文字包含進來）
+                const importedTemplate = {
+                    id: Date.now(),
+                    name: imported.name || '匯入模板',
+                    description: imported.description || imported.desc || imported.content || '',
+                    bg: imported.bg,
+                    terrainData: imported.terrainData
+                };
+
+                // 使用 setLoadedTemplate 同步更新輸入框與 state 狀態
+                setLoadedTemplate(importedTemplate);
                 
-                setLoadedTemplate(null);
                 createBoard();
                 showToast('已成功匯入模板！');
             } catch (err) {
                 showToast('匯入失敗：檔案格式不正確');
             } finally {
-                importFileInput.value = '';
+                fileInput.value = '';
             }
         };
         reader.readAsText(file);
-    });
-}
-
-createBoard();
-loadFixedBackground();
-autoLoadIcons();
-updateSaveButtonsVisibility();
+    }
+});
