@@ -1094,3 +1094,83 @@ createBoard();
 loadFixedBackground();
 autoLoadIcons();
 updateSaveButtonsVisibility();
+
+// ==================== 匯出與匯入功能（全域事件委派，確保絕不失效） ====================
+document.addEventListener('click', function(e) {
+    const exportBtn = e.target.closest('#exportJsonBtn');
+    const importBtn = e.target.closest('#importJsonBtn');
+    const fileInput = document.getElementById('importFileInput') || document.getElementById('importFileinput');
+
+    if (exportBtn) {
+        const templateName = typeof templateNameInput !== 'undefined' && templateNameInput ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
+        const exportData = {
+            name: templateName,
+            description: typeof templateDescInput !== 'undefined' && templateDescInput ? templateDescInput.value.trim() : '',
+            bg: state.currentBg,
+            terrainData: JSON.parse(JSON.stringify(state.terrainData)),
+            date: `${new Date().getMonth()+1}/${new Date().getDate()}`
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${templateName}_export.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('已成功匯出模板檔案！');
+    }
+
+    if (importBtn) {
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            showToast('找不到匯入檔案元件');
+        }
+    }
+});
+
+document.addEventListener('change', function(e) {
+    const fileInput = document.getElementById('importFileInput') || document.getElementById('importFileinput');
+    if (e.target === fileInput) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (!imported.terrainData || !imported.bg) {
+                    throw new Error('格式錯誤');
+                }
+
+                historyStack.clear();
+                state.currentBg = imported.bg;
+                state.terrainData = JSON.parse(JSON.stringify(imported.terrainData));
+                
+                if (typeof bgSelect !== 'undefined' && bgSelect) bgSelect.value = imported.bg;
+                loadFixedBackground(imported.bg, false, true);
+
+                // 建立/整理載入的模板資料物件（確保說明文字包含進來）
+                const importedTemplate = {
+                    id: Date.now(),
+                    name: imported.name || '匯入模板',
+                    description: imported.description || imported.desc || imported.content || '',
+                    bg: imported.bg,
+                    terrainData: imported.terrainData
+                };
+
+                // 使用 setLoadedTemplate 同步更新輸入框與 state 狀態
+                setLoadedTemplate(importedTemplate);
+                
+                createBoard();
+                showToast('已成功匯入模板！');
+            } catch (err) {
+                showToast('匯入失敗：檔案格式不正確');
+            } finally {
+                fileInput.value = '';
+            }
+        };
+        reader.readAsText(file);
+    }
+});
