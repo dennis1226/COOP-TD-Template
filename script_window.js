@@ -734,7 +734,6 @@ async function copyBoardTemplate() {
     }, 'image/png');
 }
 
-// 儲存圖片按鈕：只彈出預覽，用戶可自行長按儲存相簿
 async function saveBoardImage() {
     showToast('正在產生高畫質預覽圖片…');
     const canvas = await generateBoardCanvas();
@@ -770,7 +769,6 @@ async function saveBoardImage() {
     }, 'image/png');
 }
 
-// 下載圖片按鈕：直接彈出下載畫面，沒有 preview
 async function downloadBoardImage() {
     showToast('正在產生高畫質圖片以供下載…');
     const canvas = await generateBoardCanvas();
@@ -939,23 +937,44 @@ function renderSavedTemplatesList() {
             e.dataTransfer.effectAllowed = 'move';
         });
         folderEl.addEventListener('dragend', () => { folderEl.classList.remove('dragging'); draggedItem = null; });
-        folderEl.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); if (draggedItem) folderEl.classList.add('drag-over-folder'); });
-        folderEl.addEventListener('dragleave', () => folderEl.classList.remove('drag-over-folder'));
-        folderEl.addEventListener('drop', (e) => {
-            e.preventDefault(); e.stopPropagation(); folderEl.classList.remove('drag-over-folder');
+
+        const content = folderEl.querySelector('.folder-content');
+        
+        // 共用拖曳放置處理邏輯 (修復無法移入資料夾問題)
+        const handleDragOver = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (draggedItem && draggedItem.type === 'card') {
+                e.dataTransfer.dropEffect = 'move';
+                folderEl.classList.add('drag-over-folder');
+            }
+        };
+
+        const handleDrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            folderEl.classList.remove('drag-over-folder');
             if (!draggedItem) return;
             if (draggedItem.type === 'card') {
-                const t = getSavedTemplates().find(x => x.id === draggedItem.id);
+                const currentTemplates = getSavedTemplates();
+                const t = currentTemplates.find(x => x.id === draggedItem.id);
                 if (t && t.folderId !== folder.id) {
                     t.folderId = folder.id;
-                    saveSavedTemplates(getSavedTemplates());
+                    saveSavedTemplates(currentTemplates);
                     renderSavedTemplatesList();
                     showToast(`已移入資料夾：「${folder.name}」`);
                 }
             }
-        });
+        };
 
-        const content = folderEl.querySelector('.folder-content');
+        folderEl.addEventListener('dragover', handleDragOver);
+        folderEl.addEventListener('dragleave', () => folderEl.classList.remove('drag-over-folder'));
+        folderEl.addEventListener('drop', handleDrop);
+
+        content.addEventListener('dragover', handleDragOver);
+        content.addEventListener('dragleave', () => folderEl.classList.remove('drag-over-folder'));
+        content.addEventListener('drop', handleDrop);
+
         folderTemplates.sort((a, b) => (a.starred === b.starred ? (a.order || 0) - (b.order || 0) : (a.starred ? -1 : 1)));
         if (folderTemplates.length === 0) content.innerHTML = '<div class="empty-folder-hint">拖曳模板卡片至此</div>';
         else folderTemplates.forEach(item => content.appendChild(createTemplateCardElement(item)));
