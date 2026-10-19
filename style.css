@@ -467,6 +467,32 @@ input[type="text"], select, textarea {
 .star-btn:hover { background: rgba(255, 255, 255, 0.1); color: #f1c40f; transform: none; }
 .star-btn.active { color: #f1c40f; background: rgba(241, 196, 15, 0.15); }
 
+/* 📁 資料夾切換動作按鈕 */
+.folder-action-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    margin: 0;
+    min-width: unset;
+    height: 28px;
+    width: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-color);
+    opacity: 0.7;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.folder-action-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+    transform: none;
+}
+
 /* 鉛筆編輯按鈕 */
 .edit-folder-btn,
 .edit-name-btn { opacity: 0.7; }
