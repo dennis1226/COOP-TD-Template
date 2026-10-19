@@ -42,7 +42,7 @@ const MONSTER_CATEGORIES = [
 const TERRAIN_CONFIGS = {
     'background/board-bg-hedge.png': {
         name: '綠籬地形', cols: 7, rows: 5, defaultWidth: 750, defaultHeight: 505,
-        colFracs: [100, 105, 105, 108, 107, 112, 113].map(v => v / 750),
+        colFracs: [97, 105, 105, 108, 107, 112, 108].map(v => v / 750),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 505),
         paddingTopRatio: 0, paddingBottomRatio: 0, paddingLeftRatio: 0,
         blockedCells: new Set(['0-0', '6-0', '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', '2-2', '4-2', '2-3', '4-3', '2-4', '3-4', '4-4'])
