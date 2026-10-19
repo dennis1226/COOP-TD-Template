@@ -50,7 +50,7 @@ const TERRAIN_CONFIGS = {
     },
     'background/board-bg-guardwall.png': {
         name: '城牆地形', cols: 7, rows: 3, defaultWidth: 900, defaultHeight: 450,
-        colFracs: Array(7).fill((1 - 0.03 * 2) / 7),
+        colFracs: Array(7).fill((1 - 0.2 * 2) / 7),
         rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
         paddingTopRatio: 0.19, paddingBottomRatio: 0.03, paddingLeftRatio: 0.03,
         blockedCells: new Set()
