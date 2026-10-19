@@ -855,92 +855,110 @@ async function generateBoardCanvas() {
 
     const scaleX = canvasWidth / boardRect.width;
     const scaleY = canvasHeight / boardRect.height;
-    const drawPromises = [];
+
+    // 輔助載入圖片函式
+    const loadImage = (src) => new Promise((resolve) => {
+        if (!src) return resolve(null);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+    });
+
+    // 1. 收集並預先載入所有格子的圖片資料
+    const prepareTasks = [];
 
     cells.forEach((cell) => {
         const key = cell.dataset.key;
         if (!key) return;
         const placed = normalizePlacedUnit(state.units[key]);
         if (!placed) return;
+
         const cellRect = cell.getBoundingClientRect();
         const cellX = (cellRect.left - boardRect.left) * scaleX;
         const cellY = (cellRect.top - boardRect.top) * scaleY;
         const cellW = cellRect.width * scaleX;
         const cellH = cellRect.height * scaleY;
 
+        let mainSrc = null;
         const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
         if (monster) {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
-            if (targetForm) {
-                drawPromises.push(new Promise((resolve) => {
-                    const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    img.onload = () => {
-                        const padX = cellW * 0.05;
-                        const padY = cellH * 0.05;
-                        const boxW = cellW - padX * 2;
-                        const boxH = cellH - padY * 2;
-                        const imgAspect = img.naturalWidth / img.naturalHeight;
-                        const boxAspect = boxW / boxH;
-                        let drawW = boxW;
-                        let drawH = boxH;
-                        let drawX = cellX + padX;
-                        let drawY = cellY + padY;
-                        if (imgAspect > boxAspect) {
-                            drawH = boxW / imgAspect;
-                            drawY += (boxH - drawH) / 2;
-                        } else {
-                            drawW = boxH * imgAspect;
-                            drawX += (boxW - drawW) / 2;
-                        }
-                        ctx.drawImage(img, drawX, drawY, drawW, drawH);
-                        resolve();
-                    };
-                    img.onerror = resolve;
-                    img.src = targetForm.src;
-                }));
-            }
+            if (targetForm) mainSrc = targetForm.src;
         }
 
+        let attachSrc = null;
         if (placed.attachment) {
             const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
             if (attachMonster) {
                 const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
-                if (attachForm) {
-                    drawPromises.push(new Promise((resolve) => {
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.onload = () => {
-                            const attachW = cellW * 0.35;
-                            const attachH = cellH * 0.35;
-                            const attachX = cellX + (cellW * 0.02);
-                            const attachY = cellY + (cellH * 0.02);
-                            const imgAspect = img.naturalWidth / img.naturalHeight;
-                            const boxAspect = attachW / attachH;
-                            let drawW = attachW;
-                            let drawH = attachH;
-                            let drawX = attachX;
-                            let drawY = attachY;
-                            if (imgAspect > boxAspect) {
-                                drawH = attachW / imgAspect;
-                                drawY += (attachH - drawH) / 2;
-                            } else {
-                                drawW = attachH * imgAspect;
-                                drawX += (attachH - drawW) / 2;
-                            }
-                            ctx.drawImage(img, drawX, drawY, drawW, drawH);
-                            resolve();
-                        };
-                        img.onerror = resolve;
-                        img.src = attachForm.src;
-                    }));
-                }
+                if (attachForm) attachSrc = attachForm.src;
             }
+        }
+
+        prepareTasks.push(
+            Promise.all([loadImage(mainSrc), loadImage(attachSrc)]).then(([mainImg, attachImg]) => ({
+                mainImg,
+                attachImg,
+                cellX,
+                cellY,
+                cellW,
+                cellH
+            }))
+        );
+    });
+
+    const renderedUnits = await Promise.all(prepareTasks);
+
+    // 2. 依序繪製至 Canvas（先畫本體魔物，再繪製附屬型魔物）
+    renderedUnits.forEach(({ mainImg, attachImg, cellX, cellY, cellW, cellH }) => {
+        // 先繪製本體
+        if (mainImg) {
+            const padX = cellW * 0.05;
+            const padY = cellH * 0.05;
+            const boxW = cellW - padX * 2;
+            const boxH = cellH - padY * 2;
+            const imgAspect = mainImg.naturalWidth / mainImg.naturalHeight;
+            const boxAspect = boxW / boxH;
+            let drawW = boxW;
+            let drawH = boxH;
+            let drawX = cellX + padX;
+            let drawY = cellY + padY;
+            if (imgAspect > boxAspect) {
+                drawH = boxW / imgAspect;
+                drawY += (boxH - drawH) / 2;
+            } else {
+                drawW = boxH * imgAspect;
+                drawX += (boxW - drawW) / 2;
+            }
+            ctx.drawImage(mainImg, drawX, drawY, drawW, drawH);
+        }
+
+        // 後繪製附屬物（保證覆蓋在最上層）
+        if (attachImg) {
+            const attachW = cellW * 0.35;
+            const attachH = cellH * 0.35;
+            const attachX = cellX + (cellW * 0.02);
+            const attachY = cellY + (cellH * 0.02);
+            const imgAspect = attachImg.naturalWidth / attachImg.naturalHeight;
+            const boxAspect = attachW / attachH;
+            let drawW = attachW;
+            let drawH = attachH;
+            let drawX = attachX;
+            let drawY = attachY;
+            if (imgAspect > boxAspect) {
+                drawH = attachW / imgAspect;
+                drawY += (attachH - drawH) / 2;
+            } else {
+                drawW = attachH * imgAspect;
+                drawX += (attachH - drawW) / 2;
+            }
+            ctx.drawImage(attachImg, drawX, drawY, drawW, drawH);
         }
     });
 
-    await Promise.all(drawPromises);
-
+    // 3. 繪製底部說明文字區塊
     if (descText && lines.length > 0) {
         const startY = canvasHeight;
         ctx.fillStyle = '#2d2d2d';
