@@ -6,6 +6,10 @@
 const STORAGE_KEY = 'coop_saved_templates';
 const FOLDERS_KEY = 'coop_saved_folders';
 
+function isDesktop() {
+    return window.innerWidth > 900;
+}
+
 function getSavedTemplates() {
     try {
         const localData = localStorage.getItem(STORAGE_KEY);
@@ -402,7 +406,14 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
     
-    const maxW = Math.min(380, window.innerWidth - 20);
+    // 獨立分支：手機版完全保留原本數值與算式；電腦版自適應寬度
+    let maxW;
+    if (isDesktop()) {
+        maxW = Math.min(650, window.innerWidth * 0.48);
+    } else {
+        maxW = Math.min(380, window.innerWidth - 20);
+    }
+
     const scale = Math.min(1, maxW / naturalWidth);
     const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
     const playableH = naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
@@ -440,7 +451,14 @@ function createBoard() {
     if (!boardEl) return;
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
-    const maxW = Math.min(380, window.innerWidth - 20);
+    
+    // 獨立分支：寬度上限依裝置切換
+    let maxW;
+    if (isDesktop()) {
+        maxW = Math.min(650, window.innerWidth * 0.48);
+    } else {
+        maxW = Math.min(380, window.innerWidth - 20);
+    }
 
     const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
     const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
@@ -574,8 +592,10 @@ function onCellClick(x, y) {
 // 監聽螢幕變動以重繪棋盤比例
 window.addEventListener('resize', () => {
     const config = TERRAIN_CONFIGS[state.currentBg];
-    if (config && state.bgImage) {
-        applyTerrainConfig(config, state.bgImage.naturalWidth, state.bgImage.naturalHeight);
+    if (config) {
+        const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
+        const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
+        applyTerrainConfig(config, naturalW, naturalH);
     }
 });
 

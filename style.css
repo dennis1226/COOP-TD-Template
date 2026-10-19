@@ -76,9 +76,11 @@ body {
     box-sizing: border-box;
 }
 
-/* ==================== 電腦版配置 (> 901px) ==================== */
+/* ==================== 電腦版獨立分支配置 (> 901px) ==================== */
 @media screen and (min-width: 901px) {
-    body { padding-top: 80px; }
+    body { 
+        padding-top: 75px; 
+    }
 
     .fixed-header {
         position: fixed;
@@ -86,71 +88,117 @@ body {
         left: 0;
         width: 100%;
         background-color: var(--header-bg);
-        padding: 12px 24px;
+        padding: 10px 24px;
         box-shadow: 0 2px 12px var(--shadow-color);
         z-index: 1000;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 20px;
+        gap: 16px;
     }
 
-    .header-left-group { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; order: 1; }
-    .header-title { margin: 0; font-size: 1.4rem; font-weight: 700; }
+    .header-left-group { 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        flex: 0 0 auto; 
+    }
+    .header-title { 
+        margin: 0; 
+        font-size: 1.3rem; 
+        font-weight: 700; 
+    }
     
-    .header-save-group { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; justify-content: center; order: 2; }
-    .header-save-group .header-bg-select { width: 160px; height: 38px; font-size: 13px; }
-    .header-save-group input[type="text"] { width: 220px; height: 38px; font-size: 13px; }
-    .header-save-group button { height: 38px; padding: 0 16px; font-size: 13px; }
+    .header-save-group { 
+        display: flex; 
+        align-items: center; 
+        gap: 8px; 
+        flex: 1; 
+        justify-content: center; 
+    }
+    .header-save-group .header-bg-select { 
+        width: 160px; 
+        height: 36px; 
+        font-size: 13px; 
+    }
+    .header-save-group input[type="text"] { 
+        width: 240px; 
+        height: 36px; 
+        font-size: 13px; 
+    }
+    .header-save-group button { 
+        height: 36px; 
+        padding: 0 16px; 
+        font-size: 13px; 
+    }
 
-    .header-actions { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; justify-content: flex-end; order: 3; }
+    .header-actions { 
+        display: flex; 
+        gap: 8px; 
+        align-items: center; 
+        flex: 0 0 auto; 
+    }
     .header-actions .primary,
-    .header-actions .secondary { padding: 9px 16px; font-size: 13px; }
+    .header-actions .secondary { 
+        padding: 8px 14px; 
+        font-size: 13px; 
+    }
 
+    /* 電腦版雙欄容器佈局：左棋盤、右面板 */
     .container {
         display: flex;
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
         width: 100%;
-        max-width: 1100px;
+        max-width: 1320px;
         margin: 0 auto;
-        padding: 24px;
-        gap: 20px;
+        padding: 24px 20px;
+        gap: 28px;
     }
 
+    /* 左側棋盤展示區，滾動時浮動置頂對照 */
     .board-wrapper {
-        width: 100%;
+        flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
-        align-items: center;
+        justify-content: center;
+        position: sticky;
+        top: 90px;
     }
     
     .board-wrapper .board-container {
-        width: 100%;
-        max-width: 950px;
+        width: auto;
+        max-width: 100%;
     }
 
+    /* 右側操作面板 */
     .mobile-tab-container {
-        width: 100%;
-        max-width: 950px;
+        flex: 1;
+        min-width: 440px;
+        max-width: 580px;
     }
 
     .units-grid-scroll-area {
-        max-height: none;
-        overflow-y: visible;
-        border: none;
-        padding: 0;
-        background: transparent;
+        max-height: calc(100vh - 230px);
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 8px;
+        background: var(--bg-color);
     }
 
     .button-column {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .button-column button {
+        padding: 12px;
+        font-size: 13px;
     }
 }
 
-/* ==================== 手機版配置 (<= 900px) ==================== */
+/* ==================== 手機版配置 (<= 900px，保留原樣無更動) ==================== */
 @media screen and (max-width: 900px) {
     body { padding-top: 120px; }
 
