@@ -115,7 +115,7 @@ body {
 
 /* ==================== 手機版專屬樣式 (<= 900px) ==================== */
 @media screen and (max-width: 900px) {
-    body { padding-top: 195px; }
+    body { padding-top: 120px; }
 
     .fixed-header {
         position: fixed;
@@ -129,7 +129,7 @@ body {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 18px;
     }
 
     .header-left-group { width: 100%; justify-content: center; gap: 10px; display: flex; order: 1; }
@@ -169,7 +169,7 @@ body {
     .button-column button { width: 100%; padding: 10px; font-size: 13px; }
     
     .units-grid-scroll-area {
-        max-height: 180px;
+        max-height: 220px;
         overflow-y: auto;
         padding-right: 4px;
         border: 1px solid var(--border-color);
