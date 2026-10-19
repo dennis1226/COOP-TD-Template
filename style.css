@@ -143,23 +143,33 @@ body {
         align-items: center;
         width: 100%;
         max-width: 100%;
-        padding: 10px;
-        gap: 12px;
+        padding: 8px 10px;
+        gap: 8px;
         box-sizing: border-box;
     }
 
     .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
+    
+    /* 讓棋盤在手機上一目了然，稍微限制最大寬度避免過大 */
+    .board-container {
+        max-width: 340px !important;
+    }
+
     .mobile-tab-container { width: 100%; max-width: 480px; }
     
     /* 調整手機版按鈕垂直間距與寬度 */
-    .button-column { display: flex; flex-direction: column; gap: 10px; }
-    .button-column button { width: 100%; padding: 12px; font-size: 14px; }
+    .button-column { display: flex; flex-direction: column; gap: 8px; }
+    .button-column button { width: 100%; padding: 10px; font-size: 13px; }
     
-    /* 手機版魔物列表獨立固定高度並可滾動 */
+    /* 🎯 關鍵：限制手機版魔物清單的高度，並加入內部滾輪 */
     .units-grid-scroll-area {
-        max-height: 320px;
+        max-height: 180px; /* 您可依手機畫面自行微調此高度 (例如 160px ~ 200px) */
         overflow-y: auto;
         padding-right: 4px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 6px;
+        background: var(--bg-color);
     }
 }
 

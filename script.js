@@ -172,7 +172,6 @@ const boardBgEl = document.getElementById('boardBackground');
 const unitsGrid = document.getElementById('unitsGrid');
 const deleteModeBtn = document.getElementById('deleteModeBtn');
 const clearBtn = document.getElementById('clearBtn');
-const markOrderBtn = document.getElementById('markOrderBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const saveImageBtn = document.getElementById('saveImageBtn');
 const downloadImageBtn = document.getElementById('downloadImageBtn');
@@ -587,18 +586,6 @@ async function autoLoadIcons() {
     });
     createBoard(); renderSavedTemplatesList();
 }
-
-deleteModeBtn.addEventListener('click', () => {
-    state.deleteMode = !state.deleteMode;
-    if (state.deleteMode) {
-        deleteModeBtn.className = 'danger'; deleteModeBtn.textContent = '✕ 退出刪除';
-        state.selectedUnitId = null; document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
-        state.markOrderMode = false; markOrderBtn.classList.remove('active');
-    } else {
-        deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除';
-    }
-    createBoard();
-});
 
 markOrderBtn.addEventListener('click', () => {
     state.markOrderMode = !state.markOrderMode;
