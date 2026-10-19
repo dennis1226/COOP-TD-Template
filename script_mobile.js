@@ -73,7 +73,13 @@ function normalizePlacedUnit(placed) {
         else if (placed.id) baseId = String(placed.id);
         else if (placed.unitId) baseId = String(placed.unitId);
         if (typeof placed.formIndex === 'number') formIndex = placed.formIndex;
-        if (placed.attachment) attachment = normalizePlacedUnit(placed.attachment);
+        if (placed.attachment) {
+            if (typeof placed.attachment === 'object') {
+                const attachBaseId = placed.attachment.baseId || placed.attachment.id || '';
+                const attachFormIndex = typeof placed.attachment.formIndex === 'number' ? placed.attachment.formIndex : 0;
+                attachment = { baseId: String(attachBaseId), formIndex: attachFormIndex };
+            }
+        }
     }
     if (typeof placed === 'number') baseId = `monster_${placed}`;
     if (typeof placed === 'string') {
