@@ -51,7 +51,7 @@
                     <div class="log-date">2026/10/19</div>
                     <div class="log-text">
                         • 整合並統一為 index.html + script.js + style.css。<br>
-                        • 改為手機相似的直立排版：上方 Header、中間場地、下方透過 Tab 切換「魔物」、「陣容說明」、「工具與操作」。
+                        • 修正手機版城牆地形顯示大小與格子對齊問題。
                     </div>
                 </div>
             </div>
@@ -71,7 +71,7 @@
     </div>
 
     <div class="container">
-        <!-- 中間：場地與說明（直接展示於畫面上方/中間） -->
+        <!-- 中間：場地與說明 -->
         <div class="board-wrapper">
             <div class="board-container" id="boardContainer">
                 <div class="board-background" id="boardBackground"></div>
@@ -91,7 +91,6 @@
                 <!-- Tab 1: 魔物 -->
                 <div class="mobile-tab-pane active" id="tab-monsters">
                     <div class="section" style="border:none; box-shadow:none; padding:0;">
-                        <!-- 確保這裡有一個可滾動的框 -->
                         <div class="units-grid-scroll-area">
                             <div class="units-grid" id="unitsGrid">
                                 <div class="empty-units">正在讀取 icon 資料夾…</div>

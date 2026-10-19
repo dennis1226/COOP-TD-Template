@@ -42,7 +42,6 @@ const MONSTER_CATEGORIES = [
 const TERRAIN_CONFIGS = {
     'background/board-bg-hedge.png': {
         name: '綠籬地形', cols: 7, rows: 5, defaultWidth: 750, defaultHeight: 505,
-        // 修正分母對應 defaultWidth (750) 與 defaultHeight (505)
         colFracs: [93, 95, 95, 96, 95, 98, 100].map(v => v / 750),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 505),
         paddingTopRatio: 0, paddingBottomRatio: 0, paddingLeftRatio: 0,
@@ -50,7 +49,7 @@ const TERRAIN_CONFIGS = {
     },
     'background/board-bg-guardwall.png': {
         name: '城牆地形', cols: 7, rows: 3, defaultWidth: 900, defaultHeight: 450,
-        colFracs: Array(7).fill((1 - 0.2 * 2) / 7),
+        colFracs: Array(7).fill((1 - 0.03 * 2) / 7),
         rowFracs: Array(3).fill((1 - 0.19 - 0.03) / 3),
         paddingTopRatio: 0.19, paddingBottomRatio: 0.03, paddingLeftRatio: 0.03,
         blockedCells: new Set()
@@ -335,7 +334,11 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingTopRatio = config.paddingTopRatio || 0;
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
-    const maxW = Math.min(360, window.innerWidth - 30);
+    
+    // 💡 針對不同地形調整手機版最大寬度：城牆地形寬度設為 380px，綠籬設為 360px
+    const defaultMaxW = state.currentBg.includes('guardwall') ? 380 : 360;
+    const maxW = Math.min(defaultMaxW, window.innerWidth - 20);
+    
     const scale = Math.min(1, maxW / naturalWidth);
     const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
     const playableH = naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
@@ -367,7 +370,11 @@ function createBoard() {
     if (!boardEl) return;
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
-    const maxW = Math.min(360, window.innerWidth - 30);
+    
+    // 💡 確保動態產生時也採用對應的寬度限制
+    const defaultMaxW = state.currentBg.includes('guardwall') ? 380 : 360;
+    const maxW = Math.min(defaultMaxW, window.innerWidth - 20);
+
     const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
     const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
     const fullImgW = Math.min(maxW, naturalW);
