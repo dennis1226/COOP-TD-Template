@@ -335,9 +335,8 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
     
-    // 💡 針對不同地形調整手機版最大寬度：城牆地形寬度設為 380px，綠籬設為 360px
-    const defaultMaxW = state.currentBg.includes('guardwall') ? 380 : 360;
-    const maxW = Math.min(defaultMaxW, window.innerWidth - 20);
+    // 💡 配合 380px 寬度限制進行自適應縮放
+    const maxW = Math.min(380, window.innerWidth - 20);
     
     const scale = Math.min(1, maxW / naturalWidth);
     const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
@@ -371,9 +370,8 @@ function createBoard() {
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     
-    // 💡 確保動態產生時也採用對應的寬度限制
-    const defaultMaxW = state.currentBg.includes('guardwall') ? 380 : 360;
-    const maxW = Math.min(defaultMaxW, window.innerWidth - 20);
+    // 💡 確保動態產生時也採用 380px 上限
+    const maxW = Math.min(380, window.innerWidth - 20);
 
     const naturalW = state.bgImage ? state.bgImage.naturalWidth : (config.defaultWidth || 700);
     const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);

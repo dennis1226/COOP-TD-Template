@@ -149,7 +149,8 @@ body {
         flex-direction: column;
         align-items: center;
         width: 100%;
-        max-width: 100%;
+        max-width: 380px; /* 💡 統一限制最大寬度為 380px，使地圖與下方 Tab 完美等寬 */
+        margin: 0 auto;
         padding: 8px 10px;
         gap: 8px;
         box-sizing: border-box;
@@ -158,10 +159,11 @@ body {
     .board-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
     
     .board-container {
+        width: 100% !important;
         max-width: 380px !important;
     }
 
-    .mobile-tab-container { width: 100%; max-width: 480px; }
+    .mobile-tab-container { width: 100%; max-width: 380px; }
     
     .button-column { display: flex; flex-direction: column; gap: 8px; }
     .button-column button { width: 100%; padding: 10px; font-size: 13px; }
