@@ -60,8 +60,16 @@ const TERRAIN_CONFIGS = {
         rows: 5,
         defaultWidth: 750,
         defaultHeight: 505,
-        colFracs: [105, 105, 105, 103, 107, 108, 112].map(v => v / 743),
-        rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
+        colFracs: (() => {
+            const cols = [105, 105, 105, 103, 107, 108, 112];
+            const sum = cols.reduce((acc, cur) => acc + cur, 0);
+            return cols.map(v => v / sum);
+        })(),
+        rowFracs: (() => {
+            const rows = [110, 115, 116, 116, 115];
+            const sum = rows.reduce((acc, cur) => acc + cur, 0);
+            return rows.map(v => v / sum);
+        })(),
         paddingTopRatio: 0,
         paddingBottomRatio: 0,
         paddingLeftRatio: 0,
