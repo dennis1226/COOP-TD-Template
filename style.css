@@ -115,7 +115,7 @@ body {
 
 /* ==================== 手機版專屬樣式 (<= 900px) ==================== */
 @media screen and (max-width: 900px) {
-    body { padding-top: 155px; }
+    body { padding-top: 195px; }
 
     .fixed-header {
         position: fixed;
