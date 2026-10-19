@@ -8,10 +8,11 @@
     <script src="script.js" defer></script>
 </head>
 <body>
-    <div class="fixed-header">
+    <!-- 頂部固定操作列 -->
+    <header class="fixed-header">
         <div class="header-left-group">
             <h1 class="header-title">魔物模板編輯器</h1>
-            <button id="updateLogBtn" class="secondary">更新記錄</button>
+            <button id="updateLogBtn" class="secondary" type="button">更新記錄</button>
         </div>
 
         <div class="header-save-group">
@@ -20,31 +21,33 @@
                 <option value="background/board-bg-guardwall.png">城牆地形</option>
             </select>
             <input type="text" id="templateNameInput" placeholder="輸入模板名稱 (最多20字)" maxlength="20">
-            <button id="saveTemplateBtn" class="primary" style="display: none;">儲存</button>
-            <button id="updateTemplateBtn" class="success" style="display: none;">更新</button>
+            <button id="saveTemplateBtn" class="primary btn-hidden" type="button">儲存</button>
+            <button id="updateTemplateBtn" class="success btn-hidden" type="button">更新</button>
         </div>
 
         <div class="header-actions">
-            <button id="openDrawerBtn" class="primary">📁 模板庫</button>
-            <button id="themeToggle" class="secondary">淺色模式</button>
+            <button id="openDrawerBtn" class="primary" type="button">📁 模板庫</button>
+            <button id="themeToggle" class="secondary" type="button">淺色模式</button>
         </div>
-    </div>
+    </header>
 
+    <!-- 形態選擇彈窗 -->
     <div class="modal-overlay" id="formModalOverlay">
         <div class="form-modal">
             <div class="form-modal-header">
                 <span id="formModalTitle">選擇魔物形態</span>
-                <button class="drawer-close-btn" id="closeFormModalBtn">✕</button>
+                <button class="drawer-close-btn" id="closeFormModalBtn" type="button">✕</button>
             </div>
             <div class="forms-grid" id="formsGrid"></div>
         </div>
     </div>
 
+    <!-- 更新記錄彈窗 -->
     <div class="modal-overlay" id="updateLogOverlay">
         <div class="log-modal">
             <div class="form-modal-header">
                 <span>更新記錄</span>
-                <button class="drawer-close-btn" id="closeUpdateLogBtn">✕</button>
+                <button class="drawer-close-btn" id="closeUpdateLogBtn" type="button">✕</button>
             </div>
             <div class="log-list">
                 <div class="log-item">
@@ -52,27 +55,29 @@
                     <div class="log-text">
                         • 整合並統一為 index.html + script.js + style.css。<br>
                         • 修正手機版城牆與綠籬地形大小，使其完美自適應並與下方操作框等寬對齊。<br>
-                        • 程式碼效能與結構優化。
+                        • 程式碼效能與架構完全整理優化。
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 模板庫側邊抽屜 -->
     <div class="drawer-overlay" id="drawerOverlay"></div>
-    <div class="templates-drawer" id="templatesDrawer">
-        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: bold; font-size: 1.1rem; color: var(--accent);">📁 模板庫</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <button id="addFolderBtn" class="secondary" style="padding: 4px 10px; font-size: 12px; cursor: pointer;">📁 新增資料夾</button>
-                <button class="drawer-close-btn" id="closeDrawerBtn">✕</button>
+    <aside class="templates-drawer" id="templatesDrawer">
+        <div class="drawer-header-section">
+            <span class="drawer-title">📁 模板庫</span>
+            <div class="drawer-header-actions">
+                <button id="addFolderBtn" class="secondary add-folder-btn" type="button">📁 新增資料夾</button>
+                <button class="drawer-close-btn" id="closeDrawerBtn" type="button">✕</button>
             </div>
         </div>
         <div class="saved-templates-list" id="savedTemplatesList"></div>
-    </div>
+    </aside>
 
-    <div class="container">
-        <!-- 中間：場地與說明 -->
+    <!-- 主內容區塊 -->
+    <main class="container">
+        <!-- 上方：場地棋盤 -->
         <div class="board-wrapper">
             <div class="board-container" id="boardContainer">
                 <div class="board-background" id="boardBackground"></div>
@@ -80,55 +85,55 @@
             </div>
         </div>
 
-        <!-- 下方：3個類型合併的操作視窗，用 Tab 分開 -->
+        <!-- 下方：操作標籤頁面 -->
         <div class="mobile-tab-container">
-            <div class="mobile-tab-nav">
-                <button class="mobile-tab-btn active" data-tab="tab-monsters">👹 魔物</button>
-                <button class="mobile-tab-btn" data-tab="tab-desc">📝 說明</button>
-                <button class="mobile-tab-btn" data-tab="tab-tools">🛠️ 操作</button>
-            </div>
+            <nav class="mobile-tab-nav">
+                <button class="mobile-tab-btn active" data-tab="tab-monsters" type="button">👹 魔物</button>
+                <button class="mobile-tab-btn" data-tab="tab-desc" type="button">📝 說明</button>
+                <button class="mobile-tab-btn" data-tab="tab-tools" type="button">🛠️ 操作</button>
+            </nav>
             
             <div class="mobile-tab-content-wrapper">
                 <!-- Tab 1: 魔物 -->
-                <div class="mobile-tab-pane active" id="tab-monsters">
+                <section class="mobile-tab-pane active" id="tab-monsters">
                     <div class="section tab-section-borderless">
                         <div class="units-grid-scroll-area">
                             <div class="units-grid" id="unitsGrid">
                                 <div class="empty-units">正在讀取 icon 資料夾…</div>
                             </div>
                         </div>
-                        <div class="hint">💡 點擊選取魔物 --> 點擊模板即可放下</div>
+                        <div class="hint">💡 點擊選取魔物 ➔ 點擊棋盤格子即可放下</div>
                         <div class="hint">💡 點擊已選取魔物或雙擊棋盤魔物可切換形態</div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Tab 2: 陣容說明 -->
-                <div class="mobile-tab-pane" id="tab-desc">
+                <section class="mobile-tab-pane" id="tab-desc">
                     <div class="section tab-section-borderless">
-                        <textarea id="templateDescInput" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="14" style="width: 100%; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-size: 14px; outline: none; resize: vertical; box-sizing: border-box;"></textarea>
+                        <textarea id="templateDescInput" class="template-desc-textarea" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="14"></textarea>
                     </div>
-                </div>
+                </section>
 
                 <!-- Tab 3: 工具與操作 -->
-                <div class="mobile-tab-pane" id="tab-tools">
+                <section class="mobile-tab-pane" id="tab-tools">
                     <div class="section tab-section-borderless">
                         <div class="button-column">
-                            <button id="undoBtn" class="secondary" disabled>↩️ 復原</button>
-                            <button id="redoBtn" class="secondary" disabled>↪️ 重做</button>
-                            <button id="deleteModeBtn" class="secondary">🗑️ 刪除</button>
-                            <button id="clearBtn" class="danger">清空</button>
-                            <button id="copyTemplateBtn" class="success">複製模板圖片</button>
-                            <button id="saveImageBtn" class="success">儲存圖片</button>
-                            <button id="downloadImageBtn" class="success">下載圖片</button>
-                            <button id="exportJsonBtn" class="secondary">📤 匯出模板</button>
-                            <button id="importJsonBtn" class="secondary">📥 匯入模板</button>
+                            <button id="undoBtn" class="secondary" disabled type="button">↩️ 復原</button>
+                            <button id="redoBtn" class="secondary" disabled type="button">↪️ 重做</button>
+                            <button id="deleteModeBtn" class="secondary" type="button">🗑️ 刪除</button>
+                            <button id="clearBtn" class="danger" type="button">清空</button>
+                            <button id="copyTemplateBtn" class="success" type="button">複製模板圖片</button>
+                            <button id="saveImageBtn" class="success" type="button">儲存圖片</button>
+                            <button id="downloadImageBtn" class="success" type="button">下載圖片</button>
+                            <button id="exportJsonBtn" class="secondary" type="button">📤 匯出模板</button>
+                            <button id="importJsonBtn" class="secondary" type="button">📥 匯入模板</button>
                             <input type="file" id="importFileInput" accept=".json" class="hidden-input">
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
-    </div>
+    </main>
 
     <div class="toast" id="toast"></div>
 </body>

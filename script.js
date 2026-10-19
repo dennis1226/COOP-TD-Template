@@ -1,4 +1,8 @@
-// ==================== Storage ====================
+/**
+ * 魔物模板編輯器 - 核心腳本
+ */
+
+// ==================== Storage 常數與工具函式 ====================
 const STORAGE_KEY = 'coop_saved_templates';
 const FOLDERS_KEY = 'coop_saved_folders';
 
@@ -7,7 +11,7 @@ function getSavedTemplates() {
         const localData = localStorage.getItem(STORAGE_KEY);
         if (localData) return JSON.parse(localData);
     } catch (e) {
-        console.error("無法讀取模板資料", e);
+        console.error('無法讀取模板資料', e);
     }
     return [];
 }
@@ -16,7 +20,7 @@ function saveSavedTemplates(templates) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
     } catch (e) {
-        console.error("無法儲存模板資料，可能是儲存空間已滿", e);
+        console.error('無法儲存模板資料，可能是儲存空間已滿', e);
         showToast('儲存失敗：本機儲存空間異常');
     }
 }
@@ -26,7 +30,7 @@ function getSavedFolders() {
         const localData = localStorage.getItem(FOLDERS_KEY);
         if (localData) return JSON.parse(localData);
     } catch (e) {
-        console.error("無法讀取資料夾資料", e);
+        console.error('無法讀取資料夾資料', e);
     }
     return [];
 }
@@ -35,10 +39,11 @@ function saveSavedFolders(folders) {
     try {
         localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
     } catch (e) {
-        console.error("無法儲存資料夾資料", e);
+        console.error('無法儲存資料夾資料', e);
     }
 }
 
+// ==================== 遊戲數據與地形設定 ====================
 const MONSTER_CATEGORIES = [
     { title: "攻擊型", monsterIds: [2, 5, 7, 9, 10, 12, 13, 16, 17] },
     { title: "輔助型", monsterIds: [3, 6, 8] },
@@ -50,20 +55,32 @@ const MONSTER_CATEGORIES = [
 
 const TERRAIN_CONFIGS = {
     'background/board-bg-hedge.png': {
-        name: '綠籬地形', cols: 7, rows: 5, defaultWidth: 750, defaultHeight: 505,
-        // 修正：將原數值除以它們的「總和」(743 與 572)，確保比例加總精準等於 1 (100%)
+        name: '綠籬地形',
+        cols: 7,
+        rows: 5,
+        defaultWidth: 750,
+        defaultHeight: 505,
         colFracs: [98, 105, 105, 108, 107, 112, 108].map(v => v / 743),
         rowFracs: [110, 115, 116, 116, 115].map(v => v / 572),
-        paddingTopRatio: 0, paddingBottomRatio: 0, paddingLeftRatio: 0,
-        blockedCells: new Set(['0-0', '6-0', '0-1', '1-1', '2-1', '4-1', '5-1', '6-1', '2-2', '4-2', '2-3', '4-3', '2-4', '3-4', '4-4'])
+        paddingTopRatio: 0,
+        paddingBottomRatio: 0,
+        paddingLeftRatio: 0,
+        blockedCells: new Set([
+            '0-0', '6-0', '0-1', '1-1', '2-1', '4-1', '5-1', '6-1',
+            '2-2', '4-2', '2-3', '4-3', '2-4', '3-4', '4-4'
+        ])
     },
     'background/board-bg-guardwall.png': {
-        name: '城牆地形', cols: 7, rows: 3, defaultWidth: 900, defaultHeight: 450,
-        // 修正：可放置區域(Playable)應被均等劃分，直接使用 1/7 與 1/3
+        name: '城牆地形',
+        cols: 7,
+        rows: 3,
+        defaultWidth: 900,
+        defaultHeight: 450,
         colFracs: Array(7).fill(1 / 7),
         rowFracs: Array(3).fill(1 / 3),
-        // 修正：左右邊界留白比例改為正確的 0.05
-        paddingTopRatio: 0.19, paddingBottomRatio: 0.03, paddingLeftRatio: 0.05,
+        paddingTopRatio: 0.19,
+        paddingBottomRatio: 0.03,
+        paddingLeftRatio: 0.05,
         blockedCells: new Set()
     }
 };
@@ -77,28 +94,29 @@ function isAttachmentMonster(monsterId) {
 
 function normalizePlacedUnit(placed) {
     if (!placed) return null;
-    let baseId = null, formIndex = 0, attachment = null;
+    let baseId = null;
+    let formIndex = 0;
+    let attachment = null;
+
     if (typeof placed === 'object' && placed !== null) {
         if (placed.baseId) baseId = String(placed.baseId);
         else if (placed.id) baseId = String(placed.id);
         else if (placed.unitId) baseId = String(placed.unitId);
         if (typeof placed.formIndex === 'number') formIndex = placed.formIndex;
         
-        if (placed.attachment) {
-            if (typeof placed.attachment === 'object' && placed.attachment !== null) {
-                let attachBaseId = placed.attachment.baseId || placed.attachment.id || '';
-                attachBaseId = String(attachBaseId);
-                if (!attachBaseId.startsWith('monster_')) {
-                    const num = attachBaseId.replace(/\D/g, '');
-                    if (num) attachBaseId = `monster_${num}`;
-                }
-                const attachFormIndex = typeof placed.attachment.formIndex === 'number' ? placed.attachment.formIndex : 0;
-                attachment = { baseId: attachBaseId, formIndex: attachFormIndex };
+        if (placed.attachment && typeof placed.attachment === 'object') {
+            let attachBaseId = placed.attachment.baseId || placed.attachment.id || '';
+            attachBaseId = String(attachBaseId);
+            if (!attachBaseId.startsWith('monster_')) {
+                const num = attachBaseId.replace(/\D/g, '');
+                if (num) attachBaseId = `monster_${num}`;
             }
+            const attachFormIndex = typeof placed.attachment.formIndex === 'number' ? placed.attachment.formIndex : 0;
+            attachment = { baseId: attachBaseId, formIndex: attachFormIndex };
         }
-    }
-    if (typeof placed === 'number') baseId = `monster_${placed}`;
-    if (typeof placed === 'string') {
+    } else if (typeof placed === 'number') {
+        baseId = `monster_${placed}`;
+    } else if (typeof placed === 'string') {
         const matchMulti = placed.match(/image(\d+)_(\d+)\.png/i);
         if (matchMulti) {
             baseId = `monster_${matchMulti[1]}`;
@@ -106,12 +124,18 @@ function normalizePlacedUnit(placed) {
         } else {
             const matchSingle = placed.match(/image(\d+)\.png/i);
             if (matchSingle) {
-                baseId = `monster_${matchSingle[1]}`; formIndex = 0;
-            } else if (placed.startsWith('monster_')) baseId = placed;
-            else if (placed.startsWith('monster')) baseId = `monster_${placed.replace('monster', '')}`;
-            else if (!isNaN(parseInt(placed, 10))) baseId = `monster_${parseInt(placed, 10)}`;
+                baseId = `monster_${matchSingle[1]}`;
+                formIndex = 0;
+            } else if (placed.startsWith('monster_')) {
+                baseId = placed;
+            } else if (placed.startsWith('monster')) {
+                baseId = `monster_${placed.replace('monster', '')}`;
+            } else if (!isNaN(parseInt(placed, 10))) {
+                baseId = `monster_${parseInt(placed, 10)}`;
+            }
         }
     }
+
     if (!baseId) return null;
     if (!baseId.startsWith('monster_')) {
         const num = baseId.replace(/\D/g, '');
@@ -120,12 +144,24 @@ function normalizePlacedUnit(placed) {
     return { baseId, formIndex, attachment };
 }
 
+// ==================== 全域狀態管理 ====================
 const state = {
-    cols: 7, rows: 5, cellW: 105, cellH: 112, colFracs: null, rowFracs: null,
-    paddingTopRatio: 0, paddingBottomRatio: 0, paddingLeftRatio: 0,
-    selectedUnitId: null, selectedFormIndex: 0, deleteMode: false,
-    loadedMonsters: [], bgImage: null, currentBg: 'background/board-bg-hedge.png',
-    currentLoadedTemplateId: null, maxBoardWidth: 760,
+    cols: 7,
+    rows: 5,
+    cellW: 105,
+    cellH: 112,
+    colFracs: null,
+    rowFracs: null,
+    paddingTopRatio: 0,
+    paddingBottomRatio: 0,
+    paddingLeftRatio: 0,
+    selectedUnitId: null,
+    selectedFormIndex: 0,
+    deleteMode: false,
+    loadedMonsters: [],
+    bgImage: null,
+    currentBg: 'background/board-bg-hedge.png',
+    currentLoadedTemplateId: null,
     terrainData: {
         'background/board-bg-hedge.png': { units: {}, orders: {} },
         'background/board-bg-guardwall.png': { units: {}, orders: {} }
@@ -137,8 +173,11 @@ const state = {
     get blockedCells() { return TERRAIN_CONFIGS[this.currentBg]?.blockedCells || new Set(); }
 };
 
+// ==================== 歷史操作管理 (Undo/Redo) ====================
 const historyStack = {
-    undoList: [], redoList: [], maxSize: 30,
+    undoList: [],
+    redoList: [],
+    maxSize: 30,
     pushState() {
         this.undoList.push({ currentBg: state.currentBg, terrainData: structuredClone(state.terrainData) });
         if (this.undoList.length > this.maxSize) this.undoList.shift();
@@ -165,20 +204,16 @@ const historyStack = {
         loadFixedBackground(state.currentBg, false, true);
         updateUndoRedoButtons();
     },
-    clear() { this.undoList = []; this.redoList = []; updateUndoRedoButtons(); }
+    clear() {
+        this.undoList = [];
+        this.redoList = [];
+        updateUndoRedoButtons();
+    }
 };
 
+// ==================== DOM 元素獲取 ====================
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
-
-function updateUndoRedoButtons() {
-    if (undoBtn) undoBtn.disabled = historyStack.undoList.length === 0;
-    if (redoBtn) redoBtn.disabled = historyStack.redoList.length === 0;
-}
-
-if (undoBtn) undoBtn.addEventListener('click', () => { historyStack.undo(); createBoard(); showToast('已復原上一步操作'); });
-if (redoBtn) redoBtn.addEventListener('click', () => { historyStack.redo(); createBoard(); showToast('已重做操作'); });
-
 const boardEl = document.getElementById('gameBoard');
 const boardBgEl = document.getElementById('boardBackground');
 const unitsGrid = document.getElementById('unitsGrid');
@@ -196,6 +231,7 @@ const formModal = document.querySelector('.form-modal');
 const closeFormModalBtn = document.getElementById('closeFormModalBtn');
 const formsGrid = document.getElementById('formsGrid');
 const formModalTitle = document.getElementById('formModalTitle');
+
 const updateLogBtn = document.getElementById('updateLogBtn');
 const updateLogOverlay = document.getElementById('updateLogOverlay');
 const closeUpdateLogBtn = document.getElementById('closeUpdateLogBtn');
@@ -211,6 +247,28 @@ const addFolderBtn = document.getElementById('addFolderBtn');
 const drawerOverlay = document.getElementById('drawerOverlay');
 const templatesDrawer = document.getElementById('templatesDrawer');
 
+const exportJsonBtn = document.getElementById('exportJsonBtn');
+const importJsonBtn = document.getElementById('importJsonBtn');
+const importFileInput = document.getElementById('importFileInput');
+
+// ==================== 介面交互與提示 ====================
+function showToast(msg, duration = 2200) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._timer);
+    toastEl._timer = setTimeout(() => toastEl.classList.remove('show'), duration);
+}
+
+function updateUndoRedoButtons() {
+    if (undoBtn) undoBtn.disabled = historyStack.undoList.length === 0;
+    if (redoBtn) redoBtn.disabled = historyStack.redoList.length === 0;
+}
+
+if (undoBtn) undoBtn.addEventListener('click', () => { historyStack.undo(); createBoard(); showToast('已復原上一步操作'); });
+if (redoBtn) redoBtn.addEventListener('click', () => { historyStack.redo(); createBoard(); showToast('已重做操作'); });
+
+// Tab 切換
 document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
@@ -223,19 +281,21 @@ document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
 
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
 
+// 更新記錄 Modal
 function openUpdateLog() { updateLogOverlay.classList.add('open'); }
 function closeUpdateLog() { updateLogOverlay.classList.remove('open'); }
 if (updateLogBtn) updateLogBtn.addEventListener('click', openUpdateLog);
 if (closeUpdateLogBtn) closeUpdateLogBtn.addEventListener('click', closeUpdateLog);
 if (updateLogOverlay) updateLogOverlay.addEventListener('click', (e) => { if (e.target === updateLogOverlay) closeUpdateLog(); });
 
-function showToast(msg, duration = 2200) {
-    if (!toastEl) return;
-    toastEl.textContent = msg;
-    toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), duration);
-}
+// 抽屜控制
+function openDrawer() { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); }
+function closeDrawer() { templatesDrawer.classList.remove('open'); drawerOverlay.classList.remove('open'); }
+if (openDrawerBtn) openDrawerBtn.addEventListener('click', openDrawer);
+if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
+if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
 
+// ==================== 模板儲存按鈕狀態 ====================
 function getCellKey(x, y) { return `${x}-${y}`; }
 
 function updateSaveButtonsVisibility() {
@@ -268,6 +328,7 @@ function setLoadedTemplate(template) {
     updateSaveButtonsVisibility();
 }
 
+// ==================== 形態選擇彈窗 ====================
 function openFormModalForMenu(monster) {
     if (!monster || monster.forms.length <= 1) { showToast('該魔物只有單一形態'); return; }
     formModalTitle.textContent = '選擇預設放置形態';
@@ -282,7 +343,10 @@ function openFormModalForMenu(monster) {
             monster.selectedFormIndex = idx;
             state.selectedFormIndex = idx;
             const opt = unitsGrid.querySelector(`[data-id="${monster.id}"]`);
-            if (opt) { const optImg = opt.querySelector('img'); if (optImg) optImg.src = form.src; }
+            if (opt) {
+                const optImg = opt.querySelector('img');
+                if (optImg) optImg.src = form.src;
+            }
             closeFormModal();
             showToast(`預設放置形態設為：${form.name}`);
         });
@@ -320,28 +384,12 @@ function closeFormModal() { if (formModalOverlay) formModalOverlay.classList.rem
 if (closeFormModalBtn) closeFormModalBtn.addEventListener('click', closeFormModal);
 if (formModalOverlay) formModalOverlay.addEventListener('click', (e) => { if (e.target === formModalOverlay) closeFormModal(); });
 
-if (openDrawerBtn) openDrawerBtn.addEventListener('click', () => { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); });
-function closeDrawer() { if (templatesDrawer) templatesDrawer.classList.remove('open'); if (drawerOverlay) drawerOverlay.classList.remove('open'); }
-if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
-if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
-
-if (addFolderBtn) addFolderBtn.addEventListener('click', createNewFolder);
-
-function createNewFolder() {
-    const folderName = prompt('請輸入新資料夾名稱（最多20字）：', '新資料夾');
-    if (folderName !== null && folderName.trim() !== '') {
-        const name = folderName.trim().slice(0, 20);
-        const folders = getSavedFolders();
-        folders.push({ id: Date.now(), name, collapsed: false, order: folders.length + 1 });
-        saveSavedFolders(folders);
-        renderSavedTemplatesList();
-        showToast(`已建立資料夾：「${name}」`);
-    }
-}
-
+// ==================== 棋盤生成與地形管理 ====================
 function applyTerrainConfig(config, naturalWidth, naturalHeight) {
-    state.cols = config.cols; state.rows = config.rows;
-    state.colFracs = config.colFracs; state.rowFracs = config.rowFracs;
+    state.cols = config.cols;
+    state.rows = config.rows;
+    state.colFracs = config.colFracs;
+    state.rowFracs = config.rowFracs;
     state.paddingTopRatio = config.paddingTopRatio || 0;
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
@@ -367,8 +415,14 @@ function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, kee
     const config = TERRAIN_CONFIGS[bgPath] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { state.bgImage = img; applyTerrainConfig(config, img.naturalWidth, img.naturalHeight); createBoard(); };
-    img.onerror = () => { state.bgImage = null; applyTerrainConfig(config, config.defaultWidth || 700, config.defaultHeight || 500); createBoard(); };
+    img.onload = () => {
+        state.bgImage = img;
+        applyTerrainConfig(config, img.naturalWidth, img.naturalHeight);
+    };
+    img.onerror = () => {
+        state.bgImage = null;
+        applyTerrainConfig(config, config.defaultWidth || 700, config.defaultHeight || 500);
+    };
     img.src = bgPath;
 }
 
@@ -394,8 +448,8 @@ function createBoard() {
     boardEl.style.paddingBottom = `${bottomPaddingPx}px`;
     boardEl.style.paddingLeft = `${sidePaddingPx}px`;
     boardEl.style.paddingRight = `${sidePaddingPx}px`;
-    boardEl.style.gridTemplateColumns = state.colFracs ? state.colFracs.map(f => Math.round(f * playableW) + 'px').join(' ') : `repeat(${state.cols}, ${state.cellW}px)`;
-    boardEl.style.gridTemplateRows = state.rowFracs ? state.rowFracs.map(f => Math.round(f * playableH) + 'px').join(' ') : `repeat(${state.rows}, ${state.cellH}px)`;
+    boardEl.style.gridTemplateColumns = state.colFracs ? state.colFracs.map(f => `${Math.round(f * playableW)}px`).join(' ') : `repeat(${state.cols}, ${state.cellW}px)`;
+    boardEl.style.gridTemplateRows = state.rowFracs ? state.rowFracs.map(f => `${Math.round(f * playableH)}px`).join(' ') : `repeat(${state.rows}, ${state.cellH}px)`;
 
     for (let y = 0; y < state.rows; y++) {
         for (let x = 0; x < state.cols; x++) {
@@ -451,7 +505,10 @@ function createBoard() {
                 boardEl.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
                 if (isBlocked) return showToast('該區域無法放置魔物！');
                 const monsterId = e.dataTransfer.getData('text/plain');
-                if (monsterId) { historyStack.pushState(); placeUnit(x, y, monsterId, state.selectedFormIndex); }
+                if (monsterId) {
+                    historyStack.pushState();
+                    placeUnit(x, y, monsterId, state.selectedFormIndex);
+                }
             });
             boardEl.appendChild(cell);
         }
@@ -463,7 +520,10 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
     const isAttach = isAttachmentMonster(monsterId);
     if (isAttach) {
         const existing = normalizePlacedUnit(state.units[key]);
-        if (!existing) { showToast('請先在此格子放置一般魔物，才能加入附屬型！'); return; }
+        if (!existing) {
+            showToast('請先在此格子放置一般魔物，才能加入附屬型！');
+            return;
+        }
         existing.attachment = { baseId: monsterId, formIndex };
         state.units[key] = existing;
         showToast('已成功為該魔物加上附屬型！');
@@ -481,20 +541,42 @@ function onCellClick(x, y) {
             historyStack.pushState();
             const placed = normalizePlacedUnit(state.units[key]);
             if (placed && placed.attachment) {
-                placed.attachment = null; state.units[key] = placed; createBoard(); showToast('已移除格內的附屬型魔物'); return;
+                placed.attachment = null;
+                state.units[key] = placed;
+                createBoard();
+                showToast('已移除格內的附屬型魔物');
+                return;
             }
-            delete state.units[key]; createBoard(); showToast('已刪除格內魔物');
+            delete state.units[key];
+            createBoard();
+            showToast('已刪除格內魔物');
         }
         return;
     }
-    if (state.blockedCells && state.blockedCells.has(key)) { showToast('該區域無法放置魔物！'); return; }
-    if (state.selectedUnitId) { historyStack.pushState(); placeUnit(x, y, state.selectedUnitId, state.selectedFormIndex); }
+    if (state.blockedCells && state.blockedCells.has(key)) {
+        showToast('該區域無法放置魔物！');
+        return;
+    }
+    if (state.selectedUnitId) {
+        historyStack.pushState();
+        placeUnit(x, y, state.selectedUnitId, state.selectedFormIndex);
+    }
 }
 
+// 監聽螢幕變動以重繪棋盤比例
+window.addEventListener('resize', () => {
+    const config = TERRAIN_CONFIGS[state.currentBg];
+    if (config && state.bgImage) {
+        applyTerrainConfig(config, state.bgImage.naturalWidth, state.bgImage.naturalHeight);
+    }
+});
+
+// ==================== 魔物圖標讀取 ====================
 async function autoLoadIcons() {
     if (!unitsGrid) return;
     unitsGrid.innerHTML = '<div class="empty-units">正在讀取 icon 資料夾…</div>';
     state.loadedMonsters = [];
+    
     const tryLoadImage = (src) => new Promise((resolve) => {
         const img = new Image();
         img.onload = () => resolve({ src, ok: true });
@@ -527,7 +609,9 @@ async function autoLoadIcons() {
 
     if (state.loadedMonsters.length === 0) {
         unitsGrid.innerHTML = `<div class="empty-units">未找到魔物圖片<br>請在 icon 資料夾放圖片<br>(如 image1_1.png)</div>`;
-        renderSavedTemplatesList(); createBoard(); return;
+        renderSavedTemplatesList();
+        createBoard();
+        return;
     }
 
     MONSTER_CATEGORIES.forEach(category => {
@@ -568,7 +652,11 @@ async function autoLoadIcons() {
                         opt.classList.add('selected');
                         state.selectedUnitId = monster.id;
                         state.selectedFormIndex = monster.selectedFormIndex || 0;
-                        if (state.deleteMode && deleteModeBtn) { state.deleteMode = false; deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除'; }
+                        if (state.deleteMode && deleteModeBtn) {
+                            state.deleteMode = false;
+                            deleteModeBtn.className = 'secondary';
+                            deleteModeBtn.textContent = '🗑️ 刪除';
+                        }
                         createBoard();
                     }
                 });
@@ -584,17 +672,22 @@ async function autoLoadIcons() {
             unitsGrid.appendChild(categoryRow);
         }
     });
-    createBoard(); renderSavedTemplatesList();
+    createBoard();
+    renderSavedTemplatesList();
 }
 
+// ==================== 工具操作按鈕 ====================
 if (deleteModeBtn) {
     deleteModeBtn.addEventListener('click', () => {
         state.deleteMode = !state.deleteMode;
         if (state.deleteMode) {
-            deleteModeBtn.className = 'danger'; deleteModeBtn.textContent = '✕ 退出刪除';
-            state.selectedUnitId = null; document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+            deleteModeBtn.className = 'danger';
+            deleteModeBtn.textContent = '✕ 退出刪除';
+            state.selectedUnitId = null;
+            document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
         } else {
-            deleteModeBtn.className = 'secondary'; deleteModeBtn.textContent = '🗑️ 刪除';
+            deleteModeBtn.className = 'secondary';
+            deleteModeBtn.textContent = '🗑️ 刪除';
         }
         createBoard();
     });
@@ -604,7 +697,11 @@ if (clearBtn) {
     clearBtn.addEventListener('click', () => {
         if (Object.keys(state.units).length === 0) return;
         if (confirm('確定要清空畫布嗎？')) {
-            historyStack.pushState(); state.units = {}; setLoadedTemplate(null); createBoard(); showToast('當前地形模板已清空');
+            historyStack.pushState();
+            state.units = {};
+            setLoadedTemplate(null);
+            createBoard();
+            showToast('當前地形模板已清空');
         }
     });
 }
@@ -616,6 +713,7 @@ if (themeToggle) {
     });
 }
 
+// ==================== 圖片產生與匯出 ====================
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -631,7 +729,12 @@ async function generateBoardCanvas() {
     const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
     const descText = templateDescInput ? templateDescInput.value.trim() : '';
 
-    let extraHeight = 0, padding = 20, fontSize = 20, lineHeight = 28, lines = [];
+    let extraHeight = 0;
+    const padding = 20;
+    const fontSize = 20;
+    const lineHeight = 28;
+    const lines = [];
+
     if (descText) {
         const dummyCtx = canvas.getContext('2d');
         dummyCtx.font = `${fontSize}px sans-serif`;
@@ -640,17 +743,22 @@ async function generateBoardCanvas() {
             let currentLine = '';
             for (let char of para) {
                 if (dummyCtx.measureText(currentLine + char).width > maxWidth && currentLine !== '') {
-                    lines.push(currentLine); currentLine = char;
-                } else { currentLine += char; }
+                    lines.push(currentLine);
+                    currentLine = char;
+                } else {
+                    currentLine += char;
+                }
             }
             lines.push(currentLine);
         });
         extraHeight = (lines.length * lineHeight) + (padding * 2) + 30;
     }
 
-    canvas.width = canvasWidth; canvas.height = canvasHeight + extraHeight;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight + extraHeight;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
 
     const scaleX = canvasWidth / boardRect.width;
@@ -673,18 +781,31 @@ async function generateBoardCanvas() {
             const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
             if (targetForm) {
                 drawPromises.push(new Promise((resolve) => {
-                    const img = new Image(); img.crossOrigin = 'anonymous';
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
                     img.onload = () => {
-                        const padX = cellW * 0.05, padY = cellH * 0.05;
-                        const boxW = cellW - padX * 2, boxH = cellH - padY * 2;
-                        const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = boxW / boxH;
-                        let drawW = boxW, drawH = boxH, drawX = cellX + padX, drawY = cellY + padY;
-                        if (imgAspect > boxAspect) { drawH = boxW / imgAspect; drawY += (boxH - drawH) / 2; }
-                        else { drawW = boxH * imgAspect; drawX += (boxW - drawW) / 2; }
+                        const padX = cellW * 0.05;
+                        const padY = cellH * 0.05;
+                        const boxW = cellW - padX * 2;
+                        const boxH = cellH - padY * 2;
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const boxAspect = boxW / boxH;
+                        let drawW = boxW;
+                        let drawH = boxH;
+                        let drawX = cellX + padX;
+                        let drawY = cellY + padY;
+                        if (imgAspect > boxAspect) {
+                            drawH = boxW / imgAspect;
+                            drawY += (boxH - drawH) / 2;
+                        } else {
+                            drawW = boxH * imgAspect;
+                            drawX += (boxW - drawW) / 2;
+                        }
                         ctx.drawImage(img, drawX, drawY, drawW, drawH);
                         resolve();
                     };
-                    img.onerror = resolve; img.src = targetForm.src;
+                    img.onerror = resolve;
+                    img.src = targetForm.src;
                 }));
             }
         }
@@ -695,20 +816,31 @@ async function generateBoardCanvas() {
                 const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
                 if (attachForm) {
                     drawPromises.push(new Promise((resolve) => {
-                        const img = new Image(); img.crossOrigin = 'anonymous';
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
                         img.onload = () => {
                             const attachW = cellW * 0.35;
                             const attachH = cellH * 0.35;
                             const attachX = cellX + (cellW * 0.02);
                             const attachY = cellY + (cellH * 0.02);
-                            const imgAspect = img.naturalWidth / img.naturalHeight, boxAspect = attachW / attachH;
-                            let drawW = attachW, drawH = attachH, drawX = attachX, drawY = attachY;
-                            if (imgAspect > boxAspect) { drawH = attachW / imgAspect; drawY += (attachH - drawH) / 2; }
-                            else { drawW = attachH * imgAspect; drawX += (attachH - drawW) / 2; }
+                            const imgAspect = img.naturalWidth / img.naturalHeight;
+                            const boxAspect = attachW / attachH;
+                            let drawW = attachW;
+                            let drawH = attachH;
+                            let drawX = attachX;
+                            let drawY = attachY;
+                            if (imgAspect > boxAspect) {
+                                drawH = attachW / imgAspect;
+                                drawY += (attachH - drawH) / 2;
+                            } else {
+                                drawW = attachH * imgAspect;
+                                drawX += (attachH - drawW) / 2;
+                            }
                             ctx.drawImage(img, drawX, drawY, drawW, drawH);
                             resolve();
                         };
-                        img.onerror = resolve; img.src = attachForm.src;
+                        img.onerror = resolve;
+                        img.src = attachForm.src;
                     }));
                 }
             }
@@ -719,10 +851,21 @@ async function generateBoardCanvas() {
 
     if (descText && lines.length > 0) {
         const startY = canvasHeight;
-        ctx.fillStyle = '#2d2d2d'; ctx.fillRect(0, startY, canvas.width, extraHeight);
-        ctx.strokeStyle = '#444444'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, startY); ctx.lineTo(canvas.width, startY); ctx.stroke();
-        ctx.fillStyle = '#5b9bd5'; ctx.font = `bold 22px sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('【陣容說明】', padding, startY + padding);
-        ctx.fillStyle = '#ffffff'; ctx.font = `${fontSize}px sans-serif`;
+        ctx.fillStyle = '#2d2d2d';
+        ctx.fillRect(0, startY, canvas.width, extraHeight);
+        ctx.strokeStyle = '#444444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, startY);
+        ctx.lineTo(canvas.width, startY);
+        ctx.stroke();
+        ctx.fillStyle = '#5b9bd5';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('【陣容說明】', padding, startY + padding);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${fontSize}px sans-serif`;
         let textY = startY + padding + 35;
         lines.forEach(line => { ctx.fillText(line, padding, textY); textY += lineHeight; });
     }
@@ -742,7 +885,9 @@ async function copyBoardTemplate() {
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
                 showToast('已複製高畫質模板圖片至剪貼簿！');
                 return;
-            } catch (e) {}
+            } catch (e) {
+                // 回退至下載
+            }
         }
         const imageUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -768,14 +913,14 @@ async function saveBoardImage() {
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'imagePreviewModal';
-            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+            modal.className = 'image-preview-modal-overlay';
             document.body.appendChild(modal);
         }
 
         modal.innerHTML = `
-            <div style="background:var(--panel-bg);padding:15px;border-radius:12px;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                <div style="color:var(--accent);font-weight:bold;font-size:1rem;">📱 請長按下方圖片儲存至手機相簿</div>
-                <img src="${imageUrl}" style="max-width:100%;max-height:65vh;object-fit:contain;border-radius:6px;border:1px solid var(--border-color);">
+            <div class="image-preview-card">
+                <div class="preview-title">📱 請長按下方圖片儲存至手機相簿</div>
+                <img src="${imageUrl}" class="preview-img" alt="隊形預覽">
                 <button id="closePreviewBtn" class="secondary" style="width:100%;padding:10px;">關閉視窗</button>
             </div>
         `;
@@ -808,6 +953,21 @@ if (copyTemplateBtn) copyTemplateBtn.addEventListener('click', copyBoardTemplate
 if (saveImageBtn) saveImageBtn.addEventListener('click', saveBoardImage);
 if (downloadImageBtn) downloadImageBtn.addEventListener('click', downloadBoardImage);
 
+// ==================== 模板庫與資料夾邏輯 ====================
+if (addFolderBtn) addFolderBtn.addEventListener('click', createNewFolder);
+
+function createNewFolder() {
+    const folderName = prompt('請輸入新資料夾名稱（最多20字）：', '新資料夾');
+    if (folderName !== null && folderName.trim() !== '') {
+        const name = folderName.trim().slice(0, 20);
+        const folders = getSavedFolders();
+        folders.push({ id: Date.now(), name, collapsed: false, order: folders.length + 1 });
+        saveSavedFolders(folders);
+        renderSavedTemplatesList();
+        showToast(`已建立資料夾：「${name}」`);
+    }
+}
+
 if (saveTemplateBtn) {
     saveTemplateBtn.addEventListener('click', () => {
         const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
@@ -818,9 +978,15 @@ if (saveTemplateBtn) {
         const maxOrder = templates.reduce((max, t) => Math.max(max, t.order || 0), 0);
 
         const newTemplate = {
-            id: Date.now(), name: templateName, starred: false, folderId: null, order: maxOrder + 1,
-            description: templateDescInput ? templateDescInput.value.trim() : '', date: `${now.getMonth()+1}/${now.getDate()}`,
-            bg: state.currentBg, terrainData: structuredClone(state.terrainData)
+            id: Date.now(),
+            name: templateName,
+            starred: false,
+            folderId: null,
+            order: maxOrder + 1,
+            description: templateDescInput ? templateDescInput.value.trim() : '',
+            date: `${now.getMonth()+1}/${now.getDate()}`,
+            bg: state.currentBg,
+            terrainData: structuredClone(state.terrainData)
         };
         templates.unshift(newTemplate);
         saveSavedTemplates(templates);
@@ -835,7 +1001,11 @@ if (updateTemplateBtn) {
         if (!state.currentLoadedTemplateId) return;
         const templates = getSavedTemplates();
         const index = templates.findIndex(t => t.id === state.currentLoadedTemplateId);
-        if (index === -1) { showToast('找不到原模板'); setLoadedTemplate(null); return; }
+        if (index === -1) {
+            showToast('找不到原模板');
+            setLoadedTemplate(null);
+            return;
+        }
         const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
         templates[index].name = rawName || templates[index].name;
         templates[index].description = templateDescInput ? templateDescInput.value.trim() : '';
@@ -858,7 +1028,10 @@ function renameTemplate(id) {
         target.name = newName.trim().slice(0, 20);
         saveSavedTemplates(templates);
         renderSavedTemplatesList();
-        if (state.currentLoadedTemplateId === id && templateNameInput) { templateNameInput.value = target.name; updateSaveButtonsVisibility(); }
+        if (state.currentLoadedTemplateId === id && templateNameInput) {
+            templateNameInput.value = target.name;
+            updateSaveButtonsVisibility();
+        }
         showToast('模板名稱已更新！');
     }
 }
@@ -933,7 +1106,7 @@ function handleTemplateFolderAction(id) {
             document.body.appendChild(selectModal);
         }
 
-        let foldersHtml = folders.map(f => `
+        const foldersHtml = folders.map(f => `
             <button class="secondary folder-select-option" data-folder-id="${f.id}" style="width:100%;justify-content:flex-start;gap:8px;padding:12px;">
                 📁 ${f.name}
             </button>
@@ -974,8 +1147,8 @@ let draggedItem = null;
 
 function renderSavedTemplatesList() {
     if (!savedTemplatesList) return;
-    let templates = getSavedTemplates();
-    let folders = getSavedFolders();
+    const templates = getSavedTemplates();
+    const folders = getSavedFolders();
     savedTemplatesList.innerHTML = '';
 
     if (templates.length === 0 && folders.length === 0) {
@@ -1018,7 +1191,8 @@ function renderSavedTemplatesList() {
         folderEl.querySelector('.folder-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteFolder(folder.id, folder.name); });
 
         folderEl.addEventListener('dragstart', (e) => {
-            e.stopPropagation(); draggedItem = { type: 'folder', id: folder.id };
+            e.stopPropagation();
+            draggedItem = { type: 'folder', id: folder.id };
             setTimeout(() => folderEl.classList.add('dragging'), 0);
             e.dataTransfer.effectAllowed = 'move';
         });
@@ -1131,29 +1305,28 @@ function createTemplateCardElement(item) {
         historyStack.clear();
         if (item.terrainData) state.terrainData = structuredClone(item.terrainData);
         loadFixedBackground(item.bg || 'background/board-bg-hedge.png', false, true);
-        setLoadedTemplate(item); createBoard(); closeDrawer(); showToast(`已載入隊形：「${item.name}」`);
+        setLoadedTemplate(item);
+        createBoard();
+        closeDrawer();
+        showToast(`已載入隊形：「${item.name}」`);
     });
 
-    card.addEventListener('dragstart', (e) => { e.stopPropagation(); draggedItem = { type: 'card', id: item.id }; card.classList.add('dragging'); });
+    card.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        draggedItem = { type: 'card', id: item.id };
+        card.classList.add('dragging');
+    });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
     return card;
 }
 
-createBoard();
-loadFixedBackground();
-autoLoadIcons();
-updateSaveButtonsVisibility();
-
-document.addEventListener('click', function(e) {
-    const exportBtn = e.target.closest('#exportJsonBtn');
-    const importBtn = e.target.closest('#importJsonBtn');
-    const fileInput = document.getElementById('importFileInput');
-
-    if (exportBtn) {
-        const templateName = (typeof templateNameInput !== 'undefined' && templateNameInput) ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
+// ==================== JSON 匯出與匯入 ====================
+if (exportJsonBtn) {
+    exportJsonBtn.addEventListener('click', () => {
+        const templateName = templateNameInput ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
         const exportData = {
             name: templateName,
-            description: (typeof templateDescInput !== 'undefined' && templateDescInput) ? templateDescInput.value.trim() : '',
+            description: templateDescInput ? templateDescInput.value.trim() : '',
             bg: state.currentBg,
             terrainData: structuredClone(state.terrainData),
             date: `${new Date().getMonth()+1}/${new Date().getDate()}`
@@ -1167,17 +1340,13 @@ document.addEventListener('click', function(e) {
         downloadAnchor.click();
         downloadAnchor.remove();
         showToast('已成功匯出模板檔案！');
-    }
+    });
+}
 
-    if (importBtn) {
-        if (fileInput) fileInput.click();
-        else showToast('找不到匯入檔案元件');
-    }
-});
+if (importJsonBtn && importFileInput) {
+    importJsonBtn.addEventListener('click', () => importFileInput.click());
 
-document.addEventListener('change', function(e) {
-    const fileInput = document.getElementById('importFileInput');
-    if (e.target === fileInput) {
+    importFileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -1191,7 +1360,7 @@ document.addEventListener('change', function(e) {
                 state.currentBg = imported.bg;
                 state.terrainData = structuredClone(imported.terrainData);
                 
-                if (typeof bgSelect !== 'undefined' && bgSelect) bgSelect.value = imported.bg;
+                if (bgSelect) bgSelect.value = imported.bg;
                 loadFixedBackground(imported.bg, false, true);
 
                 const importedTemplate = {
@@ -1208,9 +1377,15 @@ document.addEventListener('change', function(e) {
             } catch (err) {
                 showToast('匯入失敗：檔案格式不正確');
             } finally {
-                fileInput.value = '';
+                importFileInput.value = '';
             }
         };
         reader.readAsText(file);
-    }
-});
+    });
+}
+
+// ==================== 初始化執行 ====================
+createBoard();
+loadFixedBackground();
+autoLoadIcons();
+updateSaveButtonsVisibility();
