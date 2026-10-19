@@ -86,7 +86,7 @@ const TERRAIN_CONFIGS = {
         defaultHeight: 450,
         colFracs: Array(7).fill(1 / 7),
         rowFracs: Array(3).fill(1 / 3),
-        paddingTopRatio: 0.19,
+        paddingTopRatio: 0.23,
         paddingBottomRatio: 0.03,
         paddingLeftRatio: 0.05,
         blockedCells: new Set()
