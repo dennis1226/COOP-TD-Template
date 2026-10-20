@@ -839,7 +839,6 @@ async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
 
-    const boardRect = board.getBoundingClientRect();
     const cells = board.querySelectorAll('.cell');
     if (cells.length === 0) { showToast('棋盤尚無格子'); return null; }
 
@@ -882,8 +881,26 @@ async function generateBoardCanvas() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
 
-    const scaleX = canvasWidth / boardRect.width;
-    const scaleY = canvasHeight / boardRect.height;
+    // 依據原始圖片大小精確計算實際棋盤遊玩區域
+    const topPad = canvasHeight * state.paddingTopRatio;
+    const bottomPad = canvasHeight * state.paddingBottomRatio;
+    const leftPad = canvasWidth * state.paddingLeftRatio;
+    const playableW = canvasWidth - leftPad * 2;
+    const playableH = canvasHeight - topPad - bottomPad;
+
+    // 預先計算每一欄與每一列的精確像素寬度與起點 X, Y
+    const colWidths = state.colFracs ? state.colFracs.map(f => f * playableW) : Array(state.cols).fill(playableW / state.cols);
+    const rowHeights = state.rowFracs ? state.rowFracs.map(f => f * playableH) : Array(state.rows).fill(playableH / state.rows);
+
+    const colXPositions = [leftPad];
+    for (let c = 0; c < state.cols; c++) {
+        colXPositions.push(colXPositions[c] + colWidths[c]);
+    }
+
+    const rowYPositions = [topPad];
+    for (let r = 0; r < state.rows; r++) {
+        rowYPositions.push(rowYPositions[r] + rowHeights[r]);
+    }
 
     // 輔助載入圖片函式
     const loadImage = (src) => new Promise((resolve) => {
@@ -895,54 +912,53 @@ async function generateBoardCanvas() {
         img.src = src;
     });
 
-    // 1. 收集並預先載入所有格子的圖片資料
+    // 收集並載入所有格子的魔物
     const prepareTasks = [];
 
-    cells.forEach((cell) => {
-        const key = cell.dataset.key;
-        if (!key) return;
-        const placed = normalizePlacedUnit(state.units[key]);
-        if (!placed) return;
+    for (let y = 0; y < state.rows; y++) {
+        for (let x = 0; x < state.cols; x++) {
+            const key = getCellKey(x, y);
+            const placed = normalizePlacedUnit(state.units[key]);
+            if (!placed) continue;
 
-        const cellRect = cell.getBoundingClientRect();
-        const cellX = (cellRect.left - boardRect.left) * scaleX;
-        const cellY = (cellRect.top - boardRect.top) * scaleY;
-        const cellW = cellRect.width * scaleX;
-        const cellH = cellRect.height * scaleY;
+            const cellX = colXPositions[x];
+            const cellY = rowYPositions[y];
+            const cellW = colWidths[x];
+            const cellH = rowHeights[y];
 
-        let mainSrc = null;
-        const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
-        if (monster) {
-            const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
-            if (targetForm) mainSrc = targetForm.src;
-        }
-
-        let attachSrc = null;
-        if (placed.attachment) {
-            const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
-            if (attachMonster) {
-                const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
-                if (attachForm) attachSrc = attachForm.src;
+            let mainSrc = null;
+            const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
+            if (monster) {
+                const targetForm = monster.forms[placed.formIndex] || monster.forms[0];
+                if (targetForm) mainSrc = targetForm.src;
             }
-        }
 
-        prepareTasks.push(
-            Promise.all([loadImage(mainSrc), loadImage(attachSrc)]).then(([mainImg, attachImg]) => ({
-                mainImg,
-                attachImg,
-                cellX,
-                cellY,
-                cellW,
-                cellH
-            }))
-        );
-    });
+            let attachSrc = null;
+            if (placed.attachment) {
+                const attachMonster = state.loadedMonsters.find(m => m.id === placed.attachment.baseId);
+                if (attachMonster) {
+                    const attachForm = attachMonster.forms[placed.attachment.formIndex] || attachMonster.forms[0];
+                    if (attachForm) attachSrc = attachForm.src;
+                }
+            }
+
+            prepareTasks.push(
+                Promise.all([loadImage(mainSrc), loadImage(attachSrc)]).then(([mainImg, attachImg]) => ({
+                    mainImg,
+                    attachImg,
+                    cellX,
+                    cellY,
+                    cellW,
+                    cellH
+                }))
+            );
+        }
+    }
 
     const renderedUnits = await Promise.all(prepareTasks);
 
-    // 2. 依序繪製至 Canvas（先畫本體魔物，再繪製附屬型魔物）
+    // 繪製至 Canvas
     renderedUnits.forEach(({ mainImg, attachImg, cellX, cellY, cellW, cellH }) => {
-        // 先繪製本體
         if (mainImg) {
             const padX = cellW * 0.05;
             const padY = cellH * 0.05;
@@ -964,7 +980,6 @@ async function generateBoardCanvas() {
             ctx.drawImage(mainImg, drawX, drawY, drawW, drawH);
         }
 
-        // 後繪製附屬物（保證覆蓋在最上層）
         if (attachImg) {
             const attachW = cellW * 0.35;
             const attachH = cellH * 0.35;
@@ -987,7 +1002,7 @@ async function generateBoardCanvas() {
         }
     });
 
-    // 3. 繪製底部說明文字區塊
+    // 繪製底部說明文字區塊
     if (descText && lines.length > 0) {
         const startY = canvasHeight;
         ctx.fillStyle = '#2d2d2d';
