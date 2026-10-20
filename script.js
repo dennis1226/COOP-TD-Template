@@ -104,6 +104,14 @@ function isAttachmentMonster(monsterId) {
     return attachCategory.monsterIds.includes(num);
 }
 
+// === 新增：判斷是否為一般魔神 ===
+function isGodMonster(monsterId) {
+    const godCategory = MONSTER_CATEGORIES.find(c => c.title === "一般魔神");
+    if (!godCategory) return false;
+    const num = parseInt(String(monsterId).replace('monster_', ''), 10);
+    return godCategory.monsterIds.includes(num);
+}
+
 function normalizePlacedUnit(placed) {
     if (!placed) return null;
     let baseId = null;
@@ -153,6 +161,12 @@ function normalizePlacedUnit(placed) {
         const num = baseId.replace(/\D/g, '');
         if (num) baseId = `monster_${num}`;
     }
+
+    // === 新增：一般魔神不能帶有附屬物 ===
+    if (isGodMonster(baseId)) {
+        attachment = null;
+    }
+
     return { baseId, formIndex, attachment };
 }
 
@@ -608,18 +622,33 @@ function createBoard() {
 function placeUnit(x, y, monsterId, formIndex = 0) {
     const key = getCellKey(x, y);
     const isAttach = isAttachmentMonster(monsterId);
+
     if (isAttach) {
         const existing = normalizePlacedUnit(state.units[key]);
         if (!existing) {
             showToast('請先在此格子放置一般魔物，才能加入附屬型！');
             return;
         }
+
+        // === 新增：攔截一般魔神 ===
+        if (isGodMonster(existing.baseId)) {
+            showToast('一般魔神無法裝備附屬型魔物！');
+            return;
+        }
+
         existing.attachment = { baseId: monsterId, formIndex };
         state.units[key] = existing;
         showToast('已成功為該魔物加上附屬型！');
     } else {
         const existing = normalizePlacedUnit(state.units[key]);
-        state.units[key] = { baseId: monsterId, formIndex, attachment: existing ? existing.attachment : null };
+        const isGod = isGodMonster(monsterId);
+
+        // 如果新放的是一般魔神，則強制不保留原本格內的附屬物
+        state.units[key] = {
+            baseId: monsterId,
+            formIndex,
+            attachment: isGod ? null : (existing ? existing.attachment : null)
+        };
     }
     createBoard();
 }
