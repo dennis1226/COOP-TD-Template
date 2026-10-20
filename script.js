@@ -90,9 +90,9 @@ const TERRAIN_CONFIGS = {
         defaultHeight: 450,
         colFracs: Array(7).fill(1 / 7),
         rowFracs: Array(3).fill(1 / 3),
-        paddingTopRatio: 0.23,
-        paddingBottomRatio: 0.03,
-        paddingLeftRatio: 0.05,
+        paddingTopRatio: 0.22,      // 頂部城垛厚度
+        paddingBottomRatio: 0.04,   // 底部木框厚度
+        paddingLeftRatio: 0.008,    // 左右兩側邊框極小，設為 0.008 或 0 即可完全對齊木格
         blockedCells: new Set()
     }
 };
@@ -542,18 +542,28 @@ function createBoard() {
     const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
     const fullImgW = Math.min(maxW, naturalW);
     const fullImgH = fullImgW * (naturalH / naturalW);
+    
     const topPaddingPx = fullImgH * state.paddingTopRatio;
     const bottomPaddingPx = fullImgH * state.paddingBottomRatio;
     const sidePaddingPx = fullImgW * state.paddingLeftRatio;
+    
     const playableW = fullImgW - sidePaddingPx * 2;
     const playableH = fullImgH - topPaddingPx - bottomPaddingPx;
 
+    boardEl.style.width = `${fullImgW}px`;
+    boardEl.style.height = `${fullImgH}px`;
+    boardEl.style.boxSizing = 'border-box';
     boardEl.style.paddingTop = `${topPaddingPx}px`;
     boardEl.style.paddingBottom = `${bottomPaddingPx}px`;
     boardEl.style.paddingLeft = `${sidePaddingPx}px`;
     boardEl.style.paddingRight = `${sidePaddingPx}px`;
-    boardEl.style.gridTemplateColumns = state.colFracs ? state.colFracs.map(f => `${Math.round(f * playableW)}px`).join(' ') : `repeat(${state.cols}, ${state.cellW}px)`;
-    boardEl.style.gridTemplateRows = state.rowFracs ? state.rowFracs.map(f => `${Math.round(f * playableH)}px`).join(' ') : `repeat(${state.rows}, ${state.cellH}px)`;
+
+    boardEl.style.gridTemplateColumns = state.colFracs 
+        ? state.colFracs.map(f => `${f * playableW}px`).join(' ') 
+        : `repeat(${state.cols}, 1fr)`;
+    boardEl.style.gridTemplateRows = state.rowFracs 
+        ? state.rowFracs.map(f => `${f * playableH}px`).join(' ') 
+        : `repeat(${state.rows}, 1fr)`;
 
     for (let y = 0; y < state.rows; y++) {
         for (let x = 0; x < state.cols; x++) {
