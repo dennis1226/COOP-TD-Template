@@ -92,7 +92,7 @@ const TERRAIN_CONFIGS = {
         rowFracs: Array(3).fill(1 / 3),
         paddingTopRatio: 0.22,      // 頂部城垛厚度
         paddingBottomRatio: 0.04,   // 底部木框厚度
-        paddingLeftRatio: 0.008,    // 左右兩側邊框極小，設為 0.008 或 0 即可完全對齊木格
+        paddingLeftRatio: 0.03,
         blockedCells: new Set()
     }
 };
