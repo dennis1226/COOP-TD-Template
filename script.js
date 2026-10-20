@@ -104,7 +104,7 @@ function isAttachmentMonster(monsterId) {
     return attachCategory.monsterIds.includes(num);
 }
 
-// === 新增：判斷是否為一般魔神 ===
+// 判斷是否為一般魔神
 function isGodMonster(monsterId) {
     const godCategory = MONSTER_CATEGORIES.find(c => c.title === "一般魔神");
     if (!godCategory) return false;
@@ -162,7 +162,7 @@ function normalizePlacedUnit(placed) {
         if (num) baseId = `monster_${num}`;
     }
 
-    // === 新增：一般魔神不能帶有附屬物 ===
+    // 一般魔神不能帶有附屬物
     if (isGodMonster(baseId)) {
         attachment = null;
     }
@@ -531,6 +531,7 @@ function createBoard() {
     boardEl.innerHTML = '';
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     
+    const container = document.getElementById('boardContainer');
     let maxW;
     if (isDesktop()) {
         maxW = Math.min(650, window.innerWidth * 0.48);
@@ -542,7 +543,12 @@ function createBoard() {
     const naturalH = state.bgImage ? state.bgImage.naturalHeight : (config.defaultHeight || 500);
     const fullImgW = Math.min(maxW, naturalW);
     const fullImgH = fullImgW * (naturalH / naturalW);
-    
+
+    if (container) {
+        container.style.width = `${fullImgW}px`;
+        container.style.height = `${fullImgH}px`;
+    }
+
     const topPaddingPx = fullImgH * state.paddingTopRatio;
     const bottomPaddingPx = fullImgH * state.paddingBottomRatio;
     const sidePaddingPx = fullImgW * state.paddingLeftRatio;
@@ -640,7 +646,7 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
             return;
         }
 
-        // === 新增：攔截一般魔神 ===
+        // 攔截一般魔神
         if (isGodMonster(existing.baseId)) {
             showToast('一般魔神無法裝備附屬型魔物！');
             return;
@@ -653,7 +659,7 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
         const existing = normalizePlacedUnit(state.units[key]);
         const isGod = isGodMonster(monsterId);
 
-        // 如果新放的是一般魔神，則強制不保留原本格內的附屬物
+        // 若放置一般魔神，強制清空附屬物
         state.units[key] = {
             baseId: monsterId,
             formIndex,
@@ -891,14 +897,14 @@ async function generateBoardCanvas() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
 
-    // 依據原始圖片大小精確計算實際棋盤遊玩區域
+    // 依據原始底圖尺寸精確計算棋盤遊玩區域
     const topPad = canvasHeight * state.paddingTopRatio;
     const bottomPad = canvasHeight * state.paddingBottomRatio;
     const leftPad = canvasWidth * state.paddingLeftRatio;
     const playableW = canvasWidth - leftPad * 2;
     const playableH = canvasHeight - topPad - bottomPad;
 
-    // 預先計算每一欄與每一列的精確像素寬度與起點 X, Y
+    // 計算每一欄與每一列的精確起點座標
     const colWidths = state.colFracs ? state.colFracs.map(f => f * playableW) : Array(state.cols).fill(playableW / state.cols);
     const rowHeights = state.rowFracs ? state.rowFracs.map(f => f * playableH) : Array(state.rows).fill(playableH / state.rows);
 
@@ -912,7 +918,6 @@ async function generateBoardCanvas() {
         rowYPositions.push(rowYPositions[r] + rowHeights[r]);
     }
 
-    // 輔助載入圖片函式
     const loadImage = (src) => new Promise((resolve) => {
         if (!src) return resolve(null);
         const img = new Image();
@@ -922,7 +927,6 @@ async function generateBoardCanvas() {
         img.src = src;
     });
 
-    // 收集並載入所有格子的魔物
     const prepareTasks = [];
 
     for (let y = 0; y < state.rows; y++) {
@@ -967,7 +971,7 @@ async function generateBoardCanvas() {
 
     const renderedUnits = await Promise.all(prepareTasks);
 
-    // 繪製至 Canvas
+    // 繪製本體與附屬型
     renderedUnits.forEach(({ mainImg, attachImg, cellX, cellY, cellW, cellH }) => {
         if (mainImg) {
             const padX = cellW * 0.05;
@@ -1012,7 +1016,6 @@ async function generateBoardCanvas() {
         }
     });
 
-    // 繪製底部說明文字區塊
     if (descText && lines.length > 0) {
         const startY = canvasHeight;
         ctx.fillStyle = '#2d2d2d';
