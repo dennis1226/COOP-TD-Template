@@ -49,7 +49,7 @@ function saveSavedFolders(folders) {
 
 // ==================== 遊戲數據與地形設定 ====================
 const MONSTER_CATEGORIES = [
-    { title: "攻擊型", monsterIds: [2, 5, 7, 9, 10, 12, 13, 16, 17] },
+    { title: "攻擊型", monsterIds: [2, 5, 7, 9, 10, 12, 13, 16, 17, 23] },
     { title: "輔助型", monsterIds: [3, 6, 8] },
     { title: "控制型", monsterIds: [1, 4, 11] },
     { title: "附屬型", monsterIds: [15] },
