@@ -200,6 +200,7 @@ const state = {
     selectedUnitId: null,
     selectedFormIndex: 0,
     deleteMode: false,
+    orderMode: false, // 標示順序模式開關
     loadedMonsters: [],
     bgImage: null,
     currentBg: 'background/board-bg-hedge.png',
@@ -268,6 +269,7 @@ const downloadImageBtn = document.getElementById('downloadImageBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
+const orderModeBtn = document.getElementById('orderModeBtn');
 
 const formModalOverlay = document.getElementById('formModalOverlay');
 const formModal = document.querySelector('.form-modal');
@@ -502,7 +504,6 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingTopRatio = config.paddingTopRatio || 0;
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
-    // 預設 fallback 為 paddingLeftRatio，確保舊地形不受任何影響
     state.paddingRightRatio = (config.paddingRightRatio !== undefined) ? config.paddingRightRatio : (config.paddingLeftRatio || 0);
     
     let maxW;
@@ -596,6 +597,7 @@ function createBoard() {
             const cell = document.createElement('div');
             cell.className = 'cell';
             if (state.deleteMode) cell.classList.add('delete-mode-active');
+            if (state.orderMode) cell.classList.add('order-mode-active');
             const key = getCellKey(x, y);
             cell.dataset.key = key;
             const isBlocked = state.blockedCells && state.blockedCells.has(key);
@@ -628,10 +630,19 @@ function createBoard() {
                 }
             }
 
+            // 格子右上角顯示製作順序標記
+            const orderNum = state.orders ? state.orders[key] : null;
+            if (orderNum !== undefined && orderNum !== null && orderNum !== '') {
+                const badge = document.createElement('div');
+                badge.className = 'order-badge';
+                badge.textContent = orderNum;
+                cell.appendChild(badge);
+            }
+
             cell.addEventListener('click', () => onCellClick(x, y));
             cell.addEventListener('dblclick', (e) => {
                 e.preventDefault();
-                if (state.units[key] && !state.deleteMode) openFormModalForCell(key);
+                if (state.units[key] && !state.deleteMode && !state.orderMode) openFormModalForCell(key);
             });
             cell.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -691,6 +702,35 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
 
 function onCellClick(x, y) {
     const key = getCellKey(x, y);
+
+    // 順序標示模式
+    if (state.orderMode) {
+        if (!state.units[key]) {
+            showToast('該格子尚未放置魔物，無法標示順序！');
+            return;
+        }
+        const currentOrder = state.orders[key] !== undefined ? state.orders[key] : '';
+        const input = prompt('請輸入該魔物的製作順序 (數字 1~99，留空代表清除)：', currentOrder);
+        if (input !== null) {
+            historyStack.pushState();
+            const val = input.trim();
+            if (val === '') {
+                delete state.orders[key];
+                showToast('已清除該格製作順序');
+            } else {
+                const parsed = parseInt(val, 10);
+                if (!isNaN(parsed) && parsed > 0) {
+                    state.orders[key] = parsed;
+                    showToast(`已將該格設為順序 ${parsed}`);
+                } else {
+                    showToast('請輸入有效的正整數！');
+                }
+            }
+            createBoard();
+        }
+        return;
+    }
+
     if (state.deleteMode) {
         if (state.units[key]) {
             historyStack.pushState();
@@ -703,11 +743,13 @@ function onCellClick(x, y) {
                 return;
             }
             delete state.units[key];
+            delete state.orders[key]; // 移除魔物時同步刪除順序
             createBoard();
             showToast('已刪除格內魔物');
         }
         return;
     }
+
     if (state.blockedCells && state.blockedCells.has(key)) {
         showToast('該區域無法放置魔物！');
         return;
@@ -814,6 +856,11 @@ async function autoLoadIcons() {
                             deleteModeBtn.className = 'danger';
                             deleteModeBtn.textContent = '🗑️ 刪除模式(單格)';
                         }
+                        if (state.orderMode && orderModeBtn) {
+                            state.orderMode = false;
+                            orderModeBtn.className = 'secondary';
+                            orderModeBtn.textContent = '🔢 標示製作順序';
+                        }
                         createBoard();
                     }
                 });
@@ -834,13 +881,40 @@ async function autoLoadIcons() {
 }
 
 // ==================== 工具操作按鈕 ====================
+if (orderModeBtn) {
+    orderModeBtn.addEventListener('click', () => {
+        state.orderMode = !state.orderMode;
+        if (state.orderMode) {
+            orderModeBtn.className = 'secondary active';
+            orderModeBtn.textContent = '✕ 結束標示順序';
+            state.deleteMode = false;
+            state.selectedUnitId = null;
+            if (deleteModeBtn) {
+                deleteModeBtn.className = 'danger';
+                deleteModeBtn.textContent = '🗑️ 刪除模式(單格)';
+            }
+            document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
+            showToast('已進入順序標示模式：點擊魔物格即可輸入數字');
+        } else {
+            orderModeBtn.className = 'secondary';
+            orderModeBtn.textContent = '🔢 標示製作順序';
+        }
+        createBoard();
+    });
+}
+
 if (deleteModeBtn) {
     deleteModeBtn.addEventListener('click', () => {
         state.deleteMode = !state.deleteMode;
         if (state.deleteMode) {
             deleteModeBtn.className = 'danger active';
             deleteModeBtn.textContent = '✕ 退出刪除模式';
+            state.orderMode = false;
             state.selectedUnitId = null;
+            if (orderModeBtn) {
+                orderModeBtn.className = 'secondary';
+                orderModeBtn.textContent = '🔢 標示製作順序';
+            }
             document.querySelectorAll('.unit-option').forEach(el => el.classList.remove('selected'));
         } else {
             deleteModeBtn.className = 'danger';
@@ -856,6 +930,7 @@ if (clearBtn) {
         if (confirm('確定要清空畫布嗎？')) {
             historyStack.pushState();
             state.units = {};
+            state.orders = {};
             setLoadedTemplate(null);
             createBoard();
             showToast('當前地形模板已清空');
@@ -1036,6 +1111,37 @@ async function generateBoardCanvas() {
             ctx.drawImage(attachImg, drawX, drawY, drawW, drawH);
         }
     });
+
+    // 繪製右上角製作順序
+    for (let y = 0; y < state.rows; y++) {
+        for (let x = 0; x < state.cols; x++) {
+            const key = getCellKey(x, y);
+            if (state.units[key] && state.orders && state.orders[key] !== undefined && state.orders[key] !== null && state.orders[key] !== '') {
+                const cellX = colXPositions[x];
+                const cellY = rowYPositions[y];
+                const cellW = colWidths[x];
+                const cellH = rowHeights[y];
+
+                const radius = Math.min(cellW, cellH) * 0.14;
+                const cx = cellX + cellW - radius - 5;
+                const cy = cellY + radius + 5;
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#e67e22';
+                ctx.fill();
+                ctx.lineWidth = Math.max(1.5, radius * 0.16);
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${Math.round(radius * 1.3)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(String(state.orders[key]), cx, cy);
+            }
+        }
+    }
 
     if (descText && lines.length > 0) {
         const startY = canvasHeight;
