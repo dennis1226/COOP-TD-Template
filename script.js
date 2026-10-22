@@ -94,6 +94,21 @@ const TERRAIN_CONFIGS = {
         paddingBottomRatio: 0.04,   // 底部木框厚度
         paddingLeftRatio: 0.03,
         blockedCells: new Set()
+    },
+    'background/board-bg-dungeon.png': {
+        name: '對戰地牢地形',
+        cols: 5,                    // 左至右 5 格
+        rows: 4,                    // 上至下 4 格
+        defaultWidth: 800,
+        defaultHeight: 700,
+        colFracs: Array(5).fill(1 / 5),
+        rowFracs: Array(4).fill(1 / 4),
+        // 四邊獨立扣除邊距比例
+        paddingTopRatio: 0.058,     // 上方頂部石壁
+        paddingBottomRatio: 0.11,  // 下方底座與草叢
+        paddingLeftRatio: 0.052,    // 左側石壁
+        paddingRightRatio: 0.065,   // 右側石壁
+        blockedCells: new Set()
     }
 };
 
@@ -181,6 +196,7 @@ const state = {
     paddingTopRatio: 0,
     paddingBottomRatio: 0,
     paddingLeftRatio: 0,
+    paddingRightRatio: 0,
     selectedUnitId: null,
     selectedFormIndex: 0,
     deleteMode: false,
@@ -190,7 +206,8 @@ const state = {
     currentLoadedTemplateId: null,
     terrainData: {
         'background/board-bg-hedge.png': { units: {}, orders: {} },
-        'background/board-bg-guardwall.png': { units: {}, orders: {} }
+        'background/board-bg-guardwall.png': { units: {}, orders: {} },
+        'background/board-bg-dungeon.png': { units: {}, orders: {} }
     },
     get units() { return this.terrainData[this.currentBg].units; },
     set units(val) { this.terrainData[this.currentBg].units = val; },
@@ -485,6 +502,8 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     state.paddingTopRatio = config.paddingTopRatio || 0;
     state.paddingBottomRatio = config.paddingBottomRatio || 0;
     state.paddingLeftRatio = config.paddingLeftRatio || 0;
+    // 預設 fallback 為 paddingLeftRatio，確保舊地形不受任何影響
+    state.paddingRightRatio = (config.paddingRightRatio !== undefined) ? config.paddingRightRatio : (config.paddingLeftRatio || 0);
     
     let maxW;
     if (isDesktop()) {
@@ -494,7 +513,7 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
     }
 
     const scale = Math.min(1, maxW / naturalWidth);
-    const playableW = naturalWidth * (1 - state.paddingLeftRatio * 2);
+    const playableW = naturalWidth * (1 - state.paddingLeftRatio - state.paddingRightRatio);
     const playableH = naturalHeight * (1 - state.paddingTopRatio - state.paddingBottomRatio);
     state.cellW = Math.round((playableW / state.cols) * scale);
     state.cellH = Math.round((playableH / state.rows) * scale);
@@ -551,9 +570,10 @@ function createBoard() {
 
     const topPaddingPx = fullImgH * state.paddingTopRatio;
     const bottomPaddingPx = fullImgH * state.paddingBottomRatio;
-    const sidePaddingPx = fullImgW * state.paddingLeftRatio;
+    const leftPaddingPx = fullImgW * state.paddingLeftRatio;
+    const rightPaddingPx = fullImgW * (state.paddingRightRatio !== undefined ? state.paddingRightRatio : state.paddingLeftRatio);
     
-    const playableW = fullImgW - sidePaddingPx * 2;
+    const playableW = fullImgW - leftPaddingPx - rightPaddingPx;
     const playableH = fullImgH - topPaddingPx - bottomPaddingPx;
 
     boardEl.style.width = `${fullImgW}px`;
@@ -561,8 +581,8 @@ function createBoard() {
     boardEl.style.boxSizing = 'border-box';
     boardEl.style.paddingTop = `${topPaddingPx}px`;
     boardEl.style.paddingBottom = `${bottomPaddingPx}px`;
-    boardEl.style.paddingLeft = `${sidePaddingPx}px`;
-    boardEl.style.paddingRight = `${sidePaddingPx}px`;
+    boardEl.style.paddingLeft = `${leftPaddingPx}px`;
+    boardEl.style.paddingRight = `${rightPaddingPx}px`;
 
     boardEl.style.gridTemplateColumns = state.colFracs 
         ? state.colFracs.map(f => `${f * playableW}px`).join(' ') 
@@ -901,7 +921,8 @@ async function generateBoardCanvas() {
     const topPad = canvasHeight * state.paddingTopRatio;
     const bottomPad = canvasHeight * state.paddingBottomRatio;
     const leftPad = canvasWidth * state.paddingLeftRatio;
-    const playableW = canvasWidth - leftPad * 2;
+    const rightPad = canvasWidth * (state.paddingRightRatio !== undefined ? state.paddingRightRatio : state.paddingLeftRatio);
+    const playableW = canvasWidth - leftPad - rightPad;
     const playableH = canvasHeight - topPad - bottomPad;
 
     // 計算每一欄與每一列的精確起點座標
