@@ -778,3 +778,31 @@ input[type="text"], select, textarea {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
 }
+
+/* 格子右上角的製作順序標籤 */
+.order-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    background: #e67e22;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    border: 1.5px solid #ffffff;
+    z-index: 10;
+    pointer-events: none;
+    line-height: 1;
+}
+
+/* 順序標示模式啟用時的格子 hover 提示 */
+.cell.order-mode-active:hover {
+    background: rgba(230, 126, 34, 0.25);
+    cursor: crosshair;
+}
