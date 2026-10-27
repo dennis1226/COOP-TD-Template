@@ -1616,7 +1616,7 @@ function createTemplateCardElement(item) {
 
 // ==================== JSON 匯出與匯入 ====================
 if (exportJsonBtn) {
-    exportJsonBtn.addEventListener('click', () => {
+    exportJsonBtn.addEventListener('click', async () => {
         const templateName = templateNameInput ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
         const exportData = {
             name: templateName,
@@ -1626,15 +1626,90 @@ if (exportJsonBtn) {
             date: `${new Date().getMonth()+1}/${new Date().getDate()}`
         };
 
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const jsonStr = JSON.stringify(exportData, null, 2);
+
+        // 1. 若在手機環境（如 LINE、FB 內建瀏覽器或手機 Safari/Chrome），彈出文字框並提供「一鍵複製」
+        if (!isDesktop()) {
+            let modal = document.getElementById('jsonExportModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'jsonExportModal';
+                modal.className = 'modal-overlay';
+                document.body.appendChild(modal);
+            }
+
+            modal.innerHTML = `
+                <div class="form-modal" style="max-width: 360px;">
+                    <div class="form-modal-header">
+                        <span>📤 匯出模板代碼</span>
+                        <button class="drawer-close-btn" id="closeExportModalBtn">✕</button>
+                    </div>
+                    <p style="font-size: 12px; opacity: 0.8; margin: 0;">手機建議直接複製代碼；匯入時將代碼存成 .json 即可：</p>
+                    <textarea id="exportTextarea" readonly style="width: 100%; height: 160px; font-size: 11px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; box-sizing: border-box; resize: none;"></textarea>
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <button id="copyJsonBtn" class="primary" style="flex: 1; padding: 10px;">📋 複製代碼</button>
+                        <button id="downloadFileBtn" class="secondary" style="flex: 1; padding: 10px;">💾 嘗試下載檔案</button>
+                    </div>
+                </div>
+            `;
+            modal.classList.add('open');
+
+            const textarea = document.getElementById('exportTextarea');
+            textarea.value = jsonStr;
+
+            const closeModal = () => modal.classList.remove('open');
+            document.getElementById('closeExportModalBtn').onclick = closeModal;
+            modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+            // 複製代碼邏輯
+            document.getElementById('copyJsonBtn').onclick = async () => {
+                if (navigator.clipboard && window.isSecureContext) {
+                    try {
+                        await navigator.clipboard.writeText(jsonStr);
+                        showToast('已複製模板代碼至剪貼簿！');
+                        closeModal();
+                        return;
+                    } catch (err) {}
+                }
+                // 回退方案：選取輸入框複製
+                textarea.select();
+                textarea.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+                showToast('已複製模板代碼至剪貼簿！');
+                closeModal();
+            };
+
+            // 手機上仍提供嘗試下載按鈕（改用 Blob URL）
+            document.getElementById('downloadFileBtn').onclick = () => {
+                triggerBlobDownload(jsonStr, `${templateName}_export.json`);
+                closeModal();
+            };
+            return;
+        }
+
+        // 2. 電腦版環境直接觸發 Blob 檔案下載
+        triggerBlobDownload(jsonStr, `${templateName}_export.json`);
+    });
+}
+
+// 封裝標準 Blob 下載函式（解決原本 data: 協議在行動裝置無反應的問題）
+function triggerBlobDownload(content, filename) {
+    try {
+        const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
         const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `${templateName}_export.json`);
+        downloadAnchor.href = blobUrl;
+        downloadAnchor.download = filename;
+        downloadAnchor.style.display = 'none';
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
-        downloadAnchor.remove();
+        document.body.removeChild(downloadAnchor);
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
         showToast('已成功匯出模板檔案！');
-    });
+    } catch (e) {
+        showToast('檔案下載失敗，請嘗試複製代碼');
+    }
 }
 
 if (importJsonBtn && importFileInput) {
