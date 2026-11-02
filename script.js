@@ -103,9 +103,8 @@ const TERRAIN_CONFIGS = {
         defaultHeight: 700,
         colFracs: Array(5).fill(1 / 5),
         rowFracs: Array(4).fill(1 / 4),
-        // 四邊獨立扣除邊距比例
         paddingTopRatio: 0.058,     // 上方頂部石壁
-        paddingBottomRatio: 0.11,  // 下方底座與草叢
+        paddingBottomRatio: 0.11,   // 下方底座與草叢
         paddingLeftRatio: 0.052,    // 左側石壁
         paddingRightRatio: 0.065,   // 右側石壁
         blockedCells: new Set()
@@ -177,7 +176,6 @@ function normalizePlacedUnit(placed) {
         if (num) baseId = `monster_${num}`;
     }
 
-    // 一般魔神不能帶有附屬物
     if (isGodMonster(baseId)) {
         attachment = null;
     }
@@ -200,7 +198,7 @@ const state = {
     selectedUnitId: null,
     selectedFormIndex: 0,
     deleteMode: false,
-    orderMode: false, // 標示順序模式開關
+    orderMode: false,
     loadedMonsters: [],
     bgImage: null,
     currentBg: 'background/board-bg-hedge.png',
@@ -296,6 +294,35 @@ const templatesDrawer = document.getElementById('templatesDrawer');
 const exportJsonBtn = document.getElementById('exportJsonBtn');
 const importJsonBtn = document.getElementById('importJsonBtn');
 const importFileInput = document.getElementById('importFileInput');
+
+// ==================== 說明框內容輔助函式 ====================
+function getDescContent() {
+    if (!templateDescInput) return '';
+    return templateDescInput.innerHTML || '';
+}
+
+function getDescPlainText() {
+    if (!templateDescInput) return '';
+    return templateDescInput.innerText || '';
+}
+
+function setDescContent(content) {
+    if (!templateDescInput) return;
+    if (content === undefined || content === null || content === '') {
+        templateDescInput.innerHTML = '';
+        return;
+    }
+    // 相容純文字、含有換行字元或已格式化的 HTML
+    if (typeof content === 'string') {
+        if (!content.includes('<') && content.includes('\n')) {
+            templateDescInput.innerHTML = content.replace(/\r?\n/g, '<br>');
+        } else {
+            templateDescInput.innerHTML = content;
+        }
+    } else {
+        templateDescInput.innerHTML = String(content);
+    }
+}
 
 // ==================== 介面交互與提示 ====================
 function showToast(msg, duration = 2200) {
@@ -426,15 +453,17 @@ function updateSaveButtonsVisibility() {
 }
 if (templateNameInput) templateNameInput.addEventListener('input', updateSaveButtonsVisibility);
 
+// 【已修復】改用 setDescContent，支援多種命名並正確填入 contenteditable
 function setLoadedTemplate(template) {
     if (template) {
         state.currentLoadedTemplateId = template.id;
-        if (templateNameInput) templateNameInput.value = template.name;
-        if (templateDescInput) templateDescInput.value = template.description || '';
+        if (templateNameInput) templateNameInput.value = template.name || '';
+        const desc = template.description !== undefined ? template.description : (template.desc || template.content || '');
+        setDescContent(desc);
     } else {
         state.currentLoadedTemplateId = null;
         if (templateNameInput) templateNameInput.value = '';
-        if (templateDescInput) templateDescInput.value = '';
+        setDescContent('');
     }
     updateSaveButtonsVisibility();
 }
@@ -523,10 +552,13 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
 
 function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, keepData = false) {
     if (recordHistory && state.currentBg !== bgPath) historyStack.clear();
+    
+    // 只有在非保留模式且背景改變時才清空隊形與設定
     if (!keepData && state.currentBg !== bgPath) {
         state.terrainData[bgPath] = { units: {}, orders: {} };
         setLoadedTemplate(null);
     }
+    
     state.currentBg = bgPath;
     if (bgSelect) bgSelect.value = bgPath;
     if (boardBgEl) boardBgEl.style.backgroundImage = `url('${bgPath}')`;
@@ -630,7 +662,6 @@ function createBoard() {
                 }
             }
 
-            // 格子右上角顯示製作順序標記
             const orderNum = state.orders ? state.orders[key] : null;
             if (orderNum !== undefined && orderNum !== null && orderNum !== '') {
                 const badge = document.createElement('div');
@@ -677,7 +708,6 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
             return;
         }
 
-        // 攔截一般魔神
         if (isGodMonster(existing.baseId)) {
             showToast('一般魔神無法裝備附屬型魔物！');
             return;
@@ -690,7 +720,6 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
         const existing = normalizePlacedUnit(state.units[key]);
         const isGod = isGodMonster(monsterId);
 
-        // 若放置一般魔神，強制清空附屬物
         state.units[key] = {
             baseId: monsterId,
             formIndex,
@@ -703,7 +732,6 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
 function onCellClick(x, y) {
     const key = getCellKey(x, y);
 
-    // 順序標示模式
     if (state.orderMode) {
         if (!state.units[key]) {
             showToast('該格子尚未放置魔物，無法標示順序！');
@@ -743,7 +771,7 @@ function onCellClick(x, y) {
                 return;
             }
             delete state.units[key];
-            delete state.orders[key]; // 移除魔物時同步刪除順序
+            delete state.orders[key];
             createBoard();
             showToast('已刪除格內魔物');
         }
@@ -760,7 +788,6 @@ function onCellClick(x, y) {
     }
 }
 
-// 監聽螢幕變動以重繪棋盤比例
 window.addEventListener('resize', () => {
     const config = TERRAIN_CONFIGS[state.currentBg];
     if (config) {
@@ -958,7 +985,7 @@ async function generateBoardCanvas() {
     const bgImg = state.bgImage;
     const canvasWidth = bgImg ? bgImg.naturalWidth : (config.defaultWidth || 700);
     const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
-    const descText = templateDescInput ? templateDescInput.value.trim() : '';
+    const descText = getDescPlainText().trim();
 
     let extraHeight = 0;
     const padding = 20;
@@ -992,7 +1019,6 @@ async function generateBoardCanvas() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
 
-    // 依據原始底圖尺寸精確計算棋盤遊玩區域
     const topPad = canvasHeight * state.paddingTopRatio;
     const bottomPad = canvasHeight * state.paddingBottomRatio;
     const leftPad = canvasWidth * state.paddingLeftRatio;
@@ -1000,7 +1026,6 @@ async function generateBoardCanvas() {
     const playableW = canvasWidth - leftPad - rightPad;
     const playableH = canvasHeight - topPad - bottomPad;
 
-    // 計算每一欄與每一列的精確起點座標
     const colWidths = state.colFracs ? state.colFracs.map(f => f * playableW) : Array(state.cols).fill(playableW / state.cols);
     const rowHeights = state.rowFracs ? state.rowFracs.map(f => f * playableH) : Array(state.rows).fill(playableH / state.rows);
 
@@ -1067,7 +1092,6 @@ async function generateBoardCanvas() {
 
     const renderedUnits = await Promise.all(prepareTasks);
 
-    // 繪製本體與附屬型
     renderedUnits.forEach(({ mainImg, attachImg, cellX, cellY, cellW, cellH }) => {
         if (mainImg) {
             const padX = cellW * 0.05;
@@ -1112,7 +1136,6 @@ async function generateBoardCanvas() {
         }
     });
 
-    // 繪製右上角製作順序
     for (let y = 0; y < state.rows; y++) {
         for (let x = 0; x < state.cols; x++) {
             const key = getCellKey(x, y);
@@ -1180,7 +1203,7 @@ async function copyBoardTemplate() {
                 showToast('已複製高畫質模板圖片至剪貼簿！');
                 return;
             } catch (e) {
-                // 回退至下載
+                // 回退
             }
         }
         const imageUrl = URL.createObjectURL(blob);
@@ -1262,6 +1285,7 @@ function createNewFolder() {
     }
 }
 
+// 【已修復】改用 getDescContent() 儲存富文本
 if (saveTemplateBtn) {
     saveTemplateBtn.addEventListener('click', () => {
         const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
@@ -1277,7 +1301,7 @@ if (saveTemplateBtn) {
             starred: false,
             folderId: null,
             order: maxOrder + 1,
-            description: templateDescInput ? templateDescInput.value.trim() : '',
+            description: getDescContent(),
             date: `${now.getMonth()+1}/${now.getDate()}`,
             bg: state.currentBg,
             terrainData: structuredClone(state.terrainData)
@@ -1290,6 +1314,7 @@ if (saveTemplateBtn) {
     });
 }
 
+// 【已修復】改用 getDescContent() 更新富文本
 if (updateTemplateBtn) {
     updateTemplateBtn.addEventListener('click', () => {
         if (!state.currentLoadedTemplateId) return;
@@ -1302,7 +1327,7 @@ if (updateTemplateBtn) {
         }
         const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
         templates[index].name = rawName || templates[index].name;
-        templates[index].description = templateDescInput ? templateDescInput.value.trim() : '';
+        templates[index].description = getDescContent();
         templates[index].date = `${new Date().getMonth()+1}/${new Date().getDate()}`;
         templates[index].bg = state.currentBg;
         templates[index].terrainData = structuredClone(state.terrainData);
@@ -1595,6 +1620,8 @@ function createTemplateCardElement(item) {
     card.querySelector('.folder-action-btn').addEventListener('click', (e) => { e.stopPropagation(); handleTemplateFolderAction(item.id); });
     card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => { e.stopPropagation(); deleteTemplate(item.id, item.name); });
     card.querySelector('.edit-name-btn').addEventListener('click', (e) => { e.stopPropagation(); renameTemplate(item.id); });
+    
+    // 【已修復】確保 keepData 設為 true，並透過 setLoadedTemplate 載入富文本說明
     card.querySelector('.load-btn').addEventListener('click', () => {
         historyStack.clear();
         if (item.terrainData) state.terrainData = structuredClone(item.terrainData);
@@ -1620,7 +1647,7 @@ if (exportJsonBtn) {
         const templateName = templateNameInput ? templateNameInput.value.trim() || '未命名隊形' : '未命名隊形';
         const exportData = {
             name: templateName,
-            description: templateDescInput ? templateDescInput.value.trim() : '',
+            description: getDescContent(),
             bg: state.currentBg,
             terrainData: structuredClone(state.terrainData),
             date: `${new Date().getMonth()+1}/${new Date().getDate()}`
@@ -1628,7 +1655,6 @@ if (exportJsonBtn) {
 
         const jsonStr = JSON.stringify(exportData, null, 2);
 
-        // 1. 若在手機環境（如 LINE、FB 內建瀏覽器或手機 Safari/Chrome），彈出文字框並提供「一鍵複製」
         if (!isDesktop()) {
             let modal = document.getElementById('jsonExportModal');
             if (!modal) {
@@ -1661,7 +1687,6 @@ if (exportJsonBtn) {
             document.getElementById('closeExportModalBtn').onclick = closeModal;
             modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 
-            // 複製代碼邏輯
             document.getElementById('copyJsonBtn').onclick = async () => {
                 if (navigator.clipboard && window.isSecureContext) {
                     try {
@@ -1671,7 +1696,6 @@ if (exportJsonBtn) {
                         return;
                     } catch (err) {}
                 }
-                // 回退方案：選取輸入框複製
                 textarea.select();
                 textarea.setSelectionRange(0, 99999);
                 document.execCommand('copy');
@@ -1679,7 +1703,6 @@ if (exportJsonBtn) {
                 closeModal();
             };
 
-            // 手機上仍提供嘗試下載按鈕（改用 Blob URL）
             document.getElementById('downloadFileBtn').onclick = () => {
                 triggerBlobDownload(jsonStr, `${templateName}_export.json`);
                 closeModal();
@@ -1687,12 +1710,10 @@ if (exportJsonBtn) {
             return;
         }
 
-        // 2. 電腦版環境直接觸發 Blob 檔案下載
         triggerBlobDownload(jsonStr, `${templateName}_export.json`);
     });
 }
 
-// 封裝標準 Blob 下載函式（解決原本 data: 協議在行動裝置無反應的問題）
 function triggerBlobDownload(content, filename) {
     try {
         const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
@@ -1735,7 +1756,7 @@ if (importJsonBtn && importFileInput) {
                 const importedTemplate = {
                     id: Date.now(),
                     name: imported.name || '匯入模板',
-                    description: imported.description || imported.desc || imported.content || '',
+                    description: imported.description !== undefined ? imported.description : (imported.desc || imported.content || ''),
                     bg: imported.bg,
                     terrainData: imported.terrainData
                 };
@@ -1753,8 +1774,54 @@ if (importJsonBtn && importFileInput) {
     });
 }
 
+// ==================== 富文本編輯器工具列控制 ====================
+function initRichTextEditor() {
+    const editor = document.getElementById('templateDescInput');
+    const toolbar = document.getElementById('editorToolbar');
+    const fontSizeSelect = document.getElementById('fontSizeSelect');
+    const hiliteColorPicker = document.getElementById('hiliteColorPicker');
+    const foreColorPicker = document.getElementById('foreColorPicker');
+
+    if (!editor || !toolbar) return;
+
+    toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const cmd = btn.dataset.command;
+            if (cmd) {
+                document.execCommand(cmd, false, null);
+                editor.focus();
+            }
+        });
+    });
+
+    if (fontSizeSelect) {
+        fontSizeSelect.addEventListener('change', () => {
+            document.execCommand('fontSize', false, fontSizeSelect.value);
+            editor.focus();
+        });
+    }
+
+    if (hiliteColorPicker) {
+        hiliteColorPicker.addEventListener('input', (e) => {
+            if (!document.execCommand('hiliteColor', false, e.target.value)) {
+                document.execCommand('backColor', false, e.target.value);
+            }
+            editor.focus();
+        });
+    }
+
+    if (foreColorPicker) {
+        foreColorPicker.addEventListener('input', (e) => {
+            document.execCommand('foreColor', false, e.target.value);
+            editor.focus();
+        });
+    }
+}
+
 // ==================== 初始化執行 ====================
 createBoard();
 loadFixedBackground();
 autoLoadIcons();
 updateSaveButtonsVisibility();
+initRichTextEditor();
