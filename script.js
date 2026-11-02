@@ -968,7 +968,7 @@ if (themeToggle) {
     });
 }
 
-// ==================== 圖片產生與匯出 (完整支援富文本/顏色/高亮) ====================
+// ==================== 圖片產生與匯出 (高解析度銳利文字版) ====================
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -986,9 +986,10 @@ async function generateBoardCanvas() {
 
     let descCanvas = null;
     let extraHeight = 0;
-    const padding = 20;
+    const padding = 24;
+    // 啟用 2 倍超採樣，使 html2canvas 渲染出高畫質向量邊緣的文字圖層
+    const renderScale = 2;
 
-    // 若有說明文字，透過 html2canvas 將富文本 DOM 渲染為高畫質圖層
     if (hasDesc) {
         const renderWrapper = document.createElement('div');
         renderWrapper.style.position = 'fixed';
@@ -999,8 +1000,12 @@ async function generateBoardCanvas() {
         renderWrapper.style.color = '#ffffff';
         renderWrapper.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", Arial, sans-serif';
         renderWrapper.style.fontSize = '16px';
-        renderWrapper.style.lineHeight = '1.6';
+        renderWrapper.style.lineHeight = '1.65';
         renderWrapper.style.wordBreak = 'break-word';
+        // 強制開啟字體邊緣平滑抗鋸齒
+        renderWrapper.style.webkitFontSmoothing = 'antialiased';
+        renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
+        renderWrapper.style.textRendering = 'optimizeLegibility';
         renderWrapper.innerHTML = descEditor.innerHTML;
 
         document.body.appendChild(renderWrapper);
@@ -1009,13 +1014,15 @@ async function generateBoardCanvas() {
             if (typeof html2canvas === 'function') {
                 descCanvas = await html2canvas(renderWrapper, {
                     backgroundColor: '#2d2d2d',
-                    scale: 1.5,
-                    useCORS: true
+                    scale: renderScale,
+                    useCORS: true,
+                    logging: false
                 });
-                extraHeight = (descCanvas.height / 1.5) + padding * 2 + 45;
+                const logicalHeight = descCanvas.height / renderScale;
+                extraHeight = logicalHeight + padding * 2 + 50;
             }
         } catch (e) {
-            console.error('富文本渲染失敗，降級為純文字', e);
+            console.error('富文本渲染失敗，降級處理', e);
         } finally {
             document.body.removeChild(renderWrapper);
         }
@@ -1025,6 +1032,11 @@ async function generateBoardCanvas() {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight + extraHeight;
     const ctx = canvas.getContext('2d');
+    
+    // 開啟畫布影像平滑縮放演算法
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
@@ -1184,10 +1196,10 @@ async function generateBoardCanvas() {
         ctx.textBaseline = 'top';
         ctx.fillText('【陣容說明】', padding, startY + padding);
 
-        // 貼上含有完整顏色、字體、背景 Highlight 樣式的說明畫布
-        const renderedHeight = descCanvas.height / 1.5;
-        const renderedWidth = descCanvas.width / 1.5;
-        ctx.drawImage(descCanvas, padding, startY + padding + 40, renderedWidth, renderedHeight);
+        // 貼入超採樣文字圖層，文字邊緣平滑銳利不模糊
+        const drawW = descCanvas.width / renderScale;
+        const drawH = descCanvas.height / renderScale;
+        ctx.drawImage(descCanvas, padding, startY + padding + 40, drawW, drawH);
     }
 
     return canvas;
