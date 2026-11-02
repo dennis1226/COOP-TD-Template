@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CO-OP TD 模板編輯器</title>
     <link rel="stylesheet" href="style.css">
+    <!-- 引入 html2canvas 支援富文本、顏色與高亮輸出至圖片 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="script.js" defer></script>
 </head>
 <body>
@@ -153,7 +155,7 @@
                                     <button id="undoBtn" class="secondary" disabled type="button">↩️ 復原</button>
                                     <button id="redoBtn" class="secondary" disabled type="button">↪️ 重做</button>
                                     <button id="orderModeBtn" class="secondary" type="button">🔢 標示製作順序</button>
-									<div></div> <!-- 佔位區塊，使右側留空 -->
+                                    <div></div>
                                     <button id="deleteModeBtn" class="danger" type="button">🗑️ 刪除模式(單格)</button>
                                     <button id="clearBtn" class="danger" type="button">清除整版</button>
                                 </div>
