@@ -295,9 +295,17 @@ const importJsonBtn = document.getElementById('importJsonBtn');
 const importFileInput = document.getElementById('importFileInput');
 
 // ==================== 說明框內容輔助函式 ====================
+function sanitizeDescHtml(html) {
+    if (!html) return '';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    tempDiv.querySelectorAll('img, picture, svg, iframe, canvas, video').forEach(el => el.remove());
+    return tempDiv.innerHTML;
+}
+
 function getDescContent() {
     if (!templateDescInput) return '';
-    return templateDescInput.innerHTML || '';
+    return sanitizeDescHtml(templateDescInput.innerHTML);
 }
 
 function getDescPlainText() {
@@ -313,12 +321,12 @@ function setDescContent(content) {
     }
     if (typeof content === 'string') {
         if (!content.includes('<') && content.includes('\n')) {
-            templateDescInput.innerHTML = content.replace(/\r?\n/g, '<br>');
+            templateDescInput.innerHTML = sanitizeDescHtml(content.replace(/\r?\n/g, '<br>'));
         } else {
-            templateDescInput.innerHTML = content;
+            templateDescInput.innerHTML = sanitizeDescHtml(content);
         }
     } else {
-        templateDescInput.innerHTML = String(content);
+        templateDescInput.innerHTML = sanitizeDescHtml(String(content));
     }
 }
 
@@ -1862,6 +1870,58 @@ function initRichTextEditor() {
             editor.focus();
         });
     }
+
+    // 禁止拖曳任何圖片或魔物圖標進入說明框
+    editor.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    editor.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const monsterId = e.dataTransfer.getData('text/plain');
+        if (monsterId && monsterId.startsWith('monster_')) {
+            showToast('說明欄位禁止放入魔物圖片！');
+            return;
+        }
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            showToast('說明欄位禁止放入圖片檔案！');
+            return;
+        }
+        const text = e.dataTransfer.getData('text/plain');
+        if (text) {
+            document.execCommand('insertText', false, text);
+        }
+    });
+
+    // 禁止貼上圖片，若貼上帶有圖片的富文本則自動過濾圖片
+    editor.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    e.preventDefault();
+                    showToast('說明欄位禁止貼上圖片！');
+                    return;
+                }
+            }
+        }
+        const html = e.clipboardData?.getData('text/html');
+        if (html && /<img\b/i.test(html)) {
+            e.preventDefault();
+            const cleanHtml = sanitizeDescHtml(html);
+            document.execCommand('insertHTML', false, cleanHtml);
+            showToast('已自動過濾貼上內容中的圖片！');
+        }
+    });
+
+    // 監聽輸入變化，若有任何手段插入 img 標籤則立即移除
+    editor.addEventListener('input', () => {
+        const imgs = editor.querySelectorAll('img, picture, svg, iframe, canvas, video');
+        if (imgs.length > 0) {
+            imgs.forEach(el => el.remove());
+            showToast('說明欄位禁止放入圖片！');
+        }
+    });
 }
 
 // ==================== 初始化執行 ====================
