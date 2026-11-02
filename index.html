@@ -101,44 +101,10 @@
                     </div>
                 </section>
 
-                <!-- Tab 2: 陣容說明 (Word 風格富文本編輯器) -->
+                <!-- Tab 2: 陣容說明 -->
                 <section class="mobile-tab-pane" id="tab-desc">
-                    <div class="section tab-section-borderless editor-container">
-                        <!-- 編輯工具列 -->
-                        <div class="editor-toolbar" id="editorToolbar">
-                            <select id="fontSizeSelect" title="字體大小" class="toolbar-select">
-                                <option value="2">小 (13px)</option>
-                                <option value="3" selected>標準 (16px)</option>
-                                <option value="4">中等 (18px)</option>
-                                <option value="5">大 (24px)</option>
-                                <option value="6">特大 (32px)</option>
-                            </select>
-
-                            <span class="toolbar-divider"></span>
-
-                            <button type="button" class="toolbar-btn" data-command="bold" title="粗體 (Ctrl+B)"><b>B</b></button>
-                            <button type="button" class="toolbar-btn" data-command="italic" title="斜體 (Ctrl+I)"><i>I</i></button>
-                            <button type="button" class="toolbar-btn" data-command="underline" title="底線 (Ctrl+U)"><u>U</u></button>
-
-                            <span class="toolbar-divider"></span>
-
-                            <label class="color-picker-label" title="螢光筆標記 (文字背景色)">
-                                <span class="highlight-icon">🖊️</span>
-                                <input type="color" id="hiliteColorPicker" value="#ffeaa7">
-                            </label>
-
-                            <label class="color-picker-label" title="文字顏色">
-                                <span class="text-color-icon">A</span>
-                                <input type="color" id="foreColorPicker" value="#ffffff">
-                            </label>
-
-                            <span class="toolbar-divider"></span>
-
-                            <button type="button" class="toolbar-btn" data-command="removeFormat" title="清除格式">🧹</button>
-                        </div>
-
-                        <!-- 編輯區塊 -->
-                        <div id="templateDescInput" class="template-desc-editor" contenteditable="true" data-placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..."></div>
+                    <div class="section tab-section-borderless">
+                        <textarea id="templateDescInput" class="template-desc-textarea" placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..." rows="14"></textarea>
                     </div>
                 </section>
 

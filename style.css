@@ -63,125 +63,17 @@ body {
     padding: 0;
 }
 
-/* ==================== Word 風格說明框與工具列 ==================== */
-.editor-container {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-color);
-    overflow: hidden;
-}
-
-.editor-toolbar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 6px 8px;
-    background: var(--header-bg);
-    border-bottom: 1px solid var(--border-color);
-    user-select: none;
-}
-
-.toolbar-btn {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    font-size: 13px;
-    background: transparent;
-    color: var(--text-color);
-    border: 1px solid transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.toolbar-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: none;
-}
-
-.toolbar-select {
-    height: 28px;
-    font-size: 12px;
-    padding: 0 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.toolbar-divider {
-    width: 1px;
-    height: 18px;
-    background: var(--border-color);
-    margin: 0 4px;
-}
-
-.color-picker-label {
-    position: relative;
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: 1px solid transparent;
-}
-
-.color-picker-label:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.color-picker-label input[type="color"] {
-    position: absolute;
-    opacity: 0;
+.template-desc-textarea {
     width: 100%;
-    height: 100%;
-    left: 0;
-    top: 0;
-    cursor: pointer;
-}
-
-.highlight-icon {
-    font-size: 14px;
-}
-
-.text-color-icon {
-    font-weight: 800;
-    font-size: 14px;
-    border-bottom: 3px solid var(--accent);
-    line-height: 1;
-}
-
-.template-desc-editor {
-    min-height: 220px;
-    max-height: 480px;
-    overflow-y: auto;
-    padding: 12px;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--text-color);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
     background: var(--bg-color);
+    color: var(--text-color);
+    padding: 10px;
+    font-size: 14px;
     outline: none;
+    resize: vertical;
     box-sizing: border-box;
-    word-break: break-word;
-}
-
-.template-desc-editor:empty:before {
-    content: attr(data-placeholder);
-    color: #888;
-    pointer-events: none;
-    display: block;
-}
-
-.light-mode .text-color-icon {
-    border-bottom-color: #333;
 }
 
 /* ==================== 電腦版獨立分支配置 (> 901px) ==================== */
