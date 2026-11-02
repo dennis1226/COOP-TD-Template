@@ -295,9 +295,17 @@ const importJsonBtn = document.getElementById('importJsonBtn');
 const importFileInput = document.getElementById('importFileInput');
 
 // ==================== 說明框內容輔助函式 ====================
+function sanitizeDescHtml(html) {
+    if (!html) return '';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    tempDiv.querySelectorAll('img, picture, svg, iframe, canvas, video').forEach(el => el.remove());
+    return tempDiv.innerHTML;
+}
+
 function getDescContent() {
     if (!templateDescInput) return '';
-    return templateDescInput.innerHTML || '';
+    return sanitizeDescHtml(templateDescInput.innerHTML);
 }
 
 function getDescPlainText() {
@@ -313,12 +321,12 @@ function setDescContent(content) {
     }
     if (typeof content === 'string') {
         if (!content.includes('<') && content.includes('\n')) {
-            templateDescInput.innerHTML = content.replace(/\r?\n/g, '<br>');
+            templateDescInput.innerHTML = sanitizeDescHtml(content.replace(/\r?\n/g, '<br>'));
         } else {
-            templateDescInput.innerHTML = content;
+            templateDescInput.innerHTML = sanitizeDescHtml(content);
         }
     } else {
-        templateDescInput.innerHTML = String(content);
+        templateDescInput.innerHTML = sanitizeDescHtml(String(content));
     }
 }
 
@@ -969,6 +977,128 @@ if (themeToggle) {
 }
 
 // ==================== 圖片產生與匯出 (高解析度銳利文字版) ====================
+
+/**
+ * 仿 Word 項目符號轉換器
+ * 將說明中的 - 或不同符號在匯出截圖時自動轉化為高質感階層圖示
+ */
+
+/**
+ * 遍歷 DOM 節點，精準替換每一行開頭的項目符號 (支援任意嵌套的 span/font/div 標籤)
+ */
+function applyWordBulletsToDOM(root) {
+    let isLineStart = true;
+
+    function getBulletIcon(marker, spaceCount) {
+        if (marker === '*' || marker === '✦') {
+            return '<span style="color:#f1c40f;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">✦</span>';
+        } else if (marker === '>' || marker === '&gt;' || marker === '▸') {
+            return '<span style="color:#2ecc71;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">▸</span>';
+        } else if (marker === '+') {
+            return '<span style="color:#9b59b6;font-size:12px;margin-right:6px;display:inline-block;vertical-align:baseline;">■</span>';
+        } else {
+            // 標準減號 `-`：依縮排深度切換層級圖案 (Word 經典階層風格)
+            if (spaceCount < 2) {
+                // 第一層：經典實心菱形
+                return '<span style="color:#5b9bd5;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">◆</span>';
+            } else if (spaceCount < 4) {
+                // 第二層：典雅空心圓
+                return '<span style="color:#e67e22;font-size:12px;margin-right:6px;display:inline-block;vertical-align:baseline;">○</span>';
+            } else {
+                // 第三層：深層小方塊
+                return '<span style="color:#bdc3c7;font-size:10px;margin-right:6px;display:inline-block;vertical-align:baseline;">▪</span>';
+            }
+        }
+    }
+
+    function walk(node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+            // 不處理 style 標籤
+            if (tag === 'style' || tag === 'script') return;
+
+            const isBlock = /^(div|p|li|h[1-6]|blockquote|section|article)$/.test(tag);
+            if (isBlock) {
+                isLineStart = true;
+            }
+            if (tag === 'br') {
+                isLineStart = true;
+                return;
+            }
+
+            const children = Array.from(node.childNodes);
+            for (const child of children) {
+                walk(child);
+            }
+
+            if (isBlock) {
+                isLineStart = true;
+            }
+        } else if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.nodeValue;
+            if (!text) return;
+
+            // 切分換行符號
+            const parts = text.split(/(\r?\n)/);
+            let hasReplacement = false;
+            const newNodes = [];
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (part === '\n' || part === '\r\n') {
+                    isLineStart = true;
+                    newNodes.push(document.createTextNode(part));
+                    continue;
+                }
+
+                if (isLineStart) {
+                    // 檢查是否符合：前綴空白 + 項目標記(-, *, +, >) + 後綴空白 + 剩餘文字
+                    const match = part.match(/^([ \t\u00a0\u3000]*)([-*+>]|–|—)([ \t\u00a0\u3000]+)(.*)$/s);
+                    if (match) {
+                        hasReplacement = true;
+                        const leadingSpaces = match[1];
+                        const marker = match[2];
+                        const rest = match[4];
+                        const spaceCount = leadingSpaces.length;
+
+                        // 建立圖形符號節點
+                        const span = document.createElement('span');
+                        span.innerHTML = (leadingSpaces ? leadingSpaces : '') + getBulletIcon(marker, spaceCount);
+                        newNodes.push(span);
+
+                        if (rest.length > 0) {
+                            newNodes.push(document.createTextNode(rest));
+                            isLineStart = false;
+                        }
+                    } else if (part.trim().length > 0) {
+                        // 有文字但不是項目符號，代表本行已開始有內容
+                        isLineStart = false;
+                        newNodes.push(document.createTextNode(part));
+                    } else {
+                        // 全空白文字節點，維持 isLineStart = true 繼續等待下一個節點
+                        newNodes.push(document.createTextNode(part));
+                    }
+                } else {
+                    if (part.trim().length > 0) {
+                        isLineStart = false;
+                    }
+                    newNodes.push(document.createTextNode(part));
+                }
+            }
+
+            if (hasReplacement) {
+                const fragment = document.createDocumentFragment();
+                for (const n of newNodes) {
+                    fragment.appendChild(n);
+                }
+                node.parentNode.replaceChild(fragment, node);
+            }
+        }
+    }
+
+    walk(root);
+}
+
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -1006,7 +1136,41 @@ async function generateBoardCanvas() {
         renderWrapper.style.webkitFontSmoothing = 'antialiased';
         renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
         renderWrapper.style.textRendering = 'optimizeLegibility';
-        renderWrapper.innerHTML = descEditor.innerHTML;
+        
+        renderWrapper.innerHTML = `
+            <style>
+                u, ins {
+                    text-decoration: none !important;
+                    border-bottom: 2px solid currentColor !important;
+                    display: inline !important;
+                    padding-bottom: 1px !important;
+                }
+                [style*="text-decoration: underline"], [style*="text-decoration-line: underline"], [style*="underline"] {
+                    text-decoration: none !important;
+                    border-bottom: 2px solid currentColor !important;
+                    display: inline !important;
+                    padding-bottom: 1px !important;
+                }
+                b, strong { font-weight: bold !important; }
+                i, em { font-style: italic !important; }
+            </style>
+            ${descEditor.innerHTML}
+        `;
+
+        // 1. 遍歷 DOM 節點，精準將每一行開頭的 - 轉化為 Word 風格階層圖標 (不受 span/font/color 標籤影響)
+        applyWordBulletsToDOM(renderWrapper);
+
+        // 2. 動態強制將所有帶有底線樣式或 <u> 標籤的節點套上實體邊框，保證 html2canvas 100% 繪製
+        renderWrapper.querySelectorAll('u, ins, span, font, b, i').forEach(el => {
+            const hasUnderline = el.tagName === 'U' || el.tagName === 'INS' || 
+                                 (el.getAttribute('style') && el.getAttribute('style').includes('underline'));
+            if (hasUnderline) {
+                el.style.setProperty('text-decoration', 'none', 'important');
+                el.style.setProperty('border-bottom', '2px solid ' + (el.style.color || '#ffffff'), 'important');
+                el.style.setProperty('display', 'inline', 'important');
+                el.style.setProperty('padding-bottom', '1px', 'important');
+            }
+        });
 
         document.body.appendChild(renderWrapper);
 
@@ -1435,7 +1599,7 @@ function handleTemplateFolderAction(id) {
             selectModal = document.createElement('div');
             selectModal.id = 'folderSelectModal';
             selectModal.className = 'modal-overlay';
-            document.body.appendChild(selectModal);
+            document.body.appendChild(modal);
         }
 
         const foldersHtml = folders.map(f => `
@@ -1829,6 +1993,58 @@ function initRichTextEditor() {
             editor.focus();
         });
     }
+
+    // 禁止拖曳任何圖片或魔物圖標進入說明框
+    editor.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    editor.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const monsterId = e.dataTransfer.getData('text/plain');
+        if (monsterId && monsterId.startsWith('monster_')) {
+            showToast('說明欄位禁止放入魔物圖片！');
+            return;
+        }
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            showToast('說明欄位禁止放入圖片檔案！');
+            return;
+        }
+        const text = e.dataTransfer.getData('text/plain');
+        if (text) {
+            document.execCommand('insertText', false, text);
+        }
+    });
+
+    // 禁止貼上圖片，若貼上帶有圖片的富文本則自動過濾圖片
+    editor.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    e.preventDefault();
+                    showToast('說明欄位禁止貼上圖片！');
+                    return;
+                }
+            }
+        }
+        const html = e.clipboardData?.getData('text/html');
+        if (html && /<img\b/i.test(html)) {
+            e.preventDefault();
+            const cleanHtml = sanitizeDescHtml(html);
+            document.execCommand('insertHTML', false, cleanHtml);
+            showToast('已自動過濾貼上內容中的圖片！');
+        }
+    });
+
+    // 監聽輸入變化，若有任何手段插入 img 標籤則立即移除
+    editor.addEventListener('input', () => {
+        const imgs = editor.querySelectorAll('img, picture, svg, iframe, canvas, video');
+        if (imgs.length > 0) {
+            imgs.forEach(el => el.remove());
+            showToast('說明欄位禁止放入圖片！');
+        }
+    });
 }
 
 // ==================== 初始化執行 ====================
