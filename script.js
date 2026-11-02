@@ -1006,7 +1006,40 @@ async function generateBoardCanvas() {
         renderWrapper.style.webkitFontSmoothing = 'antialiased';
         renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
         renderWrapper.style.textRendering = 'optimizeLegibility';
-        renderWrapper.innerHTML = descEditor.innerHTML;
+        
+        // 解決 html2canvas 無法繪製 text-decoration: underline 的核心問題：
+        // html2canvas 對 CSS text-decoration 在某些瀏覽器與離屏元素中不會繪製線條，但 100% 支援繪製 border-bottom
+        let processedHtml = descEditor.innerHTML;
+        renderWrapper.innerHTML = `
+            <style>
+                u, ins {
+                    text-decoration: none !important;
+                    border-bottom: 2px solid currentColor !important;
+                    display: inline !important;
+                    padding-bottom: 1px !important;
+                }
+                [style*="text-decoration: underline"], [style*="text-decoration-line: underline"], [style*="underline"] {
+                    text-decoration: none !important;
+                    border-bottom: 2px solid currentColor !important;
+                    display: inline !important;
+                    padding-bottom: 1px !important;
+                }
+                b, strong { font-weight: bold !important; }
+                i, em { font-style: italic !important; }
+            </style>
+            ${processedHtml}
+        `;
+        // 動態強制將所有帶有底線樣式或 <u> 標籤的節點套上實體邊框
+        renderWrapper.querySelectorAll('u, ins, span, font, b, i').forEach(el => {
+            const hasUnderline = el.tagName === 'U' || el.tagName === 'INS' || 
+                                 (el.getAttribute('style') && el.getAttribute('style').includes('underline'));
+            if (hasUnderline) {
+                el.style.setProperty('text-decoration', 'none', 'important');
+                el.style.setProperty('border-bottom', '2px solid ' + (el.style.color || '#ffffff'), 'important');
+                el.style.setProperty('display', 'inline', 'important');
+                el.style.setProperty('padding-bottom', '1px', 'important');
+            }
+        });
 
         document.body.appendChild(renderWrapper);
 
@@ -1435,7 +1468,7 @@ function handleTemplateFolderAction(id) {
             selectModal = document.createElement('div');
             selectModal.id = 'folderSelectModal';
             selectModal.className = 'modal-overlay';
-            document.body.appendChild(selectModal);
+            document.body.appendChild(modal);
         }
 
         const foldersHtml = folders.map(f => `

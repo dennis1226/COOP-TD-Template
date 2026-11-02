@@ -180,6 +180,11 @@ body {
     display: block;
 }
 
+.template-desc-editor u,
+.template-desc-editor ins {
+    text-decoration: underline !important;
+}
+
 .light-mode .text-color-icon {
     border-bottom-color: #333;
 }
