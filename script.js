@@ -977,6 +977,128 @@ if (themeToggle) {
 }
 
 // ==================== 圖片產生與匯出 (高解析度銳利文字版) ====================
+
+/**
+ * 仿 Word 項目符號轉換器
+ * 將說明中的 - 或不同符號在匯出截圖時自動轉化為高質感階層圖示
+ */
+
+/**
+ * 遍歷 DOM 節點，精準替換每一行開頭的項目符號 (支援任意嵌套的 span/font/div 標籤)
+ */
+function applyWordBulletsToDOM(root) {
+    let isLineStart = true;
+
+    function getBulletIcon(marker, spaceCount) {
+        if (marker === '*' || marker === '✦') {
+            return '<span style="color:#f1c40f;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">✦</span>';
+        } else if (marker === '>' || marker === '&gt;' || marker === '▸') {
+            return '<span style="color:#2ecc71;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">▸</span>';
+        } else if (marker === '+') {
+            return '<span style="color:#9b59b6;font-size:12px;margin-right:6px;display:inline-block;vertical-align:baseline;">■</span>';
+        } else {
+            // 標準減號 `-`：依縮排深度切換層級圖案 (Word 經典階層風格)
+            if (spaceCount < 2) {
+                // 第一層：經典實心菱形
+                return '<span style="color:#5b9bd5;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">◆</span>';
+            } else if (spaceCount < 4) {
+                // 第二層：典雅空心圓
+                return '<span style="color:#e67e22;font-size:12px;margin-right:6px;display:inline-block;vertical-align:baseline;">○</span>';
+            } else {
+                // 第三層：深層小方塊
+                return '<span style="color:#bdc3c7;font-size:10px;margin-right:6px;display:inline-block;vertical-align:baseline;">▪</span>';
+            }
+        }
+    }
+
+    function walk(node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+            // 不處理 style 標籤
+            if (tag === 'style' || tag === 'script') return;
+
+            const isBlock = /^(div|p|li|h[1-6]|blockquote|section|article)$/.test(tag);
+            if (isBlock) {
+                isLineStart = true;
+            }
+            if (tag === 'br') {
+                isLineStart = true;
+                return;
+            }
+
+            const children = Array.from(node.childNodes);
+            for (const child of children) {
+                walk(child);
+            }
+
+            if (isBlock) {
+                isLineStart = true;
+            }
+        } else if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.nodeValue;
+            if (!text) return;
+
+            // 切分換行符號
+            const parts = text.split(/(\r?\n)/);
+            let hasReplacement = false;
+            const newNodes = [];
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (part === '\n' || part === '\r\n') {
+                    isLineStart = true;
+                    newNodes.push(document.createTextNode(part));
+                    continue;
+                }
+
+                if (isLineStart) {
+                    // 檢查是否符合：前綴空白 + 項目標記(-, *, +, >) + 後綴空白 + 剩餘文字
+                    const match = part.match(/^([ \t\u00a0\u3000]*)([-*+>]|–|—)([ \t\u00a0\u3000]+)(.*)$/s);
+                    if (match) {
+                        hasReplacement = true;
+                        const leadingSpaces = match[1];
+                        const marker = match[2];
+                        const rest = match[4];
+                        const spaceCount = leadingSpaces.length;
+
+                        // 建立圖形符號節點
+                        const span = document.createElement('span');
+                        span.innerHTML = (leadingSpaces ? leadingSpaces : '') + getBulletIcon(marker, spaceCount);
+                        newNodes.push(span);
+
+                        if (rest.length > 0) {
+                            newNodes.push(document.createTextNode(rest));
+                            isLineStart = false;
+                        }
+                    } else if (part.trim().length > 0) {
+                        // 有文字但不是項目符號，代表本行已開始有內容
+                        isLineStart = false;
+                        newNodes.push(document.createTextNode(part));
+                    } else {
+                        // 全空白文字節點，維持 isLineStart = true 繼續等待下一個節點
+                        newNodes.push(document.createTextNode(part));
+                    }
+                } else {
+                    if (part.trim().length > 0) {
+                        isLineStart = false;
+                    }
+                    newNodes.push(document.createTextNode(part));
+                }
+            }
+
+            if (hasReplacement) {
+                const fragment = document.createDocumentFragment();
+                for (const n of newNodes) {
+                    fragment.appendChild(n);
+                }
+                node.parentNode.replaceChild(fragment, node);
+            }
+        }
+    }
+
+    walk(root);
+}
+
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -1015,9 +1137,6 @@ async function generateBoardCanvas() {
         renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
         renderWrapper.style.textRendering = 'optimizeLegibility';
         
-        // 解決 html2canvas 無法繪製 text-decoration: underline 的核心問題：
-        // html2canvas 對 CSS text-decoration 在某些瀏覽器與離屏元素中不會繪製線條，但 100% 支援繪製 border-bottom
-        let processedHtml = descEditor.innerHTML;
         renderWrapper.innerHTML = `
             <style>
                 u, ins {
@@ -1035,9 +1154,13 @@ async function generateBoardCanvas() {
                 b, strong { font-weight: bold !important; }
                 i, em { font-style: italic !important; }
             </style>
-            ${processedHtml}
+            ${descEditor.innerHTML}
         `;
-        // 動態強制將所有帶有底線樣式或 <u> 標籤的節點套上實體邊框
+
+        // 1. 遍歷 DOM 節點，精準將每一行開頭的 - 轉化為 Word 風格階層圖標 (不受 span/font/color 標籤影響)
+        applyWordBulletsToDOM(renderWrapper);
+
+        // 2. 動態強制將所有帶有底線樣式或 <u> 標籤的節點套上實體邊框，保證 html2canvas 100% 繪製
         renderWrapper.querySelectorAll('u, ins, span, font, b, i').forEach(el => {
             const hasUnderline = el.tagName === 'U' || el.tagName === 'INS' || 
                                  (el.getAttribute('style') && el.getAttribute('style').includes('underline'));
