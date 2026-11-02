@@ -90,23 +90,23 @@ const TERRAIN_CONFIGS = {
         defaultHeight: 450,
         colFracs: Array(7).fill(1 / 7),
         rowFracs: Array(3).fill(1 / 3),
-        paddingTopRatio: 0.22,      // 頂部城垛厚度
-        paddingBottomRatio: 0.04,   // 底部木框厚度
+        paddingTopRatio: 0.22,
+        paddingBottomRatio: 0.04,
         paddingLeftRatio: 0.03,
         blockedCells: new Set()
     },
     'background/board-bg-dungeon.png': {
         name: '對戰地牢地形',
-        cols: 5,                    // 左至右 5 格
-        rows: 4,                    // 上至下 4 格
+        cols: 5,
+        rows: 4,
         defaultWidth: 800,
         defaultHeight: 700,
         colFracs: Array(5).fill(1 / 5),
         rowFracs: Array(4).fill(1 / 4),
-        paddingTopRatio: 0.058,     // 上方頂部石壁
-        paddingBottomRatio: 0.11,   // 下方底座與草叢
-        paddingLeftRatio: 0.052,    // 左側石壁
-        paddingRightRatio: 0.065,   // 右側石壁
+        paddingTopRatio: 0.058,
+        paddingBottomRatio: 0.11,
+        paddingLeftRatio: 0.052,
+        paddingRightRatio: 0.065,
         blockedCells: new Set()
     }
 };
@@ -118,7 +118,6 @@ function isAttachmentMonster(monsterId) {
     return attachCategory.monsterIds.includes(num);
 }
 
-// 判斷是否為一般魔神
 function isGodMonster(monsterId) {
     const godCategory = MONSTER_CATEGORIES.find(c => c.title === "一般魔神");
     if (!godCategory) return false;
@@ -312,7 +311,6 @@ function setDescContent(content) {
         templateDescInput.innerHTML = '';
         return;
     }
-    // 相容純文字、含有換行字元或已格式化的 HTML
     if (typeof content === 'string') {
         if (!content.includes('<') && content.includes('\n')) {
             templateDescInput.innerHTML = content.replace(/\r?\n/g, '<br>');
@@ -453,7 +451,6 @@ function updateSaveButtonsVisibility() {
 }
 if (templateNameInput) templateNameInput.addEventListener('input', updateSaveButtonsVisibility);
 
-// 【已修復】改用 setDescContent，支援多種命名並正確填入 contenteditable
 function setLoadedTemplate(template) {
     if (template) {
         state.currentLoadedTemplateId = template.id;
@@ -553,7 +550,6 @@ function applyTerrainConfig(config, naturalWidth, naturalHeight) {
 function loadFixedBackground(bgPath = state.currentBg, recordHistory = true, keepData = false) {
     if (recordHistory && state.currentBg !== bgPath) historyStack.clear();
     
-    // 只有在非保留模式且背景改變時才清空隊形與設定
     if (!keepData && state.currentBg !== bgPath) {
         state.terrainData[bgPath] = { units: {}, orders: {} };
         setLoadedTemplate(null);
@@ -972,7 +968,7 @@ if (themeToggle) {
     });
 }
 
-// ==================== 圖片產生與匯出 ====================
+// ==================== 圖片產生與匯出 (高解析度銳利文字版) ====================
 async function generateBoardCanvas() {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -980,41 +976,67 @@ async function generateBoardCanvas() {
     const cells = board.querySelectorAll('.cell');
     if (cells.length === 0) { showToast('棋盤尚無格子'); return null; }
 
-    const canvas = document.createElement('canvas');
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const bgImg = state.bgImage;
     const canvasWidth = bgImg ? bgImg.naturalWidth : (config.defaultWidth || 700);
     const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
-    const descText = getDescPlainText().trim();
 
+    const descEditor = document.getElementById('templateDescInput');
+    const hasDesc = descEditor && descEditor.innerText.trim().length > 0;
+
+    let descCanvas = null;
     let extraHeight = 0;
-    const padding = 20;
-    const fontSize = 20;
-    const lineHeight = 28;
-    const lines = [];
+    const padding = 24;
+    // 啟用 2 倍超採樣，使 html2canvas 渲染出高畫質向量邊緣的文字圖層
+    const renderScale = 2;
 
-    if (descText) {
-        const dummyCtx = canvas.getContext('2d');
-        dummyCtx.font = `${fontSize}px sans-serif`;
-        const maxWidth = canvasWidth - (padding * 2);
-        descText.split('\n').forEach(para => {
-            let currentLine = '';
-            for (let char of para) {
-                if (dummyCtx.measureText(currentLine + char).width > maxWidth && currentLine !== '') {
-                    lines.push(currentLine);
-                    currentLine = char;
-                } else {
-                    currentLine += char;
-                }
+    if (hasDesc) {
+        const renderWrapper = document.createElement('div');
+        renderWrapper.style.position = 'fixed';
+        renderWrapper.style.left = '-9999px';
+        renderWrapper.style.top = '0';
+        renderWrapper.style.width = `${canvasWidth - padding * 2}px`;
+        renderWrapper.style.backgroundColor = '#2d2d2d';
+        renderWrapper.style.color = '#ffffff';
+        renderWrapper.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", Arial, sans-serif';
+        renderWrapper.style.fontSize = '16px';
+        renderWrapper.style.lineHeight = '1.65';
+        renderWrapper.style.wordBreak = 'break-word';
+        // 強制開啟字體邊緣平滑抗鋸齒
+        renderWrapper.style.webkitFontSmoothing = 'antialiased';
+        renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
+        renderWrapper.style.textRendering = 'optimizeLegibility';
+        renderWrapper.innerHTML = descEditor.innerHTML;
+
+        document.body.appendChild(renderWrapper);
+
+        try {
+            if (typeof html2canvas === 'function') {
+                descCanvas = await html2canvas(renderWrapper, {
+                    backgroundColor: '#2d2d2d',
+                    scale: renderScale,
+                    useCORS: true,
+                    logging: false
+                });
+                const logicalHeight = descCanvas.height / renderScale;
+                extraHeight = logicalHeight + padding * 2 + 50;
             }
-            lines.push(currentLine);
-        });
-        extraHeight = (lines.length * lineHeight) + (padding * 2) + 30;
+        } catch (e) {
+            console.error('富文本渲染失敗，降級處理', e);
+        } finally {
+            document.body.removeChild(renderWrapper);
+        }
     }
 
+    const canvas = document.createElement('canvas');
     canvas.width = canvasWidth;
     canvas.height = canvasHeight + extraHeight;
     const ctx = canvas.getContext('2d');
+    
+    // 開啟畫布影像平滑縮放演算法
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
@@ -1030,14 +1052,10 @@ async function generateBoardCanvas() {
     const rowHeights = state.rowFracs ? state.rowFracs.map(f => f * playableH) : Array(state.rows).fill(playableH / state.rows);
 
     const colXPositions = [leftPad];
-    for (let c = 0; c < state.cols; c++) {
-        colXPositions.push(colXPositions[c] + colWidths[c]);
-    }
+    for (let c = 0; c < state.cols; c++) colXPositions.push(colXPositions[c] + colWidths[c]);
 
     const rowYPositions = [topPad];
-    for (let r = 0; r < state.rows; r++) {
-        rowYPositions.push(rowYPositions[r] + rowHeights[r]);
-    }
+    for (let r = 0; r < state.rows; r++) rowYPositions.push(rowYPositions[r] + rowHeights[r]);
 
     const loadImage = (src) => new Promise((resolve) => {
         if (!src) return resolve(null);
@@ -1049,7 +1067,6 @@ async function generateBoardCanvas() {
     });
 
     const prepareTasks = [];
-
     for (let y = 0; y < state.rows; y++) {
         for (let x = 0; x < state.cols; x++) {
             const key = getCellKey(x, y);
@@ -1079,12 +1096,7 @@ async function generateBoardCanvas() {
 
             prepareTasks.push(
                 Promise.all([loadImage(mainSrc), loadImage(attachSrc)]).then(([mainImg, attachImg]) => ({
-                    mainImg,
-                    attachImg,
-                    cellX,
-                    cellY,
-                    cellW,
-                    cellH
+                    mainImg, attachImg, cellX, cellY, cellW, cellH
                 }))
             );
         }
@@ -1166,25 +1178,28 @@ async function generateBoardCanvas() {
         }
     }
 
-    if (descText && lines.length > 0) {
+    if (descCanvas) {
         const startY = canvasHeight;
         ctx.fillStyle = '#2d2d2d';
         ctx.fillRect(0, startY, canvas.width, extraHeight);
+
         ctx.strokeStyle = '#444444';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(0, startY);
         ctx.lineTo(canvas.width, startY);
         ctx.stroke();
+
         ctx.fillStyle = '#5b9bd5';
         ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillText('【陣容說明】', padding, startY + padding);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `${fontSize}px sans-serif`;
-        let textY = startY + padding + 35;
-        lines.forEach(line => { ctx.fillText(line, padding, textY); textY += lineHeight; });
+
+        // 貼入超採樣文字圖層，文字邊緣平滑銳利不模糊
+        const drawW = descCanvas.width / renderScale;
+        const drawH = descCanvas.height / renderScale;
+        ctx.drawImage(descCanvas, padding, startY + padding + 40, drawW, drawH);
     }
 
     return canvas;
@@ -1203,7 +1218,7 @@ async function copyBoardTemplate() {
                 showToast('已複製高畫質模板圖片至剪貼簿！');
                 return;
             } catch (e) {
-                // 回退
+                // 自動回退至下載
             }
         }
         const imageUrl = URL.createObjectURL(blob);
@@ -1285,7 +1300,6 @@ function createNewFolder() {
     }
 }
 
-// 【已修復】改用 getDescContent() 儲存富文本
 if (saveTemplateBtn) {
     saveTemplateBtn.addEventListener('click', () => {
         const rawName = templateNameInput ? templateNameInput.value.trim().slice(0, 20) : '';
@@ -1314,7 +1328,6 @@ if (saveTemplateBtn) {
     });
 }
 
-// 【已修復】改用 getDescContent() 更新富文本
 if (updateTemplateBtn) {
     updateTemplateBtn.addEventListener('click', () => {
         if (!state.currentLoadedTemplateId) return;
@@ -1621,7 +1634,6 @@ function createTemplateCardElement(item) {
     card.querySelector('.template-card-delete-icon').addEventListener('click', (e) => { e.stopPropagation(); deleteTemplate(item.id, item.name); });
     card.querySelector('.edit-name-btn').addEventListener('click', (e) => { e.stopPropagation(); renameTemplate(item.id); });
     
-    // 【已修復】確保 keepData 設為 true，並透過 setLoadedTemplate 載入富文本說明
     card.querySelector('.load-btn').addEventListener('click', () => {
         historyStack.clear();
         if (item.terrainData) state.terrainData = structuredClone(item.terrainData);
