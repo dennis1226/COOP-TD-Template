@@ -1370,30 +1370,50 @@ async function generateBoardCanvas() {
 }
 
 async function copyBoardTemplate() {
-    showToast('正在產生高畫質圖片…');
-    const canvas = await generateBoardCanvas();
-    if (!canvas) return;
+    if (!navigator.clipboard || !window.ClipboardItem) {
+        showToast('目前瀏覽器環境不支援直接複製圖片，請使用「下載圖片」');
+        return;
+    }
 
-    canvas.toBlob(async (blob) => {
-        if (!blob) { showToast('匯出失敗，請重試'); return; }
-        if (navigator.clipboard && window.ClipboardItem) {
-            try {
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                showToast('已複製高畫質模板圖片至剪貼簿！');
+    try {
+        window.focus();
+    } catch (_) {}
+
+    showToast('正在產生高畫質圖片並寫入剪貼簿，請稍候…', 4000);
+
+    // 建立 Blob 的非同步承諾，避免生成畫布時間過長導致使用者點擊手勢 (user gesture) 過期
+    const blobPromise = new Promise(async (resolve, reject) => {
+        try {
+            const canvas = await generateBoardCanvas();
+            if (!canvas) {
+                reject(new Error('畫布生成失敗'));
                 return;
-            } catch (e) {
-                // 自動回退至下載
             }
+            canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error('圖片轉檔失敗'));
+            }, 'image/png');
+        } catch (err) {
+            reject(err);
         }
-        const imageUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = imageUrl;
-        a.download = `coop_board_${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        showToast('已為您下載隊形模板圖片！');
-    }, 'image/png');
+    });
+
+    try {
+        // 優先使用 Promise 方式傳遞給 ClipboardItem (立即鎖定點擊手勢授權)
+        const item = new ClipboardItem({ 'image/png': blobPromise });
+        await navigator.clipboard.write([item]);
+        showToast('已成功複製高畫質模板圖片至剪貼簿！');
+    } catch (err) {
+        // 若瀏覽器版本較舊不支援直接傳 Promise 至 ClipboardItem，等待 blob 完成後再次嘗試寫入
+        try {
+            const blob = await blobPromise;
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast('已成功複製高畫質模板圖片至剪貼簿！');
+        } catch (fallbackErr) {
+            console.error('複製圖片至剪貼簿失敗：', fallbackErr);
+            showToast('複製失敗：請確認網址列已允許「剪貼簿」存取權限！', 3500);
+        }
+    }
 }
 
 async function saveBoardImage() {
