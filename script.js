@@ -274,11 +274,6 @@ const closeFormModalBtn = document.getElementById('closeFormModalBtn');
 const formsGrid = document.getElementById('formsGrid');
 const formModalTitle = document.getElementById('formModalTitle');
 
-const updateLogBtn = document.getElementById('updateLogBtn');
-const updateLogOverlay = document.getElementById('updateLogOverlay');
-const closeUpdateLogBtn = document.getElementById('closeUpdateLogBtn');
-const logListContainer = document.getElementById('logListContainer');
-
 const saveTemplateBtn = document.getElementById('saveTemplateBtn');
 const updateTemplateBtn = document.getElementById('updateTemplateBtn');
 const templateNameInput = document.getElementById('templateNameInput');
@@ -372,78 +367,6 @@ document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
 });
 
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
-
-// ==================== 更新記錄讀取與解析 ====================
-let changelogLoaded = false;
-
-function parseMarkdownToLogs(mdText) {
-    const sections = mdText.split(/^##\s+/m).slice(1);
-    return sections.map(section => {
-        const lines = section.trim().split('\n');
-        const titleLine = lines[0].trim();
-        const contentLines = lines.slice(1).map(l => l.trim()).filter(Boolean);
-
-        const match = titleLine.match(/(?:\[(.*?)\])?\s*-?\s*(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/) || [null, '', titleLine];
-        const version = match[1] ? ` (${match[1]})` : '';
-        const dateStr = (match[2] || titleLine) + version;
-
-        const bodyHtml = contentLines.map(line => {
-            let clean = line.replace(/^[-*]\s+/, '');
-            clean = clean
-                .replace(/\*\*全新推出\*\*[：:]?/g, '<span class="log-tag tag-new">全新推出</span>')
-                .replace(/\*\*功能優化\*\*[：:]?/g, '<span class="log-tag tag-opt">功能優化</span>')
-                .replace(/\*\*介面優化\*\*[：:]?/g, '<span class="log-tag tag-ui">介面優化</span>')
-                .replace(/\*\*穩定性提升\*\*[：:]?/g, '<span class="log-tag tag-fix">穩定性提升</span>')
-                .replace(/\*\*基礎功能\*\*[：:]?/g, '<span class="log-tag tag-base">基本功能</span>');
-
-            return `<div class="log-row">${clean}</div>`;
-        }).join('');
-
-        return { date: dateStr, html: bodyHtml };
-    });
-}
-
-async function loadChangelog() {
-    if (!logListContainer || changelogLoaded) return;
-    try {
-        const response = await fetch('CHANGELOG.md');
-        if (!response.ok) throw new Error('無法讀取 CHANGELOG.md');
-        const text = await response.text();
-        const logs = parseMarkdownToLogs(text);
-
-        if (logs.length === 0) {
-            logListContainer.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暫無更新紀錄</div>';
-            return;
-        }
-
-        logListContainer.innerHTML = logs.map(item => `
-            <div class="log-item">
-                <div class="log-date">${item.date}</div>
-                <div class="log-text">${item.html}</div>
-            </div>
-        `).join('');
-        changelogLoaded = true;
-    } catch (err) {
-        console.error(err);
-        logListContainer.innerHTML = '<div style="text-align:center; color:#e74c3c; padding:20px;">更新記錄讀取失敗，請確認同目錄下存在 CHANGELOG.md。</div>';
-    }
-}
-
-function openUpdateLog() {
-    if (updateLogOverlay) {
-        updateLogOverlay.classList.add('open');
-        loadChangelog();
-    }
-}
-function closeUpdateLog() {
-    if (updateLogOverlay) updateLogOverlay.classList.remove('open');
-}
-
-if (updateLogBtn) updateLogBtn.addEventListener('click', openUpdateLog);
-if (closeUpdateLogBtn) closeUpdateLogBtn.addEventListener('click', closeUpdateLog);
-if (updateLogOverlay) updateLogOverlay.addEventListener('click', (e) => {
-    if (e.target === updateLogOverlay) closeUpdateLog();
-});
 
 // 抽屜控制
 function openDrawer() { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); }
