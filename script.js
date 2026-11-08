@@ -274,11 +274,6 @@ const closeFormModalBtn = document.getElementById('closeFormModalBtn');
 const formsGrid = document.getElementById('formsGrid');
 const formModalTitle = document.getElementById('formModalTitle');
 
-const updateLogBtn = document.getElementById('updateLogBtn');
-const updateLogOverlay = document.getElementById('updateLogOverlay');
-const closeUpdateLogBtn = document.getElementById('closeUpdateLogBtn');
-const logListContainer = document.getElementById('logListContainer');
-
 const saveTemplateBtn = document.getElementById('saveTemplateBtn');
 const updateTemplateBtn = document.getElementById('updateTemplateBtn');
 const templateNameInput = document.getElementById('templateNameInput');
@@ -294,11 +289,17 @@ const exportJsonBtn = document.getElementById('exportJsonBtn');
 const importJsonBtn = document.getElementById('importJsonBtn');
 const importFileInput = document.getElementById('importFileInput');
 
-// ==================== 說明框內容輔助函式 ====================
+// ==================== 說明框內容輔助函式 (修復角括號與標籤衝突) ====================
 function sanitizeDescHtml(html) {
     if (!html) return '';
+    
+    // 僅保留編輯器常用的樣式標籤，其餘非標準自訂標籤 (如 <重點注意事項>) 自動轉為純文字字符 &lt;
+    const allowedTags = 'b|strong|i|em|u|ins|span|font|div|p|br';
+    const tagRegex = new RegExp(`<(?!\\/?(?:${allowedTags})(?:[\\s\\/][^>]*)?>)`, 'gi');
+    let safeHtml = html.replace(tagRegex, '&lt;');
+
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+    tempDiv.innerHTML = safeHtml;
     tempDiv.querySelectorAll('img, picture, svg, iframe, canvas, video').forEach(el => el.remove());
     return tempDiv.innerHTML;
 }
@@ -310,7 +311,7 @@ function getDescContent() {
 
 function getDescPlainText() {
     if (!templateDescInput) return '';
-    return templateDescInput.innerText || '';
+    return templateDescInput.innerText || templateDescInput.textContent || '';
 }
 
 function setDescContent(content) {
@@ -319,14 +320,21 @@ function setDescContent(content) {
         templateDescInput.innerHTML = '';
         return;
     }
-    if (typeof content === 'string') {
-        if (!content.includes('<') && content.includes('\n')) {
-            templateDescInput.innerHTML = sanitizeDescHtml(content.replace(/\r?\n/g, '<br>'));
-        } else {
-            templateDescInput.innerHTML = sanitizeDescHtml(content);
-        }
+    
+    let str = String(content);
+    // 判斷是否帶有排版標籤
+    const hasHtmlFormatting = /<\/?(div|p|br|span|b|strong|i|u|ins|font)[\s>/]/i.test(str);
+
+    if (!hasHtmlFormatting) {
+        // 純文字模式：將角括號轉為實體字元避免被當標籤吞掉，換行轉為 <br>
+        str = str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\r?\n/g, '<br>');
+        templateDescInput.innerHTML = str;
     } else {
-        templateDescInput.innerHTML = sanitizeDescHtml(String(content));
+        templateDescInput.innerHTML = sanitizeDescHtml(str);
     }
 }
 
@@ -359,78 +367,6 @@ document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
 });
 
 if (formModal) formModal.addEventListener('click', (e) => e.stopPropagation());
-
-// ==================== 更新記錄讀取與解析 ====================
-let changelogLoaded = false;
-
-function parseMarkdownToLogs(mdText) {
-    const sections = mdText.split(/^##\s+/m).slice(1);
-    return sections.map(section => {
-        const lines = section.trim().split('\n');
-        const titleLine = lines[0].trim();
-        const contentLines = lines.slice(1).map(l => l.trim()).filter(Boolean);
-
-        const match = titleLine.match(/(?:\[(.*?)\])?\s*-?\s*(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/) || [null, '', titleLine];
-        const version = match[1] ? ` (${match[1]})` : '';
-        const dateStr = (match[2] || titleLine) + version;
-
-        const bodyHtml = contentLines.map(line => {
-            let clean = line.replace(/^[-*]\s+/, '');
-            clean = clean
-                .replace(/\*\*全新推出\*\*[：:]?/g, '<span class="log-tag tag-new">全新推出</span>')
-                .replace(/\*\*功能優化\*\*[：:]?/g, '<span class="log-tag tag-opt">功能優化</span>')
-                .replace(/\*\*介面優化\*\*[：:]?/g, '<span class="log-tag tag-ui">介面優化</span>')
-                .replace(/\*\*穩定性提升\*\*[：:]?/g, '<span class="log-tag tag-fix">穩定性提升</span>')
-                .replace(/\*\*基礎功能\*\*[：:]?/g, '<span class="log-tag tag-base">基本功能</span>');
-
-            return `<div class="log-row">${clean}</div>`;
-        }).join('');
-
-        return { date: dateStr, html: bodyHtml };
-    });
-}
-
-async function loadChangelog() {
-    if (!logListContainer || changelogLoaded) return;
-    try {
-        const response = await fetch('CHANGELOG.md');
-        if (!response.ok) throw new Error('無法讀取 CHANGELOG.md');
-        const text = await response.text();
-        const logs = parseMarkdownToLogs(text);
-
-        if (logs.length === 0) {
-            logListContainer.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暫無更新紀錄</div>';
-            return;
-        }
-
-        logListContainer.innerHTML = logs.map(item => `
-            <div class="log-item">
-                <div class="log-date">${item.date}</div>
-                <div class="log-text">${item.html}</div>
-            </div>
-        `).join('');
-        changelogLoaded = true;
-    } catch (err) {
-        console.error(err);
-        logListContainer.innerHTML = '<div style="text-align:center; color:#e74c3c; padding:20px;">更新記錄讀取失敗，請確認同目錄下存在 CHANGELOG.md。</div>';
-    }
-}
-
-function openUpdateLog() {
-    if (updateLogOverlay) {
-        updateLogOverlay.classList.add('open');
-        loadChangelog();
-    }
-}
-function closeUpdateLog() {
-    if (updateLogOverlay) updateLogOverlay.classList.remove('open');
-}
-
-if (updateLogBtn) updateLogBtn.addEventListener('click', openUpdateLog);
-if (closeUpdateLogBtn) closeUpdateLogBtn.addEventListener('click', closeUpdateLog);
-if (updateLogOverlay) updateLogOverlay.addEventListener('click', (e) => {
-    if (e.target === updateLogOverlay) closeUpdateLog();
-});
 
 // 抽屜控制
 function openDrawer() { templatesDrawer.classList.add('open'); drawerOverlay.classList.add('open'); }
@@ -976,16 +912,7 @@ if (themeToggle) {
     });
 }
 
-// ==================== 圖片產生與匯出 (高解析度銳利文字版) ====================
-
-/**
- * 仿 Word 項目符號轉換器
- * 將說明中的 - 或不同符號在匯出截圖時自動轉化為高質感階層圖示
- */
-
-/**
- * 遍歷 DOM 節點，精準替換每一行開頭的項目符號 (支援任意嵌套的 span/font/div 標籤)
- */
+// ==================== 項目符號轉換與高畫質圖片渲染 ====================
 function applyWordBulletsToDOM(root) {
     let isLineStart = true;
 
@@ -997,15 +924,11 @@ function applyWordBulletsToDOM(root) {
         } else if (marker === '+') {
             return '<span style="color:#9b59b6;font-size:12px;margin-right:6px;display:inline-block;vertical-align:baseline;">■</span>';
         } else {
-            // 標準減號 `-`：依縮排深度切換層級圖案 (Word 經典階層風格)
             if (spaceCount < 2) {
-                // 第一層：經典實心菱形
                 return '<span style="color:#5b9bd5;font-size:13px;margin-right:6px;display:inline-block;vertical-align:baseline;">◆</span>';
             } else if (spaceCount < 4) {
-                // 第二層：典雅空心圓
                 return '<span style="color:#e67e22;font-size:12px;margin-right:6px;display:inline-block;vertical-align:baseline;">○</span>';
             } else {
-                // 第三層：深層小方塊
                 return '<span style="color:#bdc3c7;font-size:10px;margin-right:6px;display:inline-block;vertical-align:baseline;">▪</span>';
             }
         }
@@ -1014,7 +937,6 @@ function applyWordBulletsToDOM(root) {
     function walk(node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
             const tag = node.tagName.toLowerCase();
-            // 不處理 style 標籤
             if (tag === 'style' || tag === 'script') return;
 
             const isBlock = /^(div|p|li|h[1-6]|blockquote|section|article)$/.test(tag);
@@ -1038,7 +960,6 @@ function applyWordBulletsToDOM(root) {
             const text = node.nodeValue;
             if (!text) return;
 
-            // 切分換行符號
             const parts = text.split(/(\r?\n)/);
             let hasReplacement = false;
             const newNodes = [];
@@ -1052,7 +973,6 @@ function applyWordBulletsToDOM(root) {
                 }
 
                 if (isLineStart) {
-                    // 檢查是否符合：前綴空白 + 項目標記(-, *, +, >) + 後綴空白 + 剩餘文字
                     const match = part.match(/^([ \t\u00a0\u3000]*)([-*+>]|–|—)([ \t\u00a0\u3000]+)(.*)$/s);
                     if (match) {
                         hasReplacement = true;
@@ -1061,7 +981,6 @@ function applyWordBulletsToDOM(root) {
                         const rest = match[4];
                         const spaceCount = leadingSpaces.length;
 
-                        // 建立圖形符號節點
                         const span = document.createElement('span');
                         span.innerHTML = (leadingSpaces ? leadingSpaces : '') + getBulletIcon(marker, spaceCount);
                         newNodes.push(span);
@@ -1071,11 +990,9 @@ function applyWordBulletsToDOM(root) {
                             isLineStart = false;
                         }
                     } else if (part.trim().length > 0) {
-                        // 有文字但不是項目符號，代表本行已開始有內容
                         isLineStart = false;
                         newNodes.push(document.createTextNode(part));
                     } else {
-                        // 全空白文字節點，維持 isLineStart = true 繼續等待下一個節點
                         newNodes.push(document.createTextNode(part));
                     }
                 } else {
@@ -1112,12 +1029,11 @@ async function generateBoardCanvas() {
     const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
 
     const descEditor = document.getElementById('templateDescInput');
-    const hasDesc = descEditor && descEditor.innerText.trim().length > 0;
+    const hasDesc = descEditor && (descEditor.textContent || '').trim().length > 0;
 
     let descCanvas = null;
     let extraHeight = 0;
     const padding = 24;
-    // 啟用 2 倍超採樣，使 html2canvas 渲染出高畫質向量邊緣的文字圖層
     const renderScale = 2;
 
     if (hasDesc) {
@@ -1132,7 +1048,6 @@ async function generateBoardCanvas() {
         renderWrapper.style.fontSize = '16px';
         renderWrapper.style.lineHeight = '1.65';
         renderWrapper.style.wordBreak = 'break-word';
-        // 強制開啟字體邊緣平滑抗鋸齒
         renderWrapper.style.webkitFontSmoothing = 'antialiased';
         renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
         renderWrapper.style.textRendering = 'optimizeLegibility';
@@ -1157,10 +1072,8 @@ async function generateBoardCanvas() {
             ${descEditor.innerHTML}
         `;
 
-        // 1. 遍歷 DOM 節點，精準將每一行開頭的 - 轉化為 Word 風格階層圖標 (不受 span/font/color 標籤影響)
         applyWordBulletsToDOM(renderWrapper);
 
-        // 2. 動態強制將所有帶有底線樣式或 <u> 標籤的節點套上實體邊框，保證 html2canvas 100% 繪製
         renderWrapper.querySelectorAll('u, ins, span, font, b, i').forEach(el => {
             const hasUnderline = el.tagName === 'U' || el.tagName === 'INS' || 
                                  (el.getAttribute('style') && el.getAttribute('style').includes('underline'));
@@ -1197,7 +1110,6 @@ async function generateBoardCanvas() {
     canvas.height = canvasHeight + extraHeight;
     const ctx = canvas.getContext('2d');
     
-    // 開啟畫布影像平滑縮放演算法
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -1360,7 +1272,6 @@ async function generateBoardCanvas() {
         ctx.textBaseline = 'top';
         ctx.fillText('【陣容說明】', padding, startY + padding);
 
-        // 貼入超採樣文字圖層，文字邊緣平滑銳利不模糊
         const drawW = descCanvas.width / renderScale;
         const drawH = descCanvas.height / renderScale;
         ctx.drawImage(descCanvas, padding, startY + padding + 40, drawW, drawH);
@@ -1381,7 +1292,6 @@ async function copyBoardTemplate() {
 
     showToast('正在產生高畫質圖片並寫入剪貼簿，請稍候…', 4000);
 
-    // 建立 Blob 的非同步承諾，避免生成畫布時間過長導致使用者點擊手勢 (user gesture) 過期
     const blobPromise = new Promise(async (resolve, reject) => {
         try {
             const canvas = await generateBoardCanvas();
@@ -1399,12 +1309,10 @@ async function copyBoardTemplate() {
     });
 
     try {
-        // 優先使用 Promise 方式傳遞給 ClipboardItem (立即鎖定點擊手勢授權)
         const item = new ClipboardItem({ 'image/png': blobPromise });
         await navigator.clipboard.write([item]);
         showToast('已成功複製高畫質模板圖片至剪貼簿！');
     } catch (err) {
-        // 若瀏覽器版本較舊不支援直接傳 Promise 至 ClipboardItem，等待 blob 完成後再次嘗試寫入
         try {
             const blob = await blobPromise;
             await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
@@ -1619,7 +1527,7 @@ function handleTemplateFolderAction(id) {
             selectModal = document.createElement('div');
             selectModal.id = 'folderSelectModal';
             selectModal.className = 'modal-overlay';
-            document.body.appendChild(modal);
+            document.body.appendChild(selectModal);
         }
 
         const foldersHtml = folders.map(f => `
@@ -2014,7 +1922,6 @@ function initRichTextEditor() {
         });
     }
 
-    // 禁止拖曳任何圖片或魔物圖標進入說明框
     editor.addEventListener('dragover', (e) => {
         e.preventDefault();
     });
@@ -2036,7 +1943,6 @@ function initRichTextEditor() {
         }
     });
 
-    // 禁止貼上圖片，若貼上帶有圖片的富文本則自動過濾圖片
     editor.addEventListener('paste', (e) => {
         const items = e.clipboardData?.items;
         if (items) {
@@ -2057,7 +1963,6 @@ function initRichTextEditor() {
         }
     });
 
-    // 監聽輸入變化，若有任何手段插入 img 標籤則立即移除
     editor.addEventListener('input', () => {
         const imgs = editor.querySelectorAll('img, picture, svg, iframe, canvas, video');
         if (imgs.length > 0) {
