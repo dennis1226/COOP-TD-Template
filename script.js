@@ -175,7 +175,7 @@ function normalizePlacedUnit(placed) {
         if (num) baseId = `monster_${num}`;
     }
 
-    if (isGodMonster(baseId)) {
+    if (isGodMonster(baseId) || isAttachmentMonster(baseId)) {
         attachment = null;
     }
 
@@ -441,6 +441,10 @@ function openFormModalForCell(cellKey) {
     if (!placed) return;
     const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
     if (!monster || monster.forms.length <= 1) { showToast('該魔物只有單一形態'); return; }
+    if (isAttachmentMonster(placed.baseId)) {
+        showToast('附屬型單獨放置時僅限形態 1！');
+        return;
+    }
     formModalTitle.textContent = '切換格子形態';
     formsGrid.innerHTML = '';
     monster.forms.forEach((form, idx) => {
@@ -640,11 +644,21 @@ function createBoard() {
 function placeUnit(x, y, monsterId, formIndex = 0) {
     const key = getCellKey(x, y);
     const isAttach = isAttachmentMonster(monsterId);
+    const existing = normalizePlacedUnit(state.units[key]);
 
     if (isAttach) {
-        const existing = normalizePlacedUnit(state.units[key]);
+        if (formIndex === 0) {
+            state.units[key] = {
+                baseId: monsterId,
+                formIndex: 0,
+                attachment: null
+            };
+            createBoard();
+            return;
+        }
+
         if (!existing) {
-            showToast('請先在此格子放置一般魔物，才能加入附屬型！');
+            showToast('附屬型（形態 2 以上）需先放置一般魔物才能裝備！');
             return;
         }
 
@@ -653,17 +667,22 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
             return;
         }
 
+        if (isAttachmentMonster(existing.baseId)) {
+            showToast('單獨放置的附屬型無法再疊加其他附屬型！');
+            return;
+        }
+
         existing.attachment = { baseId: monsterId, formIndex };
         state.units[key] = existing;
         showToast('已成功為該魔物加上附屬型！');
     } else {
-        const existing = normalizePlacedUnit(state.units[key]);
         const isGod = isGodMonster(monsterId);
+        const preserveAttachment = existing && !isAttachmentMonster(existing.baseId) ? existing.attachment : null;
 
         state.units[key] = {
             baseId: monsterId,
             formIndex,
-            attachment: isGod ? null : (existing ? existing.attachment : null)
+            attachment: isGod ? null : preserveAttachment
         };
     }
     createBoard();
