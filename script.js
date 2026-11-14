@@ -441,10 +441,7 @@ function openFormModalForCell(cellKey) {
     if (!placed) return;
     const monster = state.loadedMonsters.find(m => m.id === placed.baseId);
     if (!monster || monster.forms.length <= 1) { showToast('該魔物只有單一形態'); return; }
-    if (isAttachmentMonster(placed.baseId)) {
-        showToast('附屬型單獨放置時僅限形態 1！');
-        return;
-    }
+
     formModalTitle.textContent = '切換格子形態';
     formsGrid.innerHTML = '';
     monster.forms.forEach((form, idx) => {
@@ -647,21 +644,18 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
     const existing = normalizePlacedUnit(state.units[key]);
 
     if (isAttach) {
-        if (formIndex === 0) {
+        // 1. 該格目前是空的：所有形態皆可單獨放置
+        if (!existing) {
             state.units[key] = {
                 baseId: monsterId,
-                formIndex: 0,
+                formIndex,
                 attachment: null
             };
             createBoard();
             return;
         }
 
-        if (!existing) {
-            showToast('附屬型（形態 2 以上）需先放置一般魔物才能裝備！');
-            return;
-        }
-
+        // 2. 該格已經有魔物了：依照附屬規則掛在左上角
         if (isGodMonster(existing.baseId)) {
             showToast('一般魔神無法裝備附屬型魔物！');
             return;
