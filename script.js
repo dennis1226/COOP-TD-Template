@@ -54,7 +54,7 @@ const MONSTER_CATEGORIES = [
     { title: "控制型", monsterIds: [1, 4, 11] },
     { title: "附屬型", monsterIds: [15] },
     { title: "特殊型", monsterIds: [14] },
-    { title: "一般魔神", monsterIds: [18, 19, 20, 21, 22, 25] }
+    { title: "一般魔神", monsterIds: [18, 19, 20, 21, 22, 25, 26] }
 ];
 
 const TERRAIN_CONFIGS = {
