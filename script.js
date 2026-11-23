@@ -260,9 +260,10 @@ const boardBgEl = document.getElementById('boardBackground');
 const unitsGrid = document.getElementById('unitsGrid');
 const deleteModeBtn = document.getElementById('deleteModeBtn');
 const clearBtn = document.getElementById('clearBtn');
+const copyImageOnlyBtn = document.getElementById('copyImageOnlyBtn');
+const copyTextOnlyBtn = document.getElementById('copyTextOnlyBtn');
 const copyTemplateBtn = document.getElementById('copyTemplateBtn');
 const saveImageBtn = document.getElementById('saveImageBtn');
-const downloadImageBtn = document.getElementById('downloadImageBtn');
 const themeToggle = document.getElementById('themeToggle');
 const toastEl = document.getElementById('toast');
 const bgSelect = document.getElementById('bgSelect');
@@ -1029,7 +1030,7 @@ function applyWordBulletsToDOM(root) {
     walk(root);
 }
 
-async function generateBoardCanvas() {
+async function generateBoardCanvas(includeDesc = true) {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
 
@@ -1042,7 +1043,7 @@ async function generateBoardCanvas() {
     const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
 
     const descEditor = document.getElementById('templateDescInput');
-    const hasDesc = descEditor && (descEditor.textContent || '').trim().length > 0;
+    const hasDesc = includeDesc && descEditor && (descEditor.textContent || '').trim().length > 0;
 
     let descCanvas = null;
     let extraHeight = 0;
@@ -1293,9 +1294,9 @@ async function generateBoardCanvas() {
     return canvas;
 }
 
-async function copyBoardTemplate() {
+async function copyCanvasToClipboard(includeDesc, successMsg) {
     if (!navigator.clipboard || !window.ClipboardItem) {
-        showToast('目前瀏覽器環境不支援直接複製圖片，請使用「下載圖片」');
+        showToast('目前瀏覽器環境不支援直接複製圖片，請使用「儲存圖片」');
         return;
     }
 
@@ -1307,7 +1308,7 @@ async function copyBoardTemplate() {
 
     const blobPromise = new Promise(async (resolve, reject) => {
         try {
-            const canvas = await generateBoardCanvas();
+            const canvas = await generateBoardCanvas(includeDesc);
             if (!canvas) {
                 reject(new Error('畫布生成失敗'));
                 return;
@@ -1324,12 +1325,12 @@ async function copyBoardTemplate() {
     try {
         const item = new ClipboardItem({ 'image/png': blobPromise });
         await navigator.clipboard.write([item]);
-        showToast('已成功複製高畫質模板圖片至剪貼簿！');
+        showToast(successMsg);
     } catch (err) {
         try {
             const blob = await blobPromise;
             await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-            showToast('已成功複製高畫質模板圖片至剪貼簿！');
+            showToast(successMsg);
         } catch (fallbackErr) {
             console.error('複製圖片至剪貼簿失敗：', fallbackErr);
             showToast('複製失敗：請確認網址列已允許「剪貼簿」存取權限！', 3500);
@@ -1337,9 +1338,140 @@ async function copyBoardTemplate() {
     }
 }
 
+function copyImageOnly() {
+    copyCanvasToClipboard(false, '已成功複製純棋盤圖片至剪貼簿！');
+}
+
+function extractPlainTextWithLineBreaks(root) {
+    let lines = [];
+    let currentLine = '';
+
+    function flushLine() {
+        lines.push(currentLine.replace(/\u00a0/g, ' '));
+        currentLine = '';
+    }
+
+    function walk(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            currentLine += node.nodeValue.replace(/\r?\n/g, '');
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+            if (tag === 'style' || tag === 'script') return;
+            if (tag === 'br') {
+                flushLine();
+                return;
+            }
+            const isBlock = /^(div|p|li|h[1-6]|blockquote|section|article)$/.test(tag);
+            if (isBlock && currentLine.length > 0) {
+                flushLine();
+            }
+            for (const child of node.childNodes) {
+                walk(child);
+            }
+            if (isBlock) {
+                // 若整個 block 只有一個 <br>，前面已經 flush 過，避免重複多一行
+                const onlyBr = node.childNodes.length === 1 && node.firstChild.nodeName === 'BR';
+                if (!onlyBr) {
+                    flushLine();
+                }
+            }
+        }
+    }
+
+    walk(root);
+    if (currentLine.length > 0) {
+        flushLine();
+    }
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function buildFormattedClipboardData() {
+    const editor = document.getElementById('templateDescInput');
+    if (!editor) return null;
+
+    const plainText = getDescPlainText().trim();
+    if (!plainText) return null;
+
+    // 複製一份 DOM 來套用項目符號（◆、✦、▸ 等）與清理圖片
+    const clone = editor.cloneNode(true);
+    clone.querySelectorAll('img, picture, svg, iframe, canvas, video').forEach(el => el.remove());
+    applyWordBulletsToDOM(clone);
+
+    // 精準遍歷 DOM 結構還原換行（避免 detached DOM 讀取 innerText 失去換行的問題）
+    const processedPlainText = extractPlainTextWithLineBreaks(clone);
+    const htmlContent = `<div style="font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif; font-size: 16px; line-height: 1.65;">${clone.innerHTML}</div>`;
+
+    return {
+        plainText: processedPlainText,
+        htmlContent
+    };
+}
+
+async function copyTextOnly() {
+    const data = buildFormattedClipboardData();
+    if (!data) {
+        showToast('說明欄位目前沒有文字可複製！');
+        return;
+    }
+
+    try {
+        if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
+            const item = new ClipboardItem({
+                'text/html': new Blob([data.htmlContent], { type: 'text/html' }),
+                'text/plain': new Blob([data.plainText], { type: 'text/plain' })
+            });
+            await navigator.clipboard.write([item]);
+            showToast('已成功複製附帶格式的陣容說明！');
+            return;
+        }
+    } catch (err) {
+        console.warn('ClipboardItem 寫入富文本失敗，改用選區複製降級方案：', err);
+    }
+
+    // 降級方案：透過隱藏的 contenteditable 容器執行選區複製（可完整保留粗體、斜體、底線、顏色、螢光筆）
+    try {
+        const tempDiv = document.createElement('div');
+        tempDiv.contentEditable = 'true';
+        tempDiv.style.position = 'fixed';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '0';
+        tempDiv.style.opacity = '0';
+        tempDiv.innerHTML = data.htmlContent;
+        document.body.appendChild(tempDiv);
+
+        const range = document.createRange();
+        range.selectNodeContents(tempDiv);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        const ok = document.execCommand('copy');
+        selection.removeAllRanges();
+        document.body.removeChild(tempDiv);
+
+        if (ok) {
+            showToast('已成功複製附帶格式的陣容說明！');
+        } else {
+            throw new Error('execCommand copy failed');
+        }
+    } catch (fallbackErr) {
+        console.error('複製富文本失敗，改複製純文字：', fallbackErr);
+        try {
+            await navigator.clipboard.writeText(data.plainText);
+            showToast('已複製純文字說明（目前環境不支援富文本貼上）');
+        } catch (e) {
+            showToast('複製文字失敗，請手動選取複製');
+        }
+    }
+}
+
+function copyBoardTemplate() {
+    copyCanvasToClipboard(true, '已成功複製圖片與說明至剪貼簿！');
+}
+
 async function saveBoardImage() {
     showToast('正在產生高畫質預覽圖片…');
-    const canvas = await generateBoardCanvas();
+    const canvas = await generateBoardCanvas(true);
     if (!canvas) return;
 
     canvas.toBlob((blob) => {
@@ -1356,9 +1488,12 @@ async function saveBoardImage() {
 
         modal.innerHTML = `
             <div class="image-preview-card">
-                <div class="preview-title">📱 請長按下方圖片儲存至手機相簿</div>
+                <div class="preview-title">📱 手機請長按圖片儲存／電腦可點擊下方下載</div>
                 <img src="${imageUrl}" class="preview-img" alt="隊形預覽">
-                <button id="closePreviewBtn" class="secondary" style="width:100%;padding:10px;">關閉視窗</button>
+                <div style="display:flex; gap:8px; width:100%;">
+                    <a href="${imageUrl}" download="coop_board_${Date.now()}.png" class="success" style="flex:1; text-decoration:none; text-align:center; padding:10px; border-radius:6px; color:#fff; font-weight:600; font-size:13px; background-color: var(--button-success);">下載檔案</a>
+                    <button id="closePreviewBtn" class="secondary" style="flex:1; padding:10px;">關閉視窗</button>
+                </div>
             </div>
         `;
         modal.style.display = 'flex';
@@ -1368,27 +1503,10 @@ async function saveBoardImage() {
     }, 'image/png');
 }
 
-async function downloadBoardImage() {
-    showToast('正在產生高畫質圖片以供下載…');
-    const canvas = await generateBoardCanvas();
-    if (!canvas) return;
-
-    canvas.toBlob((blob) => {
-        if (!blob) { showToast('匯出失敗，請重試'); return; }
-        const imageUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = imageUrl;
-        a.download = `coop_board_${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        showToast('已直接為您下載隊形模板圖片！');
-    }, 'image/png');
-}
-
+if (copyImageOnlyBtn) copyImageOnlyBtn.addEventListener('click', copyImageOnly);
+if (copyTextOnlyBtn) copyTextOnlyBtn.addEventListener('click', copyTextOnly);
 if (copyTemplateBtn) copyTemplateBtn.addEventListener('click', copyBoardTemplate);
 if (saveImageBtn) saveImageBtn.addEventListener('click', saveBoardImage);
-if (downloadImageBtn) downloadImageBtn.addEventListener('click', downloadBoardImage);
 
 // ==================== 模板庫與資料夾邏輯 ====================
 if (addFolderBtn) addFolderBtn.addEventListener('click', createNewFolder);
