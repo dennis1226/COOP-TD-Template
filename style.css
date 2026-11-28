@@ -63,7 +63,7 @@ body {
     padding: 0;
 }
 
-/* ==================== Word 風格說明框與工具列 ==================== */
+/* ==================== Word 風格說明框與長文狀態列 ==================== */
 .editor-container {
     display: flex;
     flex-direction: column;
@@ -71,6 +71,69 @@ body {
     border-radius: 8px;
     background: var(--bg-color);
     overflow: hidden;
+}
+
+.editor-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(91, 155, 213, 0.1);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 12px;
+}
+
+.status-metrics {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+.status-dot {
+    opacity: 0.45;
+}
+
+.status-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.status-badge.status-compact {
+    color: #2ecc71;
+}
+
+.status-badge.status-medium {
+    color: #5b9bd5;
+}
+
+.status-badge.status-long {
+    color: #f39c12;
+}
+
+.status-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-action-btn {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    background: var(--button-secondary);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.status-action-btn:hover {
+    background: var(--button-secondary-hover);
+    transform: none;
 }
 
 .editor-toolbar {
@@ -99,13 +162,33 @@ body {
     justify-content: center;
 }
 
+.toolbar-text-btn {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(91, 155, 213, 0.16);
+    color: var(--accent);
+    border: 1px solid rgba(91, 155, 213, 0.35);
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-text-btn:hover {
+    background: rgba(91, 155, 213, 0.28);
+    transform: none;
+}
+
 .toolbar-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: none;
 }
 
 .toolbar-select {
-    height: 28px;
+    height: 26px;
     font-size: 12px;
     padding: 0 4px;
     background: var(--bg-color);
@@ -160,8 +243,8 @@ body {
 }
 
 .template-desc-editor {
-    min-height: 220px;
-    max-height: 480px;
+    min-height: 240px;
+    max-height: 460px;
     overflow-y: auto;
     padding: 12px;
     font-size: 14px;
@@ -171,6 +254,35 @@ body {
     outline: none;
     box-sizing: border-box;
     word-break: break-word;
+    transition: max-height 0.25s ease;
+}
+
+.template-desc-editor.expanded {
+    max-height: 75vh;
+}
+
+.template-desc-editor hr.manual-col-break {
+    border: none;
+    border-top: 2px dashed var(--accent);
+    margin: 12px 0;
+    position: relative;
+    overflow: visible;
+    height: 16px;
+    background: transparent;
+}
+
+.template-desc-editor hr.manual-col-break::after {
+    content: "✂️ 左右分欄線（以上為左欄，以下為右欄）";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-color);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 8px;
+    white-space: nowrap;
 }
 
 .template-desc-editor:empty:before {
@@ -178,6 +290,7 @@ body {
     color: #888;
     pointer-events: none;
     display: block;
+    white-space: pre-line;
 }
 
 .template-desc-editor u,
@@ -257,7 +370,6 @@ body {
         font-size: 13px; 
     }
 
-    /* 電腦版雙欄容器佈局：左棋盤、右面板 */
     .container {
         display: flex;
         flex-direction: row;
@@ -270,7 +382,6 @@ body {
         gap: 28px;
     }
 
-    /* 左側棋盤展示區，滾動時浮動置頂對照 */
     .board-wrapper {
         flex: 0 0 auto;
         display: flex;
@@ -284,7 +395,6 @@ body {
         max-width: 100%;
     }
 
-    /* 右側操作面板 */
     .mobile-tab-container {
         flex: 1;
         min-width: 440px;
@@ -574,7 +684,6 @@ input[type="text"], select, textarea {
     white-space: nowrap;
 }
 
-/* 相容舊版 class 結構 */
 .button-column {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -714,7 +823,6 @@ input[type="text"], select, textarea {
 .saved-templates-list { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
 .folder-container { flex-shrink: 0; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255, 255, 255, 0.02); overflow: hidden; }
 
-/* 資料夾與卡片內部動作按鈕 */
 .folder-header button,
 .template-card-title button,
 .folder-action-btn,
