@@ -290,12 +290,12 @@ const exportJsonBtn = document.getElementById('exportJsonBtn');
 const importJsonBtn = document.getElementById('importJsonBtn');
 const importFileInput = document.getElementById('importFileInput');
 
-// ==================== 說明框內容輔助函式 (修復角括號與標籤衝突) ====================
+// ==================== 說明框內容輔助函式 (修復角括號與標籤衝突 + 字數狀態) ====================
 function sanitizeDescHtml(html) {
     if (!html) return '';
     
     // 僅保留編輯器常用的樣式標籤，其餘非標準自訂標籤 (如 <重點注意事項>) 自動轉為純文字字符 &lt;
-    const allowedTags = 'b|strong|i|em|u|ins|span|font|div|p|br';
+    const allowedTags = 'b|strong|i|em|u|ins|span|font|div|p|br|hr';
     const tagRegex = new RegExp(`<(?!\\/?(?:${allowedTags})(?:[\\s\\/][^>]*)?>)`, 'gi');
     let safeHtml = html.replace(tagRegex, '&lt;');
 
@@ -315,16 +315,58 @@ function getDescPlainText() {
     return templateDescInput.innerText || templateDescInput.textContent || '';
 }
 
+function updateDescStatusMetrics() {
+    const charCountEl = document.getElementById('descCharCount');
+    const heightStatusEl = document.getElementById('descHeightStatus');
+    const layoutSelect = document.getElementById('exportLayoutSelect');
+    if (!templateDescInput || !charCountEl || !heightStatusEl) return;
+
+    const rawText = getDescPlainText().trim();
+    const charLen = rawText.replace(/\s/g, '').length;
+    const lines = rawText ? rawText.split(/\r?\n/).filter(l => l.trim().length > 0) : [];
+    const lineCount = lines.length;
+    const hasManualBreak = splitHtmlByColumnBreak(templateDescInput.innerHTML) !== null;
+
+    charCountEl.textContent = `字數：${charLen} 字`;
+
+    const mode = layoutSelect ? layoutSelect.value : 'auto';
+    const willUseDouble = mode === 'double' || (mode === 'auto' && (charLen >= 180 || lineCount >= 12 || hasManualBreak));
+
+    heightStatusEl.classList.remove('status-compact', 'status-medium', 'status-long');
+
+    if (charLen === 0) {
+        heightStatusEl.textContent = '高度：精簡';
+        heightStatusEl.classList.add('status-compact');
+    } else if (willUseDouble) {
+        if (charLen >= 450 || lineCount >= 28) {
+            heightStatusEl.textContent = hasManualBreak ? '雙欄輸出 (已自訂分欄 · 偏長)' : '雙欄輸出 (建議加 --- 分欄)';
+            heightStatusEl.classList.add('status-long');
+        } else {
+            heightStatusEl.textContent = hasManualBreak ? '雙欄輸出 (已自訂分欄 · 適中)' : '雙欄輸出 (自動壓縮高度)';
+            heightStatusEl.classList.add('status-medium');
+        }
+    } else {
+        if (charLen >= 140 || lineCount >= 9) {
+            heightStatusEl.textContent = '單欄輸出 (接近雙欄門檻)';
+            heightStatusEl.classList.add('status-medium');
+        } else {
+            heightStatusEl.textContent = '單欄輸出 (適中)';
+            heightStatusEl.classList.add('status-compact');
+        }
+    }
+}
+
 function setDescContent(content) {
     if (!templateDescInput) return;
     if (content === undefined || content === null || content === '') {
         templateDescInput.innerHTML = '';
+        updateDescStatusMetrics();
         return;
     }
     
     let str = String(content);
     // 判斷是否帶有排版標籤
-    const hasHtmlFormatting = /<\/?(div|p|br|span|b|strong|i|u|ins|font)[\s>/]/i.test(str);
+    const hasHtmlFormatting = /<\/?(div|p|br|span|b|strong|i|u|ins|font|hr)[\s>/]/i.test(str);
 
     if (!hasHtmlFormatting) {
         // 純文字模式：將角括號轉為實體字元避免被當標籤吞掉，換行轉為 <br>
@@ -337,6 +379,7 @@ function setDescContent(content) {
     } else {
         templateDescInput.innerHTML = sanitizeDescHtml(str);
     }
+    updateDescStatusMetrics();
 }
 
 // ==================== 介面交互與提示 ====================
@@ -645,7 +688,6 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
     const existing = normalizePlacedUnit(state.units[key]);
 
     if (isAttach) {
-        // 1. 該格目前是空的：所有形態皆可單獨放置
         if (!existing) {
             state.units[key] = {
                 baseId: monsterId,
@@ -656,7 +698,6 @@ function placeUnit(x, y, monsterId, formIndex = 0) {
             return;
         }
 
-        // 2. 該格已經有魔物了：依照附屬規則掛在左上角
         if (isGodMonster(existing.baseId)) {
             showToast('一般魔神無法裝備附屬型魔物！');
             return;
@@ -926,7 +967,7 @@ if (themeToggle) {
     });
 }
 
-// ==================== 項目符號轉換與高畫質圖片渲染 ====================
+// ==================== 項目符號轉換與高畫質雙欄圖片渲染 ====================
 function applyWordBulletsToDOM(root) {
     let isLineStart = true;
 
@@ -951,7 +992,7 @@ function applyWordBulletsToDOM(root) {
     function walk(node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
             const tag = node.tagName.toLowerCase();
-            if (tag === 'style' || tag === 'script') return;
+            if (tag === 'style' || tag === 'script' || tag === 'hr') return;
 
             const isBlock = /^(div|p|li|h[1-6]|blockquote|section|article)$/.test(tag);
             if (isBlock) {
@@ -1030,6 +1071,145 @@ function applyWordBulletsToDOM(root) {
     walk(root);
 }
 
+/**
+ * 遍歷 DOM 尋找獨立的 "---" 分欄標記（包含純文字換行、<div>---</div>、<p>---</p> 或 <hr>），
+ * 將內容精準切分為左、右兩欄（並自動移除 "---" 字樣）
+ */
+function splitHtmlByColumnBreak(html) {
+    if (!html) return null;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    const lineFragments = [];
+    let currentLineNodes = [];
+
+    function flushCurrentLine() {
+        if (currentLineNodes.length === 0) return;
+        const wrap = document.createElement('div');
+        currentLineNodes.forEach(n => wrap.appendChild(n.cloneNode(true)));
+        const textOnly = (wrap.textContent || '').replace(/\u00a0/g, '').trim();
+        const hasHr = wrap.querySelector('hr, .manual-col-break') !== null;
+        if (textOnly.length > 0 || hasHr) {
+            lineFragments.push({
+                html: wrap.innerHTML,
+                text: textOnly,
+                hasHr
+            });
+        }
+        currentLineNodes = [];
+    }
+
+    function collectLinesFromNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const raw = node.nodeValue || '';
+            const parts = raw.split(/(\r?\n)/);
+            for (const part of parts) {
+                if (part === '\n' || part === '\r\n') {
+                    flushCurrentLine();
+                } else if (part.length > 0) {
+                    currentLineNodes.push(document.createTextNode(part));
+                }
+            }
+            return;
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+        const tag = node.tagName.toLowerCase();
+        if (tag === 'style' || tag === 'script') return;
+
+        if (tag === 'hr' || node.classList?.contains('manual-col-break')) {
+            flushCurrentLine();
+            lineFragments.push({ html: '', text: '---', hasHr: true });
+            return;
+        }
+
+        if (tag === 'br') {
+            flushCurrentLine();
+            return;
+        }
+
+        const isBlock = /^(div|p|li|h[1-6]|blockquote|section|article)$/.test(tag);
+        if (isBlock) {
+            flushCurrentLine();
+            let hasNestedBlock = false;
+            for (const child of Array.from(node.childNodes)) {
+                if (child.nodeType === Node.ELEMENT_NODE && /^(div|p|li|h[1-6]|blockquote|section|article|hr)$/i.test(child.tagName)) {
+                    hasNestedBlock = true;
+                    break;
+                }
+            }
+            if (hasNestedBlock) {
+                for (const child of Array.from(node.childNodes)) {
+                    collectLinesFromNode(child);
+                }
+            } else {
+                const innerParts = [];
+                let buf = document.createElement('div');
+                for (const child of Array.from(node.childNodes)) {
+                    if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'br') {
+                        innerParts.push(buf.innerHTML);
+                        buf = document.createElement('div');
+                    } else {
+                        buf.appendChild(child.cloneNode(true));
+                    }
+                }
+                innerParts.push(buf.innerHTML);
+
+                innerParts.forEach((segHtml, idx) => {
+                    const segDiv = document.createElement('div');
+                    segDiv.innerHTML = segHtml;
+                    const styleAttr = node.getAttribute('style');
+                    if (styleAttr) segDiv.setAttribute('style', styleAttr);
+                    const t = (segDiv.textContent || '').replace(/\u00a0/g, '').trim();
+                    if (t.length > 0 || idx < innerParts.length - 1) {
+                        lineFragments.push({
+                            html: segDiv.outerHTML,
+                            text: t,
+                            hasHr: false
+                        });
+                    }
+                });
+            }
+            return;
+        }
+
+        currentLineNodes.push(node.cloneNode(true));
+    }
+
+    for (const child of Array.from(temp.childNodes)) {
+        collectLinesFromNode(child);
+    }
+    flushCurrentLine();
+
+    const breakIndex = lineFragments.findIndex(item => item.hasHr || /^---+$/.test(item.text));
+    if (breakIndex === -1) return null;
+
+    const leftLines = lineFragments.slice(0, breakIndex).map(item => item.html);
+    const rightLines = lineFragments.slice(breakIndex + 1).map(item => item.html);
+
+    return {
+        leftHtml: leftLines.join('\n'),
+        rightHtml: rightLines.join('\n')
+    };
+}
+
+function styleRenderedRichText(container) {
+    if (!container) return;
+    applyWordBulletsToDOM(container);
+    container.querySelectorAll('u, ins, span, font, b, i').forEach(el => {
+        const hasUnderline = el.tagName === 'U' || el.tagName === 'INS' || 
+                             (el.getAttribute('style') && el.getAttribute('style').includes('underline'));
+        if (hasUnderline) {
+            el.style.setProperty('text-decoration', 'none', 'important');
+            el.style.setProperty('border-bottom', '2px solid ' + (el.style.color || '#ffffff'), 'important');
+            el.style.setProperty('display', 'inline', 'important');
+            el.style.setProperty('padding-bottom', '1px', 'important');
+        }
+    });
+}
+
 async function generateBoardCanvas(includeDesc = true) {
     const board = document.getElementById('gameBoard');
     if (!board) { showToast('找不到棋盤元件'); return null; }
@@ -1039,34 +1219,52 @@ async function generateBoardCanvas(includeDesc = true) {
 
     const config = TERRAIN_CONFIGS[state.currentBg] || TERRAIN_CONFIGS['background/board-bg-hedge.png'];
     const bgImg = state.bgImage;
-    const canvasWidth = bgImg ? bgImg.naturalWidth : (config.defaultWidth || 700);
-    const canvasHeight = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
+    const boardW = bgImg ? bgImg.naturalWidth : (config.defaultWidth || 700);
+    const boardH = bgImg ? bgImg.naturalHeight : (config.defaultHeight || 500);
 
     const descEditor = document.getElementById('templateDescInput');
-    const hasDesc = includeDesc && descEditor && (descEditor.textContent || '').trim().length > 0;
+    const rawPlainText = descEditor ? (descEditor.textContent || '').trim() : '';
+    const hasDesc = includeDesc && descEditor && rawPlainText.length > 0;
+
+    // 判斷單欄或雙欄輸出模式
+    const layoutSelect = document.getElementById('exportLayoutSelect');
+    const layoutMode = layoutSelect ? layoutSelect.value : 'auto';
+    const cleanCharCount = rawPlainText.replace(/\s/g, '').length;
+    const lineCount = rawPlainText ? rawPlainText.split(/\r?\n/).filter(l => l.trim().length > 0).length : 0;
+    const splitResult = hasDesc ? splitHtmlByColumnBreak(descEditor.innerHTML) : null;
+
+    const useDoubleColumn = hasDesc && (
+        layoutMode === 'double' ||
+        splitResult !== null ||
+        (layoutMode === 'auto' && (cleanCharCount >= 180 || lineCount >= 12))
+    );
+
+    const padding = 24;
+    const renderScale = 2;
+    const canvasWidth = useDoubleColumn ? Math.max(boardW, 960) : boardW;
+    const boardOffsetX = Math.round((canvasWidth - boardW) / 2);
 
     let descCanvas = null;
     let extraHeight = 0;
-    const padding = 24;
-    const renderScale = 2;
 
     if (hasDesc) {
+        const innerContentWidth = canvasWidth - padding * 2;
         const renderWrapper = document.createElement('div');
         renderWrapper.style.position = 'fixed';
         renderWrapper.style.left = '-9999px';
         renderWrapper.style.top = '0';
-        renderWrapper.style.width = `${canvasWidth - padding * 2}px`;
+        renderWrapper.style.width = `${innerContentWidth}px`;
         renderWrapper.style.backgroundColor = '#2d2d2d';
         renderWrapper.style.color = '#ffffff';
         renderWrapper.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", Arial, sans-serif';
-        renderWrapper.style.fontSize = '16px';
-        renderWrapper.style.lineHeight = '1.65';
+        renderWrapper.style.fontSize = useDoubleColumn ? '15.5px' : '16px';
+        renderWrapper.style.lineHeight = useDoubleColumn ? '1.58' : '1.65';
         renderWrapper.style.wordBreak = 'break-word';
         renderWrapper.style.webkitFontSmoothing = 'antialiased';
         renderWrapper.style.mozOsxFontSmoothing = 'grayscale';
         renderWrapper.style.textRendering = 'optimizeLegibility';
-        
-        renderWrapper.innerHTML = `
+
+        const baseStyleTag = `
             <style>
                 u, ins {
                     text-decoration: none !important;
@@ -1074,30 +1272,61 @@ async function generateBoardCanvas(includeDesc = true) {
                     display: inline !important;
                     padding-bottom: 1px !important;
                 }
-                [style*="text-decoration: underline"], [style*="text-decoration-line: underline"], [style*="underline"] {
-                    text-decoration: none !important;
-                    border-bottom: 2px solid currentColor !important;
-                    display: inline !important;
-                    padding-bottom: 1px !important;
-                }
                 b, strong { font-weight: bold !important; }
                 i, em { font-style: italic !important; }
+                .two-col-grid {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: stretch;
+                    gap: 24px;
+                    width: 100%;
+                }
+                .two-col-box {
+                    flex: 1 1 0;
+                    min-width: 0;
+                }
+                .two-col-divider {
+                    width: 1px;
+                    background: #484848;
+                    flex: 0 0 1px;
+                }
+                .auto-masonry-cols {
+                    column-count: 2;
+                    column-gap: 32px;
+                    column-rule: 1px solid #484848;
+                }
             </style>
-            ${descEditor.innerHTML}
         `;
 
-        applyWordBulletsToDOM(renderWrapper);
-
-        renderWrapper.querySelectorAll('u, ins, span, font, b, i').forEach(el => {
-            const hasUnderline = el.tagName === 'U' || el.tagName === 'INS' || 
-                                 (el.getAttribute('style') && el.getAttribute('style').includes('underline'));
-            if (hasUnderline) {
-                el.style.setProperty('text-decoration', 'none', 'important');
-                el.style.setProperty('border-bottom', '2px solid ' + (el.style.color || '#ffffff'), 'important');
-                el.style.setProperty('display', 'inline', 'important');
-                el.style.setProperty('padding-bottom', '1px', 'important');
-            }
-        });
+        if (useDoubleColumn && splitResult) {
+            // 手動分欄線：精準分成左、右兩欄
+            renderWrapper.innerHTML = `
+                ${baseStyleTag}
+                <div class="two-col-grid">
+                    <div class="two-col-box" id="renderLeftCol">${splitResult.leftHtml}</div>
+                    <div class="two-col-divider"></div>
+                    <div class="two-col-box" id="renderRightCol">${splitResult.rightHtml}</div>
+                </div>
+            `;
+            styleRenderedRichText(renderWrapper.querySelector('#renderLeftCol'));
+            styleRenderedRichText(renderWrapper.querySelector('#renderRightCol'));
+        } else if (useDoubleColumn) {
+            // 自動平衡雙欄（CSS Multi-column 流動平衡）
+            renderWrapper.innerHTML = `
+                ${baseStyleTag}
+                <div class="auto-masonry-cols" id="renderAutoCols">${descEditor.innerHTML}</div>
+            `;
+            styleRenderedRichText(renderWrapper.querySelector('#renderAutoCols'));
+        } else {
+            // 標準單欄（若單欄模式下仍含 ---，也自動隱藏 --- 或轉為乾淨橫線）
+            const singleHtml = descEditor.innerHTML
+                .replace(/<hr[^>]*class="manual-col-break"[^>]*>/gi, '<div style="border-top:1px solid #484848;margin:10px 0;"></div>');
+            renderWrapper.innerHTML = `
+                ${baseStyleTag}
+                <div id="renderSingleCol">${singleHtml}</div>
+            `;
+            styleRenderedRichText(renderWrapper.querySelector('#renderSingleCol'));
+        }
 
         document.body.appendChild(renderWrapper);
 
@@ -1110,7 +1339,7 @@ async function generateBoardCanvas(includeDesc = true) {
                     logging: false
                 });
                 const logicalHeight = descCanvas.height / renderScale;
-                extraHeight = logicalHeight + padding * 2 + 50;
+                extraHeight = logicalHeight + padding * 2 + 48;
             }
         } catch (e) {
             console.error('富文本渲染失敗，降級處理', e);
@@ -1121,27 +1350,32 @@ async function generateBoardCanvas(includeDesc = true) {
 
     const canvas = document.createElement('canvas');
     canvas.width = canvasWidth;
-    canvas.height = canvasHeight + extraHeight;
+    canvas.height = boardH + extraHeight;
     const ctx = canvas.getContext('2d');
     
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    ctx.fillStyle = '#1a1a1a';
+    // 整體背景底色（雙欄加寬時棋盤兩側也會一致融合）
+    ctx.fillStyle = '#1f2226';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (bgImg) ctx.drawImage(bgImg, 0, 0, canvasWidth, canvasHeight);
 
-    const topPad = canvasHeight * state.paddingTopRatio;
-    const bottomPad = canvasHeight * state.paddingBottomRatio;
-    const leftPad = canvasWidth * state.paddingLeftRatio;
-    const rightPad = canvasWidth * (state.paddingRightRatio !== undefined ? state.paddingRightRatio : state.paddingLeftRatio);
-    const playableW = canvasWidth - leftPad - rightPad;
-    const playableH = canvasHeight - topPad - bottomPad;
+    // 繪製置中後的棋盤背景
+    if (bgImg) {
+        ctx.drawImage(bgImg, boardOffsetX, 0, boardW, boardH);
+    }
+
+    const topPad = boardH * state.paddingTopRatio;
+    const bottomPad = boardH * state.paddingBottomRatio;
+    const leftPad = boardW * state.paddingLeftRatio;
+    const rightPad = boardW * (state.paddingRightRatio !== undefined ? state.paddingRightRatio : state.paddingLeftRatio);
+    const playableW = boardW - leftPad - rightPad;
+    const playableH = boardH - topPad - bottomPad;
 
     const colWidths = state.colFracs ? state.colFracs.map(f => f * playableW) : Array(state.cols).fill(playableW / state.cols);
     const rowHeights = state.rowFracs ? state.rowFracs.map(f => f * playableH) : Array(state.rows).fill(playableH / state.rows);
 
-    const colXPositions = [leftPad];
+    const colXPositions = [boardOffsetX + leftPad];
     for (let c = 0; c < state.cols; c++) colXPositions.push(colXPositions[c] + colWidths[c]);
 
     const rowYPositions = [topPad];
@@ -1269,7 +1503,7 @@ async function generateBoardCanvas(includeDesc = true) {
     }
 
     if (descCanvas) {
-        const startY = canvasHeight;
+        const startY = boardH;
         ctx.fillStyle = '#2d2d2d';
         ctx.fillRect(0, startY, canvas.width, extraHeight);
 
@@ -1285,6 +1519,7 @@ async function generateBoardCanvas(includeDesc = true) {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillText('【陣容說明】', padding, startY + padding);
+
 
         const drawW = descCanvas.width / renderScale;
         const drawH = descCanvas.height / renderScale;
@@ -1357,6 +1592,11 @@ function extractPlainTextWithLineBreaks(root) {
         } else if (node.nodeType === Node.ELEMENT_NODE) {
             const tag = node.tagName.toLowerCase();
             if (tag === 'style' || tag === 'script') return;
+            if (tag === 'hr') {
+                if (currentLine.length > 0) flushLine();
+                lines.push('──────────');
+                return;
+            }
             if (tag === 'br') {
                 flushLine();
                 return;
@@ -1369,7 +1609,6 @@ function extractPlainTextWithLineBreaks(root) {
                 walk(child);
             }
             if (isBlock) {
-                // 若整個 block 只有一個 <br>，前面已經 flush 過，避免重複多一行
                 const onlyBr = node.childNodes.length === 1 && node.firstChild.nodeName === 'BR';
                 if (!onlyBr) {
                     flushLine();
@@ -1392,12 +1631,10 @@ function buildFormattedClipboardData() {
     const plainText = getDescPlainText().trim();
     if (!plainText) return null;
 
-    // 複製一份 DOM 來套用項目符號（◆、✦、▸ 等）與清理圖片
     const clone = editor.cloneNode(true);
     clone.querySelectorAll('img, picture, svg, iframe, canvas, video').forEach(el => el.remove());
     applyWordBulletsToDOM(clone);
 
-    // 精準遍歷 DOM 結構還原換行（避免 detached DOM 讀取 innerText 失去換行的問題）
     const processedPlainText = extractPlainTextWithLineBreaks(clone);
     const htmlContent = `<div style="font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif; font-size: 16px; line-height: 1.65;">${clone.innerHTML}</div>`;
 
@@ -1428,7 +1665,6 @@ async function copyTextOnly() {
         console.warn('ClipboardItem 寫入富文本失敗，改用選區複製降級方案：', err);
     }
 
-    // 降級方案：透過隱藏的 contenteditable 容器執行選區複製（可完整保留粗體、斜體、底線、顏色、螢光筆）
     try {
         const tempDiv = document.createElement('div');
         tempDiv.contentEditable = 'true';
@@ -2016,6 +2252,9 @@ function initRichTextEditor() {
     const fontSizeSelect = document.getElementById('fontSizeSelect');
     const hiliteColorPicker = document.getElementById('hiliteColorPicker');
     const foreColorPicker = document.getElementById('foreColorPicker');
+    const insertColumnBreakBtn = document.getElementById('insertColumnBreakBtn');
+    const exportLayoutSelect = document.getElementById('exportLayoutSelect');
+    const toggleEditorExpandBtn = document.getElementById('toggleEditorExpandBtn');
 
     if (!editor || !toolbar) return;
 
@@ -2026,9 +2265,33 @@ function initRichTextEditor() {
             if (cmd) {
                 document.execCommand(cmd, false, null);
                 editor.focus();
+                updateDescStatusMetrics();
             }
         });
     });
+
+    if (insertColumnBreakBtn) {
+        insertColumnBreakBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            editor.focus();
+            document.execCommand('insertHTML', false, '<hr class="manual-col-break"><div><br></div>');
+            updateDescStatusMetrics();
+            showToast('已插入左右分欄線（匯出雙欄時會在此切分到右欄）');
+        });
+    }
+
+    if (exportLayoutSelect) {
+        exportLayoutSelect.addEventListener('change', () => {
+            updateDescStatusMetrics();
+        });
+    }
+
+    if (toggleEditorExpandBtn) {
+        toggleEditorExpandBtn.addEventListener('click', () => {
+            const expanded = editor.classList.toggle('expanded');
+            toggleEditorExpandBtn.textContent = expanded ? '⇕ 收合' : '⇕ 展開';
+        });
+    }
 
     if (fontSizeSelect) {
         fontSizeSelect.addEventListener('change', () => {
@@ -2071,6 +2334,7 @@ function initRichTextEditor() {
         const text = e.dataTransfer.getData('text/plain');
         if (text) {
             document.execCommand('insertText', false, text);
+            updateDescStatusMetrics();
         }
     });
 
@@ -2092,6 +2356,7 @@ function initRichTextEditor() {
             document.execCommand('insertHTML', false, cleanHtml);
             showToast('已自動過濾貼上內容中的圖片！');
         }
+        setTimeout(updateDescStatusMetrics, 0);
     });
 
     editor.addEventListener('input', () => {
@@ -2100,7 +2365,10 @@ function initRichTextEditor() {
             imgs.forEach(el => el.remove());
             showToast('說明欄位禁止放入圖片！');
         }
+        updateDescStatusMetrics();
     });
+
+    updateDescStatusMetrics();
 }
 
 // ==================== 初始化執行 ====================

@@ -90,9 +90,26 @@
                     </div>
                 </section>
 
-                <!-- Tab 2: 陣容說明 (Word 風格富文本編輯器) -->
+                <!-- Tab 2: 陣容說明 (Word 風格富文本編輯器 + 長文雙欄控制) -->
                 <section class="mobile-tab-pane" id="tab-desc">
                     <div class="section tab-section-borderless editor-container">
+                        <!-- 長文狀態與排版列 -->
+                        <div class="editor-status-bar" id="editorStatusBar">
+                            <div class="status-metrics">
+                                <span id="descCharCount">字數：0 字</span>
+                                <span class="status-dot">｜</span>
+                                <span id="descHeightStatus" class="status-badge">高度：精簡</span>
+                            </div>
+                            <div class="status-controls">
+                                <select id="exportLayoutSelect" class="toolbar-select" title="匯出圖片時的說明排版模式">
+                                    <option value="auto" selected>排版：自動雙欄</option>
+                                    <option value="single">排版：強制單欄</option>
+                                    <option value="double">排版：強制雙欄</option>
+                                </select>
+                                <button type="button" id="toggleEditorExpandBtn" class="status-action-btn" title="展開/收合編輯區高度">⇕ 展開</button>
+                            </div>
+                        </div>
+
                         <!-- 編輯工具列 -->
                         <div class="editor-toolbar" id="editorToolbar">
                             <select id="fontSizeSelect" title="字體大小" class="toolbar-select">
@@ -123,11 +140,12 @@
 
                             <span class="toolbar-divider"></span>
 
+                            <button type="button" id="insertColumnBreakBtn" class="toolbar-text-btn" title="插入左右分欄線 (---)，雙欄輸出時會在此切分到右欄">➗ 分欄線</button>
                             <button type="button" class="toolbar-btn" data-command="removeFormat" title="清除格式">🧹</button>
                         </div>
 
                         <!-- 編輯區塊 -->
-                        <div id="templateDescInput" class="template-desc-editor" contenteditable="true" data-placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項..."></div>
+                        <div id="templateDescInput" class="template-desc-editor" contenteditable="true" data-placeholder="請輸入此陣容的詳細說明、打法技巧或注意事項...&#10;💡 提示：長文可點擊上方「➗ 分欄線」或輸入 --- 指定左右分欄位置"></div>
                     </div>
                 </section>
 
